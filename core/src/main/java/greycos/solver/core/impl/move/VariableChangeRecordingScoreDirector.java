@@ -130,7 +130,7 @@ public final class VariableChangeRecordingScoreDirector<Solution_, Score_ extend
     var action =
         new ListVariableBeforeChangeAction<>(entity, list, fromIndex, toIndex, variableDescriptor);
     // pendingListChangeTracker will fail fast if a second beforeListVariableChanged call on the
-    // same entity
+    // same list variable and entity
     // occurs before a corresponding afterListVariableChanged call.
     pendingListChangeTracker.put(entity, action);
     getVariableChangeList().add(action);
@@ -148,14 +148,15 @@ public final class VariableChangeRecordingScoreDirector<Solution_, Score_ extend
       int toIndex) {
     // The tracker is shared with getNonDelegating()'s copy, so a pair split across the two still
     // matches.
-    var pendingBeforeAction = pendingListChangeTracker.remove(entity);
+    var pendingBeforeAction = pendingListChangeTracker.remove(variableDescriptor, entity);
     if (pendingBeforeAction == null) {
       throw new IllegalArgumentException(
           """
-          The afterListVariableChanged (%d, %d) of entity (%s) has no matching beforeListVariableChanged.
+          The afterListVariableChanged (%d, %d) of entity (%s) for list variable (%s) has no matching beforeListVariableChanged.
           Maybe check implementation of your %s.\
           """
-              .formatted(fromIndex, toIndex, entity, Move.class.getSimpleName()));
+              .formatted(
+                  fromIndex, toIndex, entity, variableDescriptor, Move.class.getSimpleName()));
     }
     var requiredFromIndex = pendingBeforeAction.fromIndex();
     if (requiredFromIndex != fromIndex) {

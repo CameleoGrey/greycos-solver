@@ -16,17 +16,32 @@ import greycos.solver.core.impl.heuristic.selector.common.nearby.NearbyDistanceM
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
-@XmlType(propOrder = {"valueSelectorConfig", "secondaryValueSelectorConfig"})
+@XmlType(propOrder = {"entityClass", "valueSelectorConfig", "secondaryValueSelectorConfig"})
 public class ListSwapMoveSelectorConfig extends MoveSelectorConfig<ListSwapMoveSelectorConfig>
     implements NearbyAutoConfigurationEnabled<ListSwapMoveSelectorConfig> {
 
   public static final String XML_ELEMENT_NAME = "listSwapMoveSelector";
+
+  @Nullable private String entityClass = null;
 
   @XmlElement(name = "valueSelector")
   private ValueSelectorConfig valueSelectorConfig = null;
 
   @XmlElement(name = "secondaryValueSelector")
   private ValueSelectorConfig secondaryValueSelectorConfig = null;
+
+  public @Nullable Class<?> getEntityClass() {
+    return ConfigUtils.resolveClass(entityClass, "entityClass", this);
+  }
+
+  public void setEntityClass(@Nullable Class<?> entityClass) {
+    this.entityClass = entityClass == null ? null : entityClass.getName();
+  }
+
+  public @NonNull ListSwapMoveSelectorConfig withEntityClass(@NonNull Class<?> entityClass) {
+    setEntityClass(entityClass);
+    return this;
+  }
 
   public @Nullable ValueSelectorConfig getValueSelectorConfig() {
     return valueSelectorConfig;
@@ -69,6 +84,7 @@ public class ListSwapMoveSelectorConfig extends MoveSelectorConfig<ListSwapMoveS
   public @NonNull ListSwapMoveSelectorConfig inherit(
       @NonNull ListSwapMoveSelectorConfig inheritedConfig) {
     super.inherit(inheritedConfig);
+    entityClass = ConfigUtils.inheritOverwritableProperty(entityClass, inheritedConfig.entityClass);
     valueSelectorConfig =
         ConfigUtils.inheritConfig(valueSelectorConfig, inheritedConfig.getValueSelectorConfig());
     secondaryValueSelectorConfig =
@@ -85,6 +101,7 @@ public class ListSwapMoveSelectorConfig extends MoveSelectorConfig<ListSwapMoveS
   @Override
   public void visitReferencedClasses(@NonNull Consumer<Class<?>> classVisitor) {
     visitCommonReferencedClasses(classVisitor);
+    classVisitor.accept(getEntityClass());
     if (valueSelectorConfig != null) {
       valueSelectorConfig.visitReferencedClasses(classVisitor);
     }

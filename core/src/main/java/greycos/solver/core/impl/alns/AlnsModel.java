@@ -162,7 +162,7 @@ final class AlnsModel<Solution_> {
             checkpoint.run();
             if (!movable(descriptor, entity)) continue;
             var values = list.getValue(entity);
-            for (int i = firstUnpinnedIndex(entity); i < values.size(); i++) {
+            for (int i = firstUnpinnedIndex(list, entity); i < values.size(); i++) {
               checkpoint.run();
               result.add(new AlnsTarget<>(handle, entity, values.get(i)));
             }
@@ -192,7 +192,7 @@ final class AlnsModel<Solution_> {
         if (!movable(descriptor, entity) || !range(descriptor, entity).contains(target.value()))
           continue;
         int sizeAfterRemoval = list.getListSize(entity) - (current.entity() == entity ? 1 : 0);
-        for (int index = firstUnpinnedIndex(entity); index <= sizeAfterRemoval; index++) {
+        for (int index = firstUnpinnedIndex(list, entity); index <= sizeAfterRemoval; index++) {
           checkpoint.run();
           result.add(new AlnsAssignment<>(target, entity, target.value(), index));
         }
@@ -230,7 +230,7 @@ final class AlnsModel<Solution_> {
         checkpoint.run();
         if (!movable(descriptor, entity) || !range(descriptor, entity).contains(target.value()))
           continue;
-        int first = firstUnpinnedIndex(entity);
+        int first = firstUnpinnedIndex(list, entity);
         int last = list.getListSize(entity) - (current.entity() == entity ? 1 : 0);
         if (first <= last)
           destinations.add(
@@ -286,7 +286,7 @@ final class AlnsModel<Solution_> {
       }
       int sizeAfterRemoval =
           list.getListSize(assignment.entity()) - (current.entity() == assignment.entity() ? 1 : 0);
-      if (assignment.index() < firstUnpinnedIndex(assignment.entity())
+      if (assignment.index() < firstUnpinnedIndex(list, assignment.entity())
           || assignment.index() > sizeAfterRemoval) {
         throw new IllegalArgumentException("ALNS insertion index is pinned or outside the list.");
       }
@@ -303,7 +303,7 @@ final class AlnsModel<Solution_> {
     if (descriptor instanceof ListVariableDescriptor<Solution_> list) {
       if (!current.isUnassigned()
           && (!movable(descriptor, current.entity())
-              || current.index() < firstUnpinnedIndex(current.entity()))) {
+              || current.index() < firstUnpinnedIndex(list, current.entity()))) {
         throw new IllegalArgumentException("Cannot change a pinned ALNS list target: " + target);
       }
     } else if (!movable(descriptor, target.entity())) {
@@ -318,12 +318,12 @@ final class AlnsModel<Solution_> {
         .isMovable(scoreDirector.getWorkingSolution(), entity);
   }
 
-  private int firstUnpinnedIndex(Object entity) {
+  private int firstUnpinnedIndex(ListVariableDescriptor<Solution_> descriptor, Object entity) {
     var reader =
         scoreDirector
             .getSolutionDescriptor()
             .findEntityDescriptorOrFail(entity.getClass())
-            .getEffectivePlanningPinToIndexReader();
+            .getEffectivePlanningPinToIndexReader(descriptor);
     return reader == null ? 0 : reader.applyAsInt(entity);
   }
 

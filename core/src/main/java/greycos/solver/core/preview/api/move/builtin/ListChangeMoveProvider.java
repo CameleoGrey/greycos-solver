@@ -6,6 +6,7 @@ import java.util.Objects;
 import java.util.random.RandomGenerator;
 
 import greycos.solver.core.impl.bavet.common.index.RetiringRandomIterator;
+import greycos.solver.core.impl.neighborhood.stream.DefaultMoveStreamFactory;
 import greycos.solver.core.impl.neighborhood.stream.FilteringIterator;
 import greycos.solver.core.impl.neighborhood.stream.RetiringBiWalk;
 import greycos.solver.core.impl.neighborhood.stream.dataset.DefaultUniDatasetInstance;
@@ -91,6 +92,9 @@ public final class ListChangeMoveProvider<Solution_, Entity_, Value_>
 
   @Override
   public MoveStream<Solution_> build(MoveStreamFactory<Solution_> moveStreamFactory) {
+    var nodeSharingSupportFunctions =
+        ((DefaultMoveStreamFactory<Solution_>) moveStreamFactory)
+            .getNodeSharingSupportFunctions(variableMetaModel);
     // Only widen to forEachDestinationIncludingUnassigned when crossingNull:
     // unlike forEachDestination, it represents the unassigned destination with a null entity
     // internally,
@@ -107,7 +111,9 @@ public final class ListChangeMoveProvider<Solution_, Entity_, Value_>
     // mirroring ChangeMoveProvider's own source-side widening.
     var sourceDataset =
         (crossingNull
-                ? moveStreamFactory.forEach(variableMetaModel.type(), false)
+                ? moveStreamFactory
+                    .forEach(variableMetaModel.type(), false)
+                    .filter(nodeSharingSupportFunctions.movableValueFilter())
                 : moveStreamFactory.forEachAssignedValue(variableMetaModel))
             .asCachedDataset();
     // A source value paired with a destination searched by isValidChange, same as

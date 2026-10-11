@@ -5,6 +5,7 @@ import java.util.Iterator;
 import java.util.List;
 
 import greycos.solver.core.impl.cotwin.variable.descriptor.BasicVariableDescriptor;
+import greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDescriptor;
 import greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
 import greycos.solver.core.impl.heuristic.selector.common.decorator.SelectionFilter;
 import greycos.solver.core.impl.heuristic.selector.common.iterator.UpcomingSelectionIterator;
@@ -65,6 +66,10 @@ public class QueuedValuePlacer<Solution_> extends AbstractEntityPlacer<Solution_
 
   public boolean hasListChangeMoveSelector() {
     return valueSelector.getVariableDescriptor().isListVariable();
+  }
+
+  public GenuineVariableDescriptor<Solution_> getVariableDescriptor() {
+    return valueSelector.getVariableDescriptor();
   }
 
   @Override

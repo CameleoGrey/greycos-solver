@@ -8,6 +8,7 @@ import java.util.SequencedCollection;
 import greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import greycos.solver.core.impl.heuristic.move.AbstractMove;
+import greycos.solver.core.impl.move.VariableDescriptorRebaser;
 import greycos.solver.core.impl.score.director.ScoreDirector;
 import greycos.solver.core.impl.score.director.ValueRangeManager;
 import greycos.solver.core.impl.score.director.VariableDescriptorAwareScoreDirector;
@@ -166,12 +167,12 @@ public class KOptListMove<Solution_> extends AbstractMove<Solution_> {
       newEntities[i] = castScoreDirector.lookUpWorkingObject(originalEntities[i]);
     }
     for (var twoOpt : equivalent2Opts) {
-      rebasedEquivalent2Opts.add(twoOpt.rebase());
+      rebasedEquivalent2Opts.add(twoOpt.rebase(destinationScoreDirector));
     }
 
     return new KOptListMove<>(
-        listVariableDescriptor,
-        descriptor,
+        VariableDescriptorRebaser.rebase(listVariableDescriptor, destinationScoreDirector),
+        descriptor.rebase(destinationScoreDirector),
         rebasedEquivalent2Opts,
         postShiftAmount,
         newEndIndices,

@@ -199,7 +199,9 @@ public class SwapMoveSelectorFactory<Solution_>
 
   private ListSwapMoveSelectorConfig buildListSwapMoveSelectorConfig(
       VariableDescriptor<?> variableDescriptor, boolean inheritFoldedConfig) {
-    var listSwapMoveSelectorConfig = new ListSwapMoveSelectorConfig();
+    var listSwapMoveSelectorConfig =
+        new ListSwapMoveSelectorConfig()
+            .withEntityClass(variableDescriptor.getEntityDescriptor().getEntityClass());
     var childValueSelectorConfig =
         new ValueSelectorConfig(new ValueSelectorConfig(variableDescriptor.getVariableName()));
     listSwapMoveSelectorConfig.setValueSelectorConfig(childValueSelectorConfig);

@@ -1,12 +1,28 @@
 [#upgradeToLatest]
 = Upgrading to the latest version
 
+[#multiplePlanningListsUpgrade]
+== Multiple planning list variables
+
+A solution may declare several independent planning lists on the same or different owner classes.
+Their element type domains and value populations must be disjoint; nested list ownership and transfers
+between different fields are not supported. Existing single-list annotations and configurations retain their meaning.
+
+Use `@PlanningPinToIndex(variableName = "visits")` to target a prefix reader when its declaring entity has several lists.
+An inherited reader retains its original list binding. Whole-entity pinning continues to pin every genuine variable.
+List-specific selectors infer an omitted target only when it is unique; otherwise specify the owner and variable.
+See xref:optimization-algorithms/move-selector-reference.adoc#listMoveSelectors[list selector targeting].
+
+Automatic construction initializes all declarations in stable model order alongside basic variables.
+Explicit construction phases can use a queued value placer with an entity class and variable name to choose their order.
+Constraints and shadow suppliers must therefore handle partially initialized states.
+
 [#multistageMoveUpgrade]
 == Opt-in multistage moves
 
 Local Search supports `MultistageMoveSelectorConfig` for one basic planning variable,
 `ListMultistageMoveSelectorConfig` for one planning list variable, and
-`CrossVariableMultistageMoveSelectorConfig` for a candidate spanning declared basic variables and the model's planning list variable.
+`CrossVariableMultistageMoveSelectorConfig` for a candidate spanning declared basic and independent list variables.
 Their provider/evaluator interfaces are in `greycos.solver.core.api.solver.multistage`.
 The XML elements are `<multistageMoveSelector>`, `<listMultistageMoveSelector>` and `<crossVariableMultistageMoveSelector>`.
 Existing single-variable APIs, configurations and defaults remain unchanged; enabling a new selector is explicit.
@@ -19,7 +35,7 @@ Declare these with `withVariables(...)` in Java or repeated `<variable>` element
 A provider can change several declared variables, including basic and list variables on the same entity,
 and can evaluate a compound sequence as one final-state probe.
 Undeclared views and operations outside the declared entity scope are rejected.
-This does not add support for chained variables or multiple planning list variables.
+Chained variables and overlapping list element domains remain unsupported.
 
 All selectors require `stageProviderClass`.
 The default limits are 64 candidate requests per step and 10000 scoring probes per candidate,

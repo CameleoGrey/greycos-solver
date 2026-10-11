@@ -842,7 +842,7 @@ public final class GuidedLocalSearchFeatureTracker<Solution_, Key_>
   @Override
   public void afterListVariableChanged(
       Object entity, String variableName, int fromIndex, int toIndex) {
-    if (initialized && automatic != null) automatic.markOwner(entity);
+    if (initialized && automatic != null) automatic.markOwner(entity, variableName);
     if (initialized && session != null) {
       try {
         session.afterListVariableChanged(entity, variableName, fromIndex, toIndex);
@@ -973,6 +973,6 @@ public final class GuidedLocalSearchFeatureTracker<Solution_, Key_>
   @Override
   public void afterListVariableRelationshipChanged(
       ListVariableDescriptor<Solution_> descriptor, Object element) {
-    if (initialized && automatic != null) automatic.markElement(element);
+    if (initialized && automatic != null) automatic.markElement(descriptor, element);
   }
 }

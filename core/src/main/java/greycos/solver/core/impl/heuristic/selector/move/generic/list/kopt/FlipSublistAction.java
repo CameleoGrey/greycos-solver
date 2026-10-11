@@ -3,7 +3,9 @@ package greycos.solver.core.impl.heuristic.selector.move.generic.list.kopt;
 import java.util.Collections;
 import java.util.List;
 
+import greycos.solver.core.api.cotwin.lookup.Lookup;
 import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
+import greycos.solver.core.impl.move.VariableDescriptorRebaser;
 
 /**
  * Flips a sublist of a list variable, (the same thing as a {@link TwoOptListMove}, but no shift to
@@ -36,8 +38,15 @@ record FlipSublistAction(
     flipSublist(combinedList, 0, fromIndexInclusive, toIndexExclusive);
   }
 
-  public FlipSublistAction rebase() {
-    return new FlipSublistAction(variableDescriptor, fromIndexInclusive, toIndexExclusive);
+  public FlipSublistAction rebase(Lookup lookup) {
+    return new FlipSublistAction(
+        rebaseDescriptor(variableDescriptor, lookup), fromIndexInclusive, toIndexExclusive);
+  }
+
+  private static <Solution_> ListVariableDescriptor<Solution_> rebaseDescriptor(
+      ListVariableDescriptor<Solution_> descriptor, Lookup lookup) {
+    return VariableDescriptorRebaser.<Solution_, ListVariableDescriptor<Solution_>>rebase(
+        descriptor, lookup);
   }
 
   public static <T> void flipSublist(

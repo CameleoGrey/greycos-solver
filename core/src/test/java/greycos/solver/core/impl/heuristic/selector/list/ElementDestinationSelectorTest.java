@@ -664,6 +664,52 @@ class ElementDestinationSelectorTest {
   }
 
   @Test
+  void randomEmptyPopulationHasStrictIteratorExhaustion() {
+    var solutionDescriptor = TestdataListSolution.buildSolutionDescriptor();
+    var scoreDirector = mockScoreDirector(solutionDescriptor);
+    var solution = new TestdataListSolution();
+    solution.setEntityList(List.of());
+    solution.setValueList(List.of());
+    scoreDirector.setWorkingSolution(solution);
+    var selector =
+        new ElementDestinationSelector<>(
+            mockEntitySelector(new TestdataListEntity[0]),
+            mockIterableValueSelector(solutionDescriptor.getListVariableDescriptor()),
+            true);
+    var solverScope = solvingStarted(selector, scoreDirector);
+    phaseStarted(selector, solverScope);
+
+    assertEmptyNeverEndingIterableSelector(selector, 0);
+    var iterator = selector.iterator();
+    assertThat(iterator.hasNext()).isFalse();
+    assertThatCode(iterator::next).isInstanceOf(NoSuchElementException.class);
+    assertThat(iterator.hasNext()).isFalse();
+    assertThatCode(iterator::next).isInstanceOf(NoSuchElementException.class);
+  }
+
+  @Test
+  void randomEmptyPopulationAllowingUnassignedValuesHasStrictIteratorExhaustion() {
+    var solutionDescriptor = TestdataAllowsUnassignedValuesListSolution.buildSolutionDescriptor();
+    var scoreDirector = mockScoreDirector(solutionDescriptor);
+    var solution = new TestdataAllowsUnassignedValuesListSolution();
+    solution.setEntityList(List.of());
+    solution.setValueList(List.of());
+    scoreDirector.setWorkingSolution(solution);
+    var selector =
+        new ElementDestinationSelector<>(
+            mockEntitySelector(new TestdataAllowsUnassignedValuesListEntity[0]),
+            mockIterableValueSelector(solutionDescriptor.getListVariableDescriptor()),
+            true);
+    var solverScope = solvingStarted(selector, scoreDirector);
+    phaseStarted(selector, solverScope);
+
+    assertEmptyNeverEndingIterableSelector(selector, 0);
+    var iterator = selector.iterator();
+    assertThat(iterator.hasNext()).isFalse();
+    assertThatCode(iterator::next).isInstanceOf(NoSuchElementException.class);
+  }
+
+  @Test
   void notEmptyIfThereAreEntities() {
     var a = new TestdataListEntity("A");
     var b = new TestdataListEntity("B");

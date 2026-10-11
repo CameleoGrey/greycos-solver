@@ -27,8 +27,11 @@ import greycos.solver.core.api.solver.change.ProblemChange;
  *   <li>Negative int: fail fast.
  * </ul>
  *
- * To pin the entire list and disallow any changes, use {@link PlanningPin} instead. The index must
- * never change during planning; to change it, trigger a {@link ProblemChange}.
+ * When the declaring entity has multiple planning list variables, specify {@link #variableName()}
+ * to identify the target of each pin reader. Each list variable may have at most one pin reader.
+ *
+ * <p>To pin the entire list and disallow any changes, use {@link PlanningPin} instead. The index
+ * must never change during planning; to change it, trigger a {@link ProblemChange}.
  *
  * <p>Example: Assuming a list of values {@code [A, B, C]}:
  *
@@ -42,11 +45,21 @@ import greycos.solver.core.api.solver.change.ProblemChange;
  *
  * If the same entity also specifies a {@link PlanningPin} and the pin is enabled, any value of
  * {@link PlanningPinToIndex} is ignored. In other words, enabling {@link PlanningPin} pins the
- * entire list without exception.
+ * every list variable on that entity without exception.
  *
  * @see PlanningPin Pin the entire entity.
  * @see ProblemChange Use ProblemChange to trigger pinning changes.
  */
 @Target({METHOD, FIELD})
 @Retention(RUNTIME)
-public @interface PlanningPinToIndex {}
+public @interface PlanningPinToIndex {
+
+  /**
+   * The name of the planning list variable whose prefix is pinned. An empty name selects the only
+   * list variable available on the declaring entity class. An inherited reader keeps its original
+   * target even if a subclass declares additional list variables.
+   *
+   * @return the planning list variable name, or an empty string when unambiguous
+   */
+  String variableName() default "";
+}

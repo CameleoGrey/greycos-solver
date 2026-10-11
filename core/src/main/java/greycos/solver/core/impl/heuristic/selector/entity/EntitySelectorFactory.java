@@ -370,10 +370,6 @@ public class EntitySelectorFactory<Solution_>
     } else {
       var valueSelectorConfig =
           new ValueSelectorConfig().withMimicSelectorRef(valueRangeRecorderId.recorderId());
-      if (entitySelector.getEntityDescriptor().hasBothListAndBasicVariables()) {
-        valueSelectorConfig.setVariableName(
-            entitySelector.getEntityDescriptor().getListVariableDescriptor().getVariableName());
-      }
       var replayingValueSelector =
           (IterableValueSelector<Solution_>)
               ValueSelectorFactory.<Solution_>create(valueSelectorConfig)
@@ -401,10 +397,6 @@ public class EntitySelectorFactory<Solution_>
     }
     var valueSelectorConfig =
         new ValueSelectorConfig().withMimicSelectorRef(valueRangeRecorderId.recorderId());
-    if (entitySelector.getEntityDescriptor().hasBothListAndBasicVariables()) {
-      valueSelectorConfig.setVariableName(
-          entitySelector.getEntityDescriptor().getListVariableDescriptor().getVariableName());
-    }
     var replayingValueSelector =
         (IterableValueSelector<Solution_>)
             ValueSelectorFactory.<Solution_>create(valueSelectorConfig)
@@ -498,10 +490,6 @@ public class EntitySelectorFactory<Solution_>
       } else {
         var rangeOriginConfig =
             new ValueSelectorConfig().withMimicSelectorRef(valueRangeRecorderId.recorderId());
-        if (entitySelector.getEntityDescriptor().hasBothListAndBasicVariables()) {
-          rangeOriginConfig.setVariableName(
-              entitySelector.getEntityDescriptor().getListVariableDescriptor().getVariableName());
-        }
         var rangeOrigin =
             (IterableValueSelector<Solution_>)
                 ValueSelectorFactory.<Solution_>create(rangeOriginConfig)

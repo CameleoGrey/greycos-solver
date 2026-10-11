@@ -8,8 +8,10 @@ import greycos.solver.core.config.solver.EnvironmentMode;
 import greycos.solver.core.impl.constructionheuristic.decider.ConstructionHeuristicDecider;
 import greycos.solver.core.impl.constructionheuristic.placer.EntityPlacer;
 import greycos.solver.core.impl.constructionheuristic.placer.PooledEntityPlacer;
+import greycos.solver.core.impl.constructionheuristic.placer.QueuedValuePlacer;
 import greycos.solver.core.impl.constructionheuristic.scope.ConstructionHeuristicPhaseScope;
 import greycos.solver.core.impl.constructionheuristic.scope.ConstructionHeuristicStepScope;
+import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import greycos.solver.core.impl.heuristic.move.SelectorBasedCompositeMove;
 import greycos.solver.core.impl.heuristic.move.SelectorBasedNoChangeMove;
 import greycos.solver.core.impl.heuristic.selector.move.generic.ChangeMove;
@@ -76,18 +78,17 @@ public class DefaultConstructionHeuristicPhase<Solution_>
       // In case of list variable with support for unassigned values, the placer will iterate
       // indefinitely.
       // (When it exhausts all values, it will start over from the beginning.)
-      // To prevent that, we need to limit the number of steps to the number of unassigned values.
-      // The use of ValueRangeManager is safe
-      // because it comes from the same score director as the working solution,
-      // and therefore is guaranteed to match.
-      // We compute fresh initialization statistics as opposed to possibly relying on a cached one,
-      // as otherwise Ruin&Recreate doesn't work correctly with its nested CH phase.
-      var scoreDirector = phaseScope.getScoreDirector();
-      var valueRangeManager = scoreDirector.getValueRangeManager();
+      // Limit this placer to its own list's unassigned values. Other list families may still
+      // await their construction phase and must not make this placer repeat optional decisions.
+      // The live list state also includes removals made immediately before nested Ruin&Recreate.
+      var placer = (QueuedValuePlacer<Solution_>) moveRepository.getPlacer();
+      var listVariableDescriptor =
+          (ListVariableDescriptor<Solution_>) placer.getVariableDescriptor();
       maxStepCount =
-          valueRangeManager
-              .computeInitializationStatistics(scoreDirector.getWorkingSolution(), null)
-              .notInAnyListValueCount();
+          phaseScope
+              .getScoreDirector()
+              .getListVariableState(listVariableDescriptor)
+              .getUnassignedCount();
     }
 
     TerminationStatus earlyTerminationStatus =

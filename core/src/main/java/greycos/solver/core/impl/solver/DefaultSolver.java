@@ -305,28 +305,29 @@ public class DefaultSolver<Solution_> extends AbstractSolver<Solution_>
               if (!entityDescriptor.supportsPinning() || !entityDescriptor.hasAnyListVariables()) {
                 return;
               }
-              var listVariableDescriptor = entityDescriptor.getListVariableDescriptor();
-              var pinIndex = listVariableDescriptor.getFirstUnpinnedIndex(entity);
-              if (entityDescriptor.isMovable(solution, entity)) {
-                if (pinIndex < 0) {
-                  throw new IllegalStateException(
-                      "The movable planning entity (%s) has a pin index (%s) which is negative."
-                          .formatted(entity, pinIndex));
-                }
-                var listSize = listVariableDescriptor.getListSize(entity);
-                if (pinIndex > listSize) {
-                  // pinIndex == listSize is allowed, as that says the pin is at the end of the
-                  // list,
-                  // allowing additions to the list.
-                  throw new IllegalStateException(
-                      "The movable planning entity (%s) has a pin index (%s) which is greater than the list size (%s)."
-                          .formatted(entity, pinIndex, listSize));
-                }
-              } else {
-                if (pinIndex != 0) {
-                  throw new IllegalStateException(
-                      "The immovable planning entity (%s) has a pin index (%s) which is not 0."
-                          .formatted(entity, pinIndex));
+              for (var listVariableDescriptor : entityDescriptor.getListVariableDescriptorList()) {
+                var pinIndex = listVariableDescriptor.getFirstUnpinnedIndex(entity);
+                if (entityDescriptor.isMovable(solution, entity)) {
+                  if (pinIndex < 0) {
+                    throw new IllegalStateException(
+                        "The movable planning entity (%s) has a pin index (%s) which is negative."
+                            .formatted(entity, pinIndex));
+                  }
+                  var listSize = listVariableDescriptor.getListSize(entity);
+                  if (pinIndex > listSize) {
+                    // pinIndex == listSize is allowed, as that says the pin is at the end of the
+                    // list,
+                    // allowing additions to the list.
+                    throw new IllegalStateException(
+                        "The movable planning entity (%s) has a pin index (%s) which is greater than the list size (%s)."
+                            .formatted(entity, pinIndex, listSize));
+                  }
+                } else {
+                  if (pinIndex != 0) {
+                    throw new IllegalStateException(
+                        "The immovable planning entity (%s) has a pin index (%s) which is not 0."
+                            .formatted(entity, pinIndex));
+                  }
                 }
               }
             });

@@ -12,6 +12,7 @@ import greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import greycos.solver.core.api.cotwin.variable.PlanningListVariable;
 import greycos.solver.core.impl.move.AbstractMove;
 import greycos.solver.core.impl.move.PlanningEntityResolver;
+import greycos.solver.core.impl.move.VariableDescriptorRebaser;
 import greycos.solver.core.preview.api.cotwin.metamodel.PlanningListVariableMetaModel;
 import greycos.solver.core.preview.api.cotwin.metamodel.PositionInList;
 import greycos.solver.core.preview.api.move.MutableSolutionView;
@@ -78,7 +79,10 @@ public final class MassListChangeMove<Solution_, Entity_, Value_> extends Abstra
   @Override
   public MassListChangeMove<Solution_, Entity_, Value_> rebase(Lookup lookup) {
     var rebasedDestination = destination == null ? null : destination.rebase(lookup);
-    return new MassListChangeMove<>(variableMetaModel, sample.rebase(lookup), rebasedDestination);
+    return new MassListChangeMove<>(
+        VariableDescriptorRebaser.rebase(variableMetaModel, lookup),
+        sample.rebase(lookup),
+        rebasedDestination);
   }
 
   @Override

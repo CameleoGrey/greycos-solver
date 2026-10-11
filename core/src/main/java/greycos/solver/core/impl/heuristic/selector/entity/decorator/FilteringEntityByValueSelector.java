@@ -12,6 +12,7 @@ import java.util.random.RandomGenerator;
 import greycos.solver.core.impl.constructionheuristic.placer.EntityPlacerFactory;
 import greycos.solver.core.impl.constructionheuristic.placer.QueuedValuePlacer;
 import greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
+import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import greycos.solver.core.impl.heuristic.selector.AbstractDemandEnabledSelector;
 import greycos.solver.core.impl.heuristic.selector.common.ReachableValues;
 import greycos.solver.core.impl.heuristic.selector.common.iterator.UpcomingSelectionIterator;
@@ -106,12 +107,7 @@ public final class FilteringEntityByValueSelector<Solution_>
             .getScoreDirector()
             .getValueRangeManager()
             .getReachableValues(
-                Objects.requireNonNull(
-                    phaseScope
-                        .getScoreDirector()
-                        .getSolutionDescriptor()
-                        .getListVariableDescriptor(),
-                    "Impossible state: the list variable cannot be null."));
+                (ListVariableDescriptor<Solution_>) replayingValueSelector.getVariableDescriptor());
     this.childEntitySelector.phaseStarted(phaseScope);
   }
 

@@ -146,8 +146,7 @@ public abstract class AbstractScoreDirector<
     // We set the shadow variable support,
     // which will be necessary for obtaining the change notifier
     this.variableSupport = VariableSupport.create(this);
-    var listVariableDescriptor = solutionDescriptor.getListVariableDescriptor();
-    if (listVariableDescriptor != null) {
+    for (var listVariableDescriptor : solutionDescriptor.getListVariableDescriptorList()) {
       // When using a list variable,
       // we ensure that the list variable state is initialized,
       // as it will serve as the single source of truth for all other classes.
@@ -409,6 +408,7 @@ public abstract class AbstractScoreDirector<
     // causing score corruption (e.g., doubled scores in island model global best adoption).
     valueRangeManager.reset(workingSolution);
     var solutionDescriptor = getSolutionDescriptor();
+    MultipleListVariableValidator.validate(solutionDescriptor, valueRangeManager, workingSolution);
 
     /*
      * Both problem facts and entities need to be asserted,
@@ -558,16 +558,14 @@ public abstract class AbstractScoreDirector<
     for (var inconsistentCycle : inconsistentCycles) {
       inconsistentEntities.addAll(inconsistentCycle.entitySet());
     }
-    var listVariableDescriptor =
-        this.scoreDirectorFactory.getSolutionDescriptor().getListVariableDescriptor();
-    if (listVariableDescriptor != null) {
-      var listVariableState =
-          Objects.requireNonNull(variableSupport.getListVariableState(listVariableDescriptor));
-      var listElementClass = listVariableDescriptor.getElementType();
-      for (var inconsistentEntity : inconsistentEntities) {
-        if (listElementClass.isInstance(inconsistentEntity)) {
-          var inverse =
-              Objects.requireNonNull(listVariableState.getInverseSingleton(inconsistentEntity));
+    for (var inconsistentEntity : inconsistentEntities) {
+      var listVariableDescriptor =
+          getSolutionDescriptor()
+              .findListVariableDescriptorForValueType(inconsistentEntity.getClass());
+      if (listVariableDescriptor != null) {
+        var listVariableState = variableSupport.getListVariableState(listVariableDescriptor);
+        var inverse = listVariableState.getInverseSingleton(inconsistentEntity);
+        if (inverse != null) {
           int index = listVariableState.getIndexOrFail(inconsistentEntity);
 
           if (listVariableDescriptor.isElementPinned(
@@ -587,13 +585,9 @@ public abstract class AbstractScoreDirector<
           afterListVariableElementUnassigned(listVariableDescriptor, inconsistentEntity);
           updateShadowVariables();
         }
-        // Unassign any normal @PlanningVariable on the entity too
-        unassignPlainEntity(inconsistentEntity);
       }
-    } else {
-      for (var inconsistentEntity : inconsistentEntities) {
-        unassignPlainEntity(inconsistentEntity);
-      }
+      // An element may also have ordinary genuine variables.
+      unassignPlainEntity(inconsistentEntity);
     }
     logger.info(
         "Unassigned the following entities which were involved in a dependency loop: {}.",
@@ -950,6 +944,7 @@ public abstract class AbstractScoreDirector<
   public void beforeListVariableElementAssigned(
       ListVariableDescriptor<Solution_> variableDescriptor, Object element) {
     ensureWorkingSolutionStateFresh();
+    assertListElementType(variableDescriptor, element);
     if (workingSolutionMutationObserver != null) {
       workingSolutionMutationObserver.beforeListVariableElementAssigned(
           variableDescriptor.getVariableName(), element);
@@ -975,6 +970,7 @@ public abstract class AbstractScoreDirector<
   public void beforeListVariableElementUnassigned(
       ListVariableDescriptor<Solution_> variableDescriptor, Object element) {
     ensureWorkingSolutionStateFresh();
+    assertListElementType(variableDescriptor, element);
     if (workingSolutionMutationObserver != null) {
       workingSolutionMutationObserver.beforeListVariableElementUnassigned(
           variableDescriptor.getVariableName(), element);
@@ -1003,6 +999,10 @@ public abstract class AbstractScoreDirector<
       int fromIndex,
       int toIndex) {
     ensureWorkingSolutionStateFresh();
+    if (!variableDescriptor.getEntityDescriptor().matchesEntity(entity)) {
+      throw new IllegalArgumentException(
+          "The entity (%s) does not own list variable (%s).".formatted(entity, variableDescriptor));
+    }
     // Pinning is implemented in generic moves, but custom moves need to take it into account as
     // well.
     // This fail-fast exists to detect situations where pinned things are being moved, in case of
@@ -1029,6 +1029,12 @@ public abstract class AbstractScoreDirector<
       Object entity,
       int fromIndex,
       int toIndex) {
+    if (getSolutionDescriptor().getListVariableDescriptorList().size() > 1) {
+      var list = variableDescriptor.getValue(entity);
+      for (int i = fromIndex; i < toIndex; i++) {
+        assertListElementType(variableDescriptor, list.get(i));
+      }
+    }
     variableSupport.afterListVariableChanged(variableDescriptor, entity, fromIndex, toIndex);
     if (workingSolutionMutationObserver != null) {
       workingSolutionMutationObserver.afterListVariableChanged(
@@ -1037,7 +1043,7 @@ public abstract class AbstractScoreDirector<
     neighborhoodsElementUpdateNotifier.accept(entity);
     if (isStepAssertOrMore()) {
       var valueList = variableDescriptor.getValue(entity).subList(fromIndex, toIndex);
-      assertValueRangeForListVariable(entity, valueList);
+      assertValueRangeForListVariable(this, variableDescriptor, entity, valueList);
     }
   }
 
@@ -1291,15 +1297,14 @@ public abstract class AbstractScoreDirector<
 
   private void assertValueRangeForEntity(Object entity) {
     assertValueRangeForBasicVariables(entity);
-    var listVariableDescriptor = getSolutionDescriptor().getListVariableDescriptor();
-    if (listVariableDescriptor == null) {
+    var entityDescriptor = getSolutionDescriptor().findEntityDescriptor(entity.getClass());
+    if (entityDescriptor == null) {
       return;
     }
-    if (!listVariableDescriptor.getEntityDescriptor().matchesEntity(entity)) {
-      return;
+    for (var listVariableDescriptor : entityDescriptor.getListVariableDescriptorList()) {
+      assertValueRangeForListVariable(
+          this, listVariableDescriptor, entity, listVariableDescriptor.getValue(entity));
     }
-    var valueList = listVariableDescriptor.getValue(entity);
-    assertValueRangeForListVariable(entity, valueList);
   }
 
   private void assertValueRangeForBasicVariables(Object entity) {
@@ -1312,18 +1317,15 @@ public abstract class AbstractScoreDirector<
     assertValueRangeForBasicVariables(this, basicVariableDescriptorList, entity);
   }
 
-  private void assertValueRangeForListVariable(Object entity, List<Object> valueList) {
-    var entityDescriptor = getSolutionDescriptor().findEntityDescriptor(entity.getClass());
-    if (entityDescriptor == null) {
-      // It may be called for a shadow entity.
-      return;
+  private void assertListElementType(
+      ListVariableDescriptor<Solution_> variableDescriptor, Object element) {
+    if (getSolutionDescriptor().getListVariableDescriptorList().size() > 1
+        && !variableDescriptor.getElementType().isInstance(element)) {
+      throw new IllegalArgumentException(
+          "The element (%s) is not compatible with list variable (%s), whose element type is (%s)."
+              .formatted(
+                  element, variableDescriptor, variableDescriptor.getElementType().getName()));
     }
-    var listVariableDescriptor = entityDescriptor.getListVariableDescriptor();
-    if (listVariableDescriptor == null) {
-      // The entity has no genuine list variable.
-      return;
-    }
-    assertValueRangeForListVariable(this, listVariableDescriptor, entity, valueList);
   }
 
   private static <Solution_> void assertValueRangeForBasicVariables(

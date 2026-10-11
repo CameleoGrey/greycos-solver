@@ -80,7 +80,11 @@ public class DefaultExhaustiveSearchPhaseFactory<Solution_>
     var nodeExplorationType = getNodeExplorationType(exhaustiveSearchType, phaseConfig);
     AbstractExhaustiveSearchDecider<Solution_, ? extends greycos.solver.core.api.score.Score<?>>
         decider;
-    if (isMixedModel) {
+    if (phaseConfigPolicy.getSolutionDescriptor().getListVariableDescriptorList().size() > 1) {
+      decider =
+          new JointExhaustiveSearchDeciderFactory<>(phaseConfig, phaseConfigPolicy)
+              .build(bestSolutionRecaller, phaseTermination, scoreBounderEnabled);
+    } else if (isMixedModel) {
       var basicVarEntitySelectorConfig = buildEntitySelectorConfig(phaseConfigPolicy, false);
       var basicVarEntitySelector =
           EntitySelectorFactory.<Solution_>create(basicVarEntitySelectorConfig)

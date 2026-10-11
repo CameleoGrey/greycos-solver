@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -23,13 +24,11 @@ final class GuidedLocalSearchAutomaticFeatures<Solution_> {
   private final Consumer<Object> add;
   private final Consumer<Object> remove;
   private final Map<Object, List<BasicEntry>> basicEntries = new IdentityHashMap<>();
-  private final Map<Object, ElementEntry> elements = new IdentityHashMap<>();
-  private final Map<Object, EmptyListEntry> owners = new IdentityHashMap<>();
+  private final Map<ListVariableDescriptor<Solution_>, ListContext> listContexts =
+      new LinkedHashMap<>();
   private final ArrayList<Entry> dirty = new ArrayList<>();
   private final Map<Object, Entry> featureSources = new HashMap<>();
   private final boolean ownershipEnabled;
-  private final ListVariableDescriptor<Solution_> listDescriptor;
-  private final ListVariableState<Solution_, Object, Object> listState;
 
   GuidedLocalSearchAutomaticFeatures(
       InnerScoreDirector<Solution_, ?> director,
@@ -42,14 +41,20 @@ final class GuidedLocalSearchAutomaticFeatures<Solution_> {
     this.identities = identities;
     this.add = add;
     this.remove = remove;
-    listDescriptor = director.getSolutionDescriptor().getListVariableDescriptor();
-    listState = listDescriptor == null ? null : director.getListVariableState(listDescriptor);
+    for (var descriptor : director.getSolutionDescriptor().getListVariableDescriptorList()) {
+      listContexts.put(descriptor, new ListContext(descriptor));
+    }
   }
 
   void reset() {
     basicEntries.clear();
-    elements.clear();
-    owners.clear();
+    listContexts
+        .values()
+        .forEach(
+            context -> {
+              context.elements.clear();
+              context.owners.clear();
+            });
     dirty.clear();
     featureSources.clear();
     director
@@ -67,16 +72,19 @@ final class GuidedLocalSearchAutomaticFeatures<Solution_> {
                 }
               }
             });
-    if (listDescriptor != null) {
+    for (var context : listContexts.values()) {
+      var listDescriptor = context.descriptor;
       listDescriptor
           .getEntityDescriptor()
           .visitAllEntities(
               director.getWorkingSolution(),
               entity -> {
-                var entry = new EmptyListEntry(entity);
-                owners.put(entity, entry);
+                var entry = new EmptyListEntry(context, entity);
+                context.owners.put(entity, entry);
                 mark(entry);
-                listDescriptor.getValue(entity).forEach(this::markElement);
+                listDescriptor
+                    .getValue(entity)
+                    .forEach(value -> markElement(listDescriptor, value));
               });
       var iterator =
           director
@@ -84,7 +92,7 @@ final class GuidedLocalSearchAutomaticFeatures<Solution_> {
               .getFromSolution(listDescriptor.getValueRangeDescriptor())
               .createOriginalIterator();
       while (iterator.hasNext()) {
-        markElement(iterator.next());
+        markElement(listDescriptor, iterator.next());
       }
     }
   }
@@ -101,16 +109,26 @@ final class GuidedLocalSearchAutomaticFeatures<Solution_> {
   }
 
   void markElement(Object element) {
-    if (listDescriptor != null) {
-      mark(elements.computeIfAbsent(element, ElementEntry::new));
+    var descriptor =
+        director.getSolutionDescriptor().findListVariableDescriptorForValueType(element.getClass());
+    if (descriptor != null) markElement(descriptor, element);
+  }
+
+  void markElement(ListVariableDescriptor<Solution_> descriptor, Object element) {
+    var context = listContexts.get(descriptor);
+    if (context != null) {
+      mark(context.elements.computeIfAbsent(element, value -> new ElementEntry(context, value)));
     }
   }
 
-  void markOwner(Object owner) {
-    var entry = owners.get(owner);
-    if (entry != null) {
-      mark(entry);
-    }
+  void markOwner(Object owner, String variableName) {
+    var descriptor =
+        director
+            .getSolutionDescriptor()
+            .resolveListVariableDescriptor(owner.getClass(), variableName);
+    var context = listContexts.get(descriptor);
+    var entry = context == null ? null : context.owners.get(owner);
+    if (entry != null) mark(entry);
   }
 
   private void mark(Entry entry) {
@@ -159,43 +177,44 @@ final class GuidedLocalSearchAutomaticFeatures<Solution_> {
                 }
               }
             });
-    if (listDescriptor == null) {
-      return;
-    }
-    Set<Object> assigned = Collections.newSetFromMap(new IdentityHashMap<>());
-    listDescriptor
-        .getEntityDescriptor()
-        .visitAllEntities(
-            solution,
-            owner -> {
-              var values = listDescriptor.getValue(owner);
-              assigned.addAll(values);
-              if (!isMovable(owner)) {
-                return;
-              }
-              if (values.isEmpty()) {
-                consumer.accept(emptyKey(owner));
-              }
-              for (int i = 0; i < values.size(); i++) {
-                elementFeatures(
-                        values.get(i),
-                        owner,
-                        i == 0 ? null : values.get(i - 1),
-                        i + 1 == values.size() ? null : values.get(i + 1),
-                        listDescriptor.isElementPinned(solution, owner, i))
-                    .forEach(consumer);
-              }
-            });
-    var iterator =
-        director
-            .getValueRangeManager()
-            .getFromSolution(listDescriptor.getValueRangeDescriptor())
-            .createOriginalIterator();
-    Set<Object> seen = Collections.newSetFromMap(new IdentityHashMap<>());
-    while (iterator.hasNext()) {
-      var value = iterator.next();
-      if (!assigned.contains(value) && seen.add(value)) {
-        elementFeatures(value, null, null, null, false).forEach(consumer);
+    for (var context : listContexts.values()) {
+      var listDescriptor = context.descriptor;
+      Set<Object> assigned = Collections.newSetFromMap(new IdentityHashMap<>());
+      listDescriptor
+          .getEntityDescriptor()
+          .visitAllEntities(
+              solution,
+              owner -> {
+                var values = listDescriptor.getValue(owner);
+                assigned.addAll(values);
+                if (!isMovable(owner)) {
+                  return;
+                }
+                if (values.isEmpty()) {
+                  consumer.accept(emptyKey(context, owner));
+                }
+                for (int i = 0; i < values.size(); i++) {
+                  elementFeatures(
+                          context,
+                          values.get(i),
+                          owner,
+                          i == 0 ? null : values.get(i - 1),
+                          i + 1 == values.size() ? null : values.get(i + 1),
+                          listDescriptor.isElementPinned(solution, owner, i))
+                      .forEach(consumer);
+                }
+              });
+      var iterator =
+          director
+              .getValueRangeManager()
+              .getFromSolution(listDescriptor.getValueRangeDescriptor())
+              .createOriginalIterator();
+      Set<Object> seen = Collections.newSetFromMap(new IdentityHashMap<>());
+      while (iterator.hasNext()) {
+        var value = iterator.next();
+        if (!assigned.contains(value) && seen.add(value)) {
+          elementFeatures(context, value, null, null, null, false).forEach(consumer);
+        }
       }
     }
   }
@@ -208,18 +227,23 @@ final class GuidedLocalSearchAutomaticFeatures<Solution_> {
         identities.token(variable.getValue(entity)));
   }
 
-  private Object emptyKey(Object owner) {
+  private Object emptyKey(ListContext context, Object owner) {
     var identity = identities.token(owner);
     return new Feature(
         Kind.ARC,
-        variableId(listDescriptor),
+        variableId(context.descriptor),
         new Boundary(identity, false),
         new Boundary(identity, true));
   }
 
   private List<Object> elementFeatures(
-      Object value, Object owner, Object previous, Object next, boolean pinned) {
-    var variable = variableId(listDescriptor);
+      ListContext context,
+      Object value,
+      Object owner,
+      Object previous,
+      Object next,
+      boolean pinned) {
+    var variable = variableId(context.descriptor);
     var valueId = identities.token(value);
     if (owner == null) {
       return ownershipEnabled
@@ -256,8 +280,7 @@ final class GuidedLocalSearchAutomaticFeatures<Solution_> {
     var entityPriorities = new IdentityHashMap<Object, Map<String, GuidedLocalSearchNumber>>();
     var valuePriorities = new IdentityHashMap<Object, Map<String, GuidedLocalSearchNumber>>();
     var boundaryPriorities = new IdentityHashMap<Object, Map<String, GuidedLocalSearchNumber>>();
-    var listBuilders = new IdentityHashMap<Object, ListPriorityBuilder>();
-    String listName = listDescriptor == null ? null : listDescriptor.getVariableName();
+    var listBuilders = new IdentityHashMap<Object, Map<String, ListPriorityBuilder>>();
     for (var key : activePenalized) {
       var source = featureSources.get(key);
       var cost =
@@ -270,31 +293,28 @@ final class GuidedLocalSearchAutomaticFeatures<Solution_> {
         }
         case OWNERSHIP -> {
           var element = (ElementEntry) source;
+          var listState = element.context.state;
+          var listName = element.context.descriptor.getVariableName();
           addPriority(valuePriorities, element.value, listName, cost);
           var owner = listState.getInverseSingleton(element.value);
           if (owner != null) {
-            var builder =
-                listBuilders.computeIfAbsent(
-                    owner,
-                    ignored -> new ListPriorityBuilder(listDescriptor.getValue(owner).size()));
+            var builder = listBuilder(listBuilders, element.context, owner);
             builder.ownership.put(listState.getIndexOrFail(element.value), cost);
           }
         }
         case ARC -> {
           if (feature.left instanceof Boundary && feature.right instanceof Boundary) {
-            var owner = ((EmptyListEntry) source).owner;
+            var empty = (EmptyListEntry) source;
+            var owner = empty.owner;
+            var listName = empty.context.descriptor.getVariableName();
             addPriority(boundaryPriorities, owner, listName, cost);
-            listBuilders
-                .computeIfAbsent(owner, ignored -> new ListPriorityBuilder(0))
-                .arcs
-                .put(0, cost);
+            listBuilder(listBuilders, empty.context, owner).arcs.put(0, cost);
           } else {
             var element = (ElementEntry) source;
+            var listState = element.context.state;
+            var listName = element.context.descriptor.getVariableName();
             var owner = listState.getInverseSingleton(element.value);
-            var builder =
-                listBuilders.computeIfAbsent(
-                    owner,
-                    ignored -> new ListPriorityBuilder(listDescriptor.getValue(owner).size()));
+            var builder = listBuilder(listBuilders, element.context, owner);
             addPriority(valuePriorities, element.value, listName, cost);
             if (feature.right instanceof Boundary) {
               addPriority(boundaryPriorities, owner, listName, cost);
@@ -313,15 +333,40 @@ final class GuidedLocalSearchAutomaticFeatures<Solution_> {
         new IdentityHashMap<
             Object, Map<String, GuidedLocalSearchFeatureTracker.ListContributions>>();
     listBuilders.forEach(
-        (owner, builder) ->
-            listPriorities.put(
-                owner,
-                Map.of(
-                    listName,
-                    new GuidedLocalSearchFeatureTracker.ListContributions(
-                        builder.size, builder.arcs, builder.ownership))));
+        (owner, builders) -> {
+          var contributions =
+              new HashMap<String, GuidedLocalSearchFeatureTracker.ListContributions>();
+          builders.forEach(
+              (name, builder) ->
+                  contributions.put(
+                      name,
+                      new GuidedLocalSearchFeatureTracker.ListContributions(
+                          builder.size, builder.arcs, builder.ownership)));
+          listPriorities.put(owner, contributions);
+        });
     return new GuidedLocalSearchFeatureTracker.OriginPriorities(
         entityPriorities, valuePriorities, boundaryPriorities, listPriorities);
+  }
+
+  private ListPriorityBuilder listBuilder(
+      Map<Object, Map<String, ListPriorityBuilder>> builders, ListContext context, Object owner) {
+    return builders
+        .computeIfAbsent(owner, ignored -> new HashMap<>())
+        .computeIfAbsent(
+            context.descriptor.getVariableName(),
+            ignored -> new ListPriorityBuilder(context.descriptor.getValue(owner).size()));
+  }
+
+  private final class ListContext {
+    private final ListVariableDescriptor<Solution_> descriptor;
+    private final ListVariableState<Solution_, Object, Object> state;
+    private final Map<Object, ElementEntry> elements = new IdentityHashMap<>();
+    private final Map<Object, EmptyListEntry> owners = new IdentityHashMap<>();
+
+    private ListContext(ListVariableDescriptor<Solution_> descriptor) {
+      this.descriptor = descriptor;
+      state = director.getListVariableState(descriptor);
+    }
   }
 
   private static final class ListPriorityBuilder {
@@ -380,16 +425,20 @@ final class GuidedLocalSearchAutomaticFeatures<Solution_> {
   }
 
   private final class ElementEntry extends Entry {
+    private final ListContext context;
     private final Object value;
 
-    ElementEntry(Object value) {
+    ElementEntry(ListContext context, Object value) {
+      this.context = context;
       this.value = value;
     }
 
     @Override
     List<Object> features() {
+      var listState = context.state;
       var owner = listState.getInverseSingleton(value);
       return elementFeatures(
+          context,
           value,
           owner,
           owner == null ? null : listState.getPreviousElement(value),
@@ -399,16 +448,18 @@ final class GuidedLocalSearchAutomaticFeatures<Solution_> {
   }
 
   private final class EmptyListEntry extends Entry {
+    private final ListContext context;
     private final Object owner;
 
-    EmptyListEntry(Object owner) {
+    EmptyListEntry(ListContext context, Object owner) {
+      this.context = context;
       this.owner = owner;
     }
 
     @Override
     List<Object> features() {
-      return listDescriptor.getValue(owner).isEmpty() && isMovable(owner)
-          ? List.of(emptyKey(owner))
+      return context.descriptor.getValue(owner).isEmpty() && isMovable(owner)
+          ? List.of(emptyKey(context, owner))
           : List.of();
     }
   }

@@ -1,10 +1,12 @@
 package greycos.solver.core.impl.phase;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 
 import greycos.solver.core.config.alns.AlnsPhaseConfig;
 import greycos.solver.core.config.constructionheuristic.ConstructionHeuristicPhaseConfig;
+import greycos.solver.core.config.constructionheuristic.placer.QueuedEntityPlacerConfig;
 import greycos.solver.core.config.exhaustivesearch.ExhaustiveSearchPhaseConfig;
 import greycos.solver.core.config.islandmodel.IslandModelPhaseConfig;
 import greycos.solver.core.config.localsearch.LocalSearchPhaseConfig;
@@ -12,9 +14,11 @@ import greycos.solver.core.config.partitionedsearch.PartitionedSearchPhaseConfig
 import greycos.solver.core.config.phase.PhaseConfig;
 import greycos.solver.core.config.phase.custom.CustomPhaseConfig;
 import greycos.solver.core.config.solver.termination.TerminationConfig;
+import greycos.solver.core.impl.AbstractFromConfigFactory;
 import greycos.solver.core.impl.alns.DefaultAlnsPhaseFactory;
 import greycos.solver.core.impl.constructionheuristic.DefaultConstructionHeuristicPhaseFactory;
 import greycos.solver.core.impl.constructionheuristic.nearby.ConstructionHeuristicNearbyProfileResolver;
+import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import greycos.solver.core.impl.exhaustivesearch.DefaultExhaustiveSearchPhaseFactory;
 import greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
 import greycos.solver.core.impl.islandmodel.DefaultIslandModelPhaseFactory;
@@ -48,6 +52,36 @@ public interface PhaseFactory<Solution_> {
               "Unknown %s type: (%s).",
               PhaseConfig.class.getSimpleName(), phaseConfig.getClass().getName()));
     }
+  }
+
+  /** Build automatic construction phases in model order, followed by local search. */
+  static <Solution_> List<PhaseConfig> buildDefaultPhaseConfigList(
+      HeuristicConfigPolicy<Solution_> configPolicy) {
+    var entityDescriptors = configPolicy.getSolutionDescriptor().getGenuineEntityDescriptors();
+    var phases = new ArrayList<PhaseConfig>(entityDescriptors.size() + 2);
+    var constructedLists = new HashSet<ListVariableDescriptor<Solution_>>();
+    for (var entityDescriptor : entityDescriptors) {
+      if (entityDescriptor.hasAnyBasicVariables()) {
+        phases.add(
+            new ConstructionHeuristicPhaseConfig()
+                .withEntityPlacerConfig(
+                    new QueuedEntityPlacerConfig()
+                        .withEntitySelectorConfig(
+                            AbstractFromConfigFactory.getDefaultEntitySelectorConfigForEntity(
+                                configPolicy, entityDescriptor))));
+      }
+      for (var listDescriptor : entityDescriptor.getListVariableDescriptorList()) {
+        if (constructedLists.add(listDescriptor)) {
+          phases.add(
+              new ConstructionHeuristicPhaseConfig()
+                  .withEntityPlacerConfig(
+                      DefaultConstructionHeuristicPhaseFactory
+                          .buildListVariableQueuedValuePlacerConfig(configPolicy, listDescriptor)));
+        }
+      }
+    }
+    phases.add(new LocalSearchPhaseConfig());
+    return phases;
   }
 
   static <Solution_> List<Phase<Solution_>> buildPhases(

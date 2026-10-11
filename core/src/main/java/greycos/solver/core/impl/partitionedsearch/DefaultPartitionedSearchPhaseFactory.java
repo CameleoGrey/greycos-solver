@@ -13,6 +13,7 @@ import greycos.solver.core.config.util.ConfigUtils;
 import greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
 import greycos.solver.core.impl.partitionedsearch.partitioner.SolutionPartitioner;
 import greycos.solver.core.impl.phase.AbstractPhaseFactory;
+import greycos.solver.core.impl.phase.PhaseFactory;
 import greycos.solver.core.impl.solver.recaller.BestSolutionRecaller;
 import greycos.solver.core.impl.solver.termination.PartitionTerminationBudget;
 import greycos.solver.core.impl.solver.termination.PhaseTermination;
@@ -68,8 +69,7 @@ public class DefaultPartitionedSearchPhaseFactory<Solution_>
 
     List<PhaseConfig> phaseConfigList_ = phaseConfig.getPhaseConfigList();
     if (ConfigUtils.isEmptyCollection(phaseConfigList_)) {
-      phaseConfigList_ =
-          Arrays.asList(new ConstructionHeuristicPhaseConfig(), new LocalSearchPhaseConfig());
+      phaseConfigList_ = buildDefaultPhaseConfigList(phaseConfigPolicy);
     }
 
     return new DefaultPartitionedSearchPhase.Builder<Solution_>(
@@ -84,6 +84,13 @@ public class DefaultPartitionedSearchPhaseFactory<Solution_>
             solverTermination)
         .enableAssertions()
         .build();
+  }
+
+  static <Solution_> List<PhaseConfig> buildDefaultPhaseConfigList(
+      HeuristicConfigPolicy<Solution_> configPolicy) {
+    return configPolicy.getSolutionDescriptor().getListVariableDescriptorList().size() > 1
+        ? PhaseFactory.buildDefaultPhaseConfigList(configPolicy)
+        : Arrays.asList(new ConstructionHeuristicPhaseConfig(), new LocalSearchPhaseConfig());
   }
 
   private SolutionPartitioner<Solution_> buildSolutionPartitioner(

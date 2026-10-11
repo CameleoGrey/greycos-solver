@@ -32,6 +32,7 @@ import greycos.solver.core.impl.constructionheuristic.placer.QueuedValuePlacerFa
 import greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
+import greycos.solver.core.impl.heuristic.selector.move.generic.list.ListChangeMoveSelectorFactory;
 import greycos.solver.core.impl.phase.AbstractPhaseFactory;
 import greycos.solver.core.impl.solver.recaller.BestSolutionRecaller;
 import greycos.solver.core.impl.solver.termination.PhaseTermination;
@@ -219,10 +220,10 @@ public class DefaultConstructionHeuristicPhaseFactory<Solution_>
 
   private Optional<ListVariableDescriptor<?>> findValidListVariableDescriptor(
       SolutionDescriptor<Solution_> solutionDescriptor) {
-    var listVariableDescriptor = solutionDescriptor.getListVariableDescriptor();
-    if (listVariableDescriptor == null) {
+    if (!solutionDescriptor.hasListVariable()) {
       return Optional.empty();
     }
+    var listVariableDescriptor = solutionDescriptor.resolveListVariableDescriptor(null, null);
     // When an entity has both list and basic variables,
     // the CH configuration will require two separate placers to initialize each variable,
     // which cannot be deduced automatically by default, since a single placer would be returned
@@ -260,8 +261,8 @@ public class DefaultConstructionHeuristicPhaseFactory<Solution_>
 
     // ListChangeMoveSelector uses the replaying ValueSelector.
     var listChangeMoveSelectorConfig =
-        new ListChangeMoveSelectorConfig()
-            .withValueSelectorConfig(mimicReplayingValueSelectorConfig);
+        ListChangeMoveSelectorFactory.buildChildMoveSelectorConfig(
+            variableDescriptor, mimicReplayingValueSelectorConfig, null);
 
     // Finally, QueuedValuePlacer uses the recording ValueSelector and a ListChangeMoveSelector.
     // The ListChangeMoveSelector's replaying ValueSelector mimics the QueuedValuePlacer's recording

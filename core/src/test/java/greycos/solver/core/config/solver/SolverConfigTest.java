@@ -299,15 +299,17 @@ class SolverConfigTest {
   }
 
   @Test
-  void entityWithTwoPlanningListVariables() {
+  void entityWithTwoPlanningListVariablesWithOverlappingElementTypes() {
     var solverConfig =
         new SolverConfig()
             .withSolutionClass(DummySolutionWithTwoListVariablesEntity.class)
             .withEntityClasses(DummyEntityWithTwoListVariables.class)
             .withEasyScoreCalculatorClass(DummyRecordEasyScoreCalculator.class);
     assertThatThrownBy(() -> SolverFactory.create(solverConfig))
-        .isExactlyInstanceOf(UnsupportedOperationException.class)
+        .isExactlyInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("overlapping or ambiguous element types")
         .hasMessageContaining(DummyEntityWithTwoListVariables.class.getSimpleName())
+        .hasMessageContaining(DummyEntityForListVariable.class.getName())
         .hasMessageContaining("firstListVariable")
         .hasMessageContaining("secondListVariable");
   }

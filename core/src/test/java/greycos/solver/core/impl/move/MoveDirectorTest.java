@@ -2939,7 +2939,7 @@ class MoveDirectorTest {
     var ephemeralMoveDirector = moveDirector.ephemeral();
     var move =
         new SelectorBasedListAssignMove<>(
-            TestdataSingleCascadingEntity.buildVariableDescriptorForValueList(),
+            innerScoreDirector.getSolutionDescriptor().getListVariableDescriptor(),
             valueA,
             entityA,
             0);

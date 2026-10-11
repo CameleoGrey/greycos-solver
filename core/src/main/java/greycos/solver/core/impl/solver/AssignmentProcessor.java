@@ -10,9 +10,11 @@ import greycos.solver.core.api.score.analysis.ScoreAnalysis;
 import greycos.solver.core.api.solver.ScoreAnalysisFetchPolicy;
 import greycos.solver.core.impl.constructionheuristic.DefaultConstructionHeuristicPhase;
 import greycos.solver.core.impl.constructionheuristic.placer.EntityPlacer;
+import greycos.solver.core.impl.constructionheuristic.placer.QueuedEntityPlacer;
+import greycos.solver.core.impl.constructionheuristic.placer.QueuedValuePlacer;
 import greycos.solver.core.impl.constructionheuristic.scope.ConstructionHeuristicPhaseScope;
 import greycos.solver.core.impl.constructionheuristic.scope.ConstructionHeuristicStepScope;
-import greycos.solver.core.impl.cotwin.variable.descriptor.BasicVariableDescriptor;
+import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import greycos.solver.core.impl.heuristic.selector.move.generic.ChangeMove;
 import greycos.solver.core.impl.heuristic.selector.move.generic.list.ListUnassignMove;
 import greycos.solver.core.impl.score.director.InnerScoreDirector;
@@ -56,7 +58,8 @@ final class AssignmentProcessor<Solution_, Score_ extends Score<Score_>, Recomme
     // If it is, we need to unassign it before we can run the construction heuristic.
     var moveDirector = scoreDirector.getMoveDirector();
     var solutionDescriptor = solverFactory.getSolutionDescriptor();
-    var listVariableDescriptor = solutionDescriptor.getListVariableDescriptor();
+    var listVariableDescriptor =
+        solutionDescriptor.findListVariableDescriptorForValueType(clonedElement.getClass());
     if (listVariableDescriptor != null) {
       {
         var listVariableStateSupply = scoreDirector.getListVariableState(listVariableDescriptor);
@@ -71,8 +74,7 @@ final class AssignmentProcessor<Solution_, Score_ extends Score<Score_>, Recomme
     } else {
       var entityDescriptor =
           solutionDescriptor.findEntityDescriptorOrFail(clonedElement.getClass());
-      for (var variableDescriptor : entityDescriptor.getGenuineVariableDescriptorList()) {
-        var basicVariableDescriptor = (BasicVariableDescriptor<Solution_>) variableDescriptor;
+      for (var basicVariableDescriptor : entityDescriptor.getBasicVariableDescriptorList()) {
         if (basicVariableDescriptor.getValue(clonedElement) == null) {
           // The variable is already unassigned.
           continue;
@@ -87,7 +89,8 @@ final class AssignmentProcessor<Solution_, Score_ extends Score<Score_>, Recomme
     // If anything else than the cloned element is unassigned, we want to keep it unassigned.
     // Otherwise the solution would have to explicitly pin everything other than the cloned element.
     var entityPlacer =
-        buildEntityPlacer().rebuildWithFilter((solution, selection) -> selection == clonedElement);
+        buildEntityPlacer(listVariableDescriptor)
+            .rebuildWithFilter((solution, selection) -> selection == clonedElement);
 
     var solverScope = new SolverScope<Solution_>(solverFactory.getClock());
     // We evaluate every option, so the random sequence does not affect the recommendation.
@@ -128,9 +131,40 @@ final class AssignmentProcessor<Solution_, Score_ extends Score<Score_>, Recomme
     }
   }
 
-  private EntityPlacer<Solution_> buildEntityPlacer() {
+  private EntityPlacer<Solution_> buildEntityPlacer(
+      @Nullable ListVariableDescriptor<Solution_> listVariableDescriptor) {
     var solver = (DefaultSolver<Solution_>) solverFactory.buildSolver();
     var phaseList = solver.getPhaseList();
+    if (solverFactory.getSolutionDescriptor().getListVariableDescriptorList().size() > 1) {
+      var candidates = new ArrayList<EntityPlacer<Solution_>>();
+      for (var phase : phaseList) {
+        if (!(phase instanceof DefaultConstructionHeuristicPhase<Solution_> construction)) {
+          continue;
+        }
+        var placer = construction.getEntityPlacer();
+        if (placer instanceof QueuedValuePlacer<Solution_> valuePlacer) {
+          var descriptor = valuePlacer.getVariableDescriptor();
+          if (descriptor == listVariableDescriptor
+              || (listVariableDescriptor == null
+                  && !descriptor.isListVariable()
+                  && descriptor.getEntityDescriptor().matchesEntity(clonedElement))) {
+            candidates.add(placer);
+          }
+        } else if (listVariableDescriptor == null
+            && placer instanceof QueuedEntityPlacer<Solution_> entityPlacer
+            && entityPlacer.getEntityDescriptor().matchesEntity(clonedElement)) {
+          candidates.add(placer);
+        }
+      }
+      if (candidates.size() != 1) {
+        throw new IllegalStateException(
+            "Assignment Recommendation API requires exactly one construction heuristic targeting element (%s), "
+                    .formatted(clonedElement)
+                + "but found (%d). Maybe configure a uniquely targeted queued placer."
+                    .formatted(candidates.size()));
+      }
+      return candidates.getFirst();
+    }
     var constructionHeuristicCount =
         phaseList.stream().filter(DefaultConstructionHeuristicPhase.class::isInstance).count();
     if (constructionHeuristicCount != 1) {

@@ -44,6 +44,12 @@ public final class BavetConstraintFactory<Solution_>
 
   private final SolutionDescriptor<Solution_> solutionDescriptor;
   private final EnvironmentMode environmentMode;
+  private final Map<ForEachKey, UniConstraintStream<?>> forEachStreamMap = new HashMap<>();
+
+  private record ForEachKey(
+      Class<?> sourceClass,
+      ForEachFilteringCriteria criteria,
+      RetrievalSemantics retrievalSemantics) {}
 
   private final Map<
           BavetAbstractConstraintStream<Solution_>, BavetAbstractConstraintStream<Solution_>>
@@ -100,6 +106,31 @@ public final class BavetConstraintFactory<Solution_>
     }
   }
 
+  private record RuntimeForEachFilteringCriteriaPredicateFunction<Solution_, A>(
+      SolutionDescriptor<Solution_> solutionDescriptor, ForEachFilteringCriteria criteria)
+      implements Function<ConstraintNodeBuildHelper<Solution_, ?>, Predicate<A>> {
+    @Override
+    public Predicate<A> apply(ConstraintNodeBuildHelper<Solution_, ?> helper) {
+      // Resolve once per runtime class, while keeping each session's consistency predicates
+      // private.
+      Map<Class<?>, Predicate<A>> predicateMap = new HashMap<>();
+      return value ->
+          predicateMap
+              .computeIfAbsent(
+                  value.getClass(),
+                  runtimeClass -> {
+                    var entityDescriptor = solutionDescriptor.findEntityDescriptor(runtimeClass);
+                    Predicate<A> predicate =
+                        entityDescriptor == null
+                            ? null
+                            : helper.getForEachPredicateForEntityDescriptorAndCriteria(
+                                entityDescriptor, criteria);
+                    return predicate == null ? ignored -> true : predicate;
+                  })
+              .test(value);
+    }
+  }
+
   private <A> UniConstraintStream<A> forEachForCriteria(
       Class<A> sourceClass, ForEachFilteringCriteria criteria) {
     return forEachForCriteria(sourceClass, criteria, RetrievalSemantics.STANDARD);
@@ -109,46 +140,96 @@ public final class BavetConstraintFactory<Solution_>
       Class<A> sourceClass,
       ForEachFilteringCriteria criteria,
       RetrievalSemantics retrievalSemantics) {
+    var key = new ForEachKey(sourceClass, criteria, retrievalSemantics);
+    var cachedStream = (UniConstraintStream<A>) forEachStreamMap.get(key);
+    if (cachedStream != null) {
+      return cachedStream;
+    }
+    // Recursive calls create owner streams; avoid computeIfAbsent on the same map.
+    var stream = buildForEachForCriteria(sourceClass, criteria, retrievalSemantics);
+    forEachStreamMap.put(key, stream);
+    return stream;
+  }
+
+  private <A> UniConstraintStream<A> buildForEachForCriteria(
+      Class<A> sourceClass,
+      ForEachFilteringCriteria criteria,
+      RetrievalSemantics retrievalSemantics) {
     assertValidFromType(sourceClass);
     var entityDescriptor = solutionDescriptor.findEntityDescriptor(sourceClass);
-    if (entityDescriptor == null || criteria == ForEachFilteringCriteria.ALL) {
-      // Not genuine or shadow entity, or filtering was not requested; no need for filtering.
+    if (criteria == ForEachFilteringCriteria.ALL) {
       return share(
           new BavetForEachUniConstraintStream<>(this, sourceClass, null, retrievalSemantics));
     }
-    var listVariableDescriptor = solutionDescriptor.getListVariableDescriptor();
-    if (listVariableDescriptor == null || !listVariableDescriptor.acceptsValueType(sourceClass)) {
-      // No applicable list variable; don't need to check inverse relationships.
-      return share(
-          new BavetForEachUniConstraintStream<>(
-              this,
-              sourceClass,
-              new ForEachFilteringCriteriaPredicateFunction<>(entityDescriptor, criteria),
-              retrievalSemantics));
+    var requiresRuntimeDispatch =
+        solutionDescriptor.getEntityDescriptors().stream()
+            .anyMatch(
+                descriptor ->
+                    descriptor != entityDescriptor
+                        && sourceClass.isAssignableFrom(descriptor.getEntityClass()));
+    var membershipDescriptors =
+        solutionDescriptor.getListVariableDescriptorList().stream()
+            .filter(
+                descriptor ->
+                    descriptor.acceptsValueType(sourceClass)
+                        || sourceClass.isAssignableFrom(descriptor.getElementType()))
+            .filter(descriptor -> descriptor.getInverseRelationShadowVariableDescriptor() == null)
+            .toList();
+    // Keep the shared consistent source used by the traditional no-inverse, shadow-only model.
+    // A value with genuine basic variables needs the stricter predicate as well as membership.
+    var sourceCriteria =
+        criteria == ForEachFilteringCriteria.ASSIGNED_AND_CONSISTENT
+                && !requiresRuntimeDispatch
+                && entityDescriptor != null
+                && !entityDescriptor.hasAnyBasicVariables()
+                && membershipDescriptors.size() == 1
+                && membershipDescriptors.getFirst().acceptsValueType(sourceClass)
+            ? ForEachFilteringCriteria.CONSISTENT
+            : criteria;
+    Function<ConstraintNodeBuildHelper<Solution_, ?>, Predicate<A>> predicateFunction = null;
+    if (requiresRuntimeDispatch) {
+      predicateFunction =
+          new RuntimeForEachFilteringCriteriaPredicateFunction<>(
+              solutionDescriptor, sourceCriteria);
+    } else if (entityDescriptor != null) {
+      predicateFunction =
+          new ForEachFilteringCriteriaPredicateFunction<>(entityDescriptor, sourceCriteria);
     }
-    var entityClass = listVariableDescriptor.getEntityDescriptor().getEntityClass();
-    if (entityClass == sourceClass) {
-      throw new IllegalStateException(
-          "Impossible state: entityClass (%s) and sourceClass (%s) are the same."
-              .formatted(entityClass.getCanonicalName(), sourceClass.getCanonicalName()));
+    UniConstraintStream<A> source =
+        share(
+            new BavetForEachUniConstraintStream<>(
+                this, sourceClass, predicateFunction, retrievalSemantics));
+    if (criteria != ForEachFilteringCriteria.ASSIGNED_AND_CONSISTENT) {
+      return source;
     }
-    var shadowDescriptor = listVariableDescriptor.getInverseRelationShadowVariableDescriptor();
-    if (shadowDescriptor == null && criteria == ForEachFilteringCriteria.ASSIGNED_AND_CONSISTENT) {
-      // The list variable element doesn't have the @InverseRelationShadowVariable annotation,
-      // and we are not including unassigned elements.
-      // We don't want the users to be forced to implement it in quickstarts,
-      // so we'll do this expensive thing instead.
-      return forEachForCriteria(sourceClass, ForEachFilteringCriteria.CONSISTENT)
-          .ifExists(
-              (Class) entityClass, Joiners.filtering(listVariableDescriptor.getInListPredicate()));
-    } else { // We have the inverse relation variable, so we can read its value directly.
-      return share(
-          new BavetForEachUniConstraintStream<>(
-              this,
-              sourceClass,
-              new ForEachFilteringCriteriaPredicateFunction<>(entityDescriptor, criteria),
-              retrievalSemantics));
+    if (membershipDescriptors.isEmpty()) {
+      return source;
     }
+    if (membershipDescriptors.size() == 1
+        && membershipDescriptors.getFirst().acceptsValueType(sourceClass)) {
+      var descriptor = membershipDescriptors.getFirst();
+      return source.ifExists(
+          forEachUnfiltered((Class<Object>) descriptor.getEntityDescriptor().getEntityClass()),
+          Joiners.filtering(descriptor.<A>getInListPredicate()));
+    }
+    // The branches are disjoint by runtime value type. Owner updates must flow through ifExists;
+    // consulting only a list-state predicate would leave values without inverse shadows stale.
+    var result =
+        source.filter(
+            value ->
+                membershipDescriptors.stream()
+                    .noneMatch(descriptor -> descriptor.acceptsValueType(value.getClass())));
+    for (var descriptor : membershipDescriptors) {
+      var branch =
+          source
+              .filter(value -> descriptor.acceptsValueType(value.getClass()))
+              .ifExists(
+                  forEachUnfiltered(
+                      (Class<Object>) descriptor.getEntityDescriptor().getEntityClass()),
+                  Joiners.filtering(descriptor.<A>getInListPredicate()));
+      result = result.concat(branch);
+    }
+    return result;
   }
 
   @Override

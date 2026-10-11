@@ -167,7 +167,7 @@ final class ListVariableBeforeChangeAction<Solution_, Entity_, Value_>
         toIndex,
         originalListSize,
         updatedToIndex,
-        variableDescriptor);
+        VariableDescriptorRebaser.rebase(variableDescriptor, lookup));
   }
 
   public Entity_ entity() {

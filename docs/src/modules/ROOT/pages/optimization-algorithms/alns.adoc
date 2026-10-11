@@ -52,10 +52,12 @@ The following configuration and lifecycle details describe GreyCOS specifically.
 [#alnsArchitecture]
 == Architecture and one complete trial
 
-GreyCOS supports multiple basic planning variables and at most one planning list variable in a
-solution model, including models combining these kinds. A basic target identifies an entity/variable
+GreyCOS supports multiple basic planning variables and multiple independent planning list variables
+in a solution model. List declarations must have disjoint element type domains and value populations. A basic target identifies an entity/variable
 binding, such as `CloudProcess.computer`. A list target identifies a value in the list variable,
 such as a customer in `Vehicle.customers`; removing it also changes route membership and order.
+A candidate may destroy and repair targets from several list declarations. Each list target retains its
+owner class and variable name, and an element can only be inserted into an owner of that declaration.
 
 [literal]
 ....

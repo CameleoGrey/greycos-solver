@@ -54,7 +54,7 @@ final class MultistageVariableContext<Solution_> {
         director
             .getSolutionDescriptor()
             .findEntityDescriptorOrFail(entity.getClass())
-            .getEffectivePlanningPinToIndexReader();
+            .getEffectivePlanningPinToIndexReader(listVariable());
     return reader == null ? 0 : reader.applyAsInt(entity);
   }
 

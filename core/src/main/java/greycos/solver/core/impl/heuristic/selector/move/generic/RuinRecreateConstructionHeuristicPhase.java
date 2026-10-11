@@ -11,10 +11,12 @@ import greycos.solver.core.impl.constructionheuristic.ConstructionHeuristicPhase
 import greycos.solver.core.impl.constructionheuristic.DefaultConstructionHeuristicPhase;
 import greycos.solver.core.impl.constructionheuristic.scope.ConstructionHeuristicPhaseScope;
 import greycos.solver.core.impl.constructionheuristic.scope.ConstructionHeuristicStepScope;
+import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import greycos.solver.core.impl.phase.PhaseType;
 import greycos.solver.core.impl.solver.scope.SolverScope;
 
 import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 
 @NullMarked
 public final class RuinRecreateConstructionHeuristicPhase<Solution_>
@@ -22,6 +24,7 @@ public final class RuinRecreateConstructionHeuristicPhase<Solution_>
     implements ConstructionHeuristicPhase<Solution_> {
 
   private final Set<Object> elementsToRuinSet;
+  private final @Nullable ListVariableDescriptor<Solution_> listVariableDescriptor;
   // Store the original value list of elements that are not included in the initial list of ruined
   // elements
   private final Map<Object, List<Object>> missingUpdatedElementsMap;
@@ -31,6 +34,7 @@ public final class RuinRecreateConstructionHeuristicPhase<Solution_>
     super(builder);
     this.elementsToRuinSet =
         Objects.requireNonNullElse(builder.elementsToRuin, Collections.emptySet());
+    this.listVariableDescriptor = builder.listVariableDescriptor;
     this.missingUpdatedElementsMap = new IdentityHashMap<>();
   }
 
@@ -59,12 +63,15 @@ public final class RuinRecreateConstructionHeuristicPhase<Solution_>
             // or when there are no unpinned entities
             && !stepScope.getStep().getPlanningEntities().isEmpty();
     if (checkMissingElements) {
-      var listVariableDescriptor =
+      var originalDescriptor = Objects.requireNonNull(listVariableDescriptor);
+      var workingListVariableDescriptor =
           stepScope
               .getPhaseScope()
               .getSolverScope()
               .getSolutionDescriptor()
-              .getListVariableDescriptor();
+              .resolveListVariableDescriptor(
+                  originalDescriptor.getEntityDescriptor().getEntityClass(),
+                  originalDescriptor.getVariableName());
       var entity = stepScope.getStep().getPlanningEntities().iterator().next();
       if (!elementsToRuinSet.contains(entity)) {
         // Sometimes, the list of elements to be ruined does not include new destinations selected
@@ -73,7 +80,7 @@ public final class RuinRecreateConstructionHeuristicPhase<Solution_>
         // so that it can be referenced to restore the solution to its original state when undoing
         // changes.
         missingUpdatedElementsMap.computeIfAbsent(
-            entity, e -> List.copyOf(listVariableDescriptor.getValue(e)));
+            entity, e -> List.copyOf(workingListVariableDescriptor.getValue(e)));
       }
     }
     super.doStep(stepScope);

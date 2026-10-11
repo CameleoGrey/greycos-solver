@@ -17,6 +17,7 @@ import greycos.solver.core.impl.neighborhood.stream.enumerating.uni.AbstractUniE
 import greycos.solver.core.impl.neighborhood.stream.enumerating.uni.ForEachIncludingPinnedEnumeratingStream;
 import greycos.solver.core.impl.score.director.SessionContext;
 import greycos.solver.core.preview.api.neighborhood.stream.enumerating.UniEnumeratingStream;
+import greycos.solver.core.preview.api.neighborhood.stream.function.UniNeighborhoodsPredicate;
 
 import org.jspecify.annotations.NullMarked;
 
@@ -25,6 +26,8 @@ public final class EnumeratingStreamFactory<Solution_> {
 
   private final SolutionDescriptor<Solution_> solutionDescriptor;
   private final EnvironmentMode environmentMode;
+  private final Map<Class<?>, UniNeighborhoodsPredicate<Solution_, Object>> movablePredicateMap =
+      new HashMap<>();
   private final Map<AbstractEnumeratingStream<Solution_>, AbstractEnumeratingStream<Solution_>>
       sharingStreamMap = new HashMap<>(256);
 
@@ -43,33 +46,65 @@ public final class EnumeratingStreamFactory<Solution_> {
   public <A> UniEnumeratingStream<Solution_, A> forEachExcludingPinned(
       Class<A> sourceClass, boolean includeNull) {
     assertValidForEachType(sourceClass);
-    if (!solutionDescriptor.getMetaModel().hasEntity(sourceClass)) {
-      // The sourceClass is not a planning entity, therefore it cannot be pinned.
+    var entityDescriptor = solutionDescriptor.findEntityDescriptor(sourceClass);
+    var runtimeDispatch =
+        solutionDescriptor.getEntityDescriptors().stream()
+            .anyMatch(
+                descriptor ->
+                    descriptor != entityDescriptor
+                        && sourceClass.isAssignableFrom(descriptor.getEntityClass()));
+    var applicableLists =
+        solutionDescriptor.getListVariableDescriptorList().stream()
+            .filter(
+                descriptor ->
+                    descriptor.acceptsValueType(sourceClass)
+                        || sourceClass.isAssignableFrom(descriptor.getElementType()))
+            .filter(descriptor -> descriptor.supportsPinning())
+            .toList();
+    if (!runtimeDispatch
+        && applicableLists.isEmpty()
+        && (entityDescriptor == null || !entityDescriptor.isGenuine())) {
       return forEachNonDiscriminating(sourceClass, includeNull);
     }
-    var listVariableDescriptor = solutionDescriptor.getListVariableDescriptor();
-    // We have a basic variable, or the sourceClass is not a valid type for a list variable value.
-    // In that case, we use the standard exclusion logic.
-    if (listVariableDescriptor == null || !listVariableDescriptor.acceptsValueType(sourceClass)) {
-      var entityDescriptor = solutionDescriptor.findEntityDescriptorOrFail(sourceClass);
-      // The predicate is cached to allow for node-sharing, which expects identical lambdas.
-      return share(
-          (AbstractUniEnumeratingStream<Solution_, A>)
-              forEachNonDiscriminating(sourceClass, includeNull)
-                  .filter(entityDescriptor.getEntityMovablePredicate()));
-    }
-    // The sourceClass is a list variable value, therefore we need to specialize the exclusion
-    // logic.
-    if (!listVariableDescriptor.supportsPinning()) { // Should have been eliminated earlier.
-      throw new UnsupportedOperationException(
-          "Impossible state: the list variable (%s) does not support pinning."
-              .formatted(listVariableDescriptor.getVariableName()));
-    }
-    // The predicate is cached to allow for node-sharing, which expects identical lambdas.
+    // Cache all composed/runtime predicates; filtering streams share by predicate identity.
+    var predicate =
+        movablePredicateMap.computeIfAbsent(
+            sourceClass,
+            ignored -> {
+              if (!runtimeDispatch && entityDescriptor != null && entityDescriptor.isGenuine()) {
+                return entityDescriptor.getEntityMovablePredicate();
+              }
+              if (!runtimeDispatch
+                  && applicableLists.size() == 1
+                  && applicableLists.getFirst().acceptsValueType(sourceClass)
+                  && (entityDescriptor == null || !entityDescriptor.isGenuine())) {
+                return applicableLists.getFirst().getValueMovablePredicate();
+              }
+              return (solutionView, value) -> {
+                if (value == null) {
+                  return true;
+                }
+                var runtimeEntityDescriptor =
+                    solutionDescriptor.findEntityDescriptor(value.getClass());
+                if (runtimeEntityDescriptor != null && runtimeEntityDescriptor.isGenuine()) {
+                  // A pinned list position does not pin the element's independent basic variables.
+                  // List-specific enumeration applies the list descriptor's pinning separately.
+                  return runtimeEntityDescriptor
+                      .getEntityMovablePredicate()
+                      .test(solutionView, value);
+                }
+                for (var descriptor : applicableLists) {
+                  if (descriptor.acceptsValueType(value.getClass())) {
+                    return descriptor.getValueMovablePredicate().test(solutionView, value);
+                  }
+                }
+                return true;
+              };
+            });
     return share(
         (AbstractUniEnumeratingStream<Solution_, A>)
             forEachNonDiscriminating(sourceClass, includeNull)
-                .filter(listVariableDescriptor.getValueMovablePredicate()));
+                .filter((UniNeighborhoodsPredicate) predicate));
   }
 
   public <A> void assertValidForEachType(Class<A> fromType) {

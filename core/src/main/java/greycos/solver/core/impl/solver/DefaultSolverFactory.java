@@ -3,7 +3,6 @@ package greycos.solver.core.impl.solver;
 import static greycos.solver.core.impl.score.director.ScoreDirectorFactoryFactory.decideConstraintMatchPolicy;
 
 import java.time.Clock;
-import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Objects;
@@ -18,20 +17,14 @@ import greycos.solver.core.api.solver.Solver;
 import greycos.solver.core.api.solver.SolverConfigOverride;
 import greycos.solver.core.api.solver.SolverFactory;
 import greycos.solver.core.api.solver.SolverManager;
-import greycos.solver.core.config.constructionheuristic.ConstructionHeuristicPhaseConfig;
-import greycos.solver.core.config.constructionheuristic.placer.QueuedEntityPlacerConfig;
-import greycos.solver.core.config.localsearch.LocalSearchPhaseConfig;
 import greycos.solver.core.config.solver.EnvironmentMode;
 import greycos.solver.core.config.solver.PreviewFeature;
 import greycos.solver.core.config.solver.SolverConfig;
 import greycos.solver.core.config.solver.monitoring.SolverMetric;
 import greycos.solver.core.config.solver.termination.TerminationConfig;
 import greycos.solver.core.config.util.ConfigUtils;
-import greycos.solver.core.impl.AbstractFromConfigFactory;
-import greycos.solver.core.impl.constructionheuristic.DefaultConstructionHeuristicPhaseFactory;
 import greycos.solver.core.impl.constructionheuristic.nearby.ConstructionHeuristicNearbyProfileResolver;
 import greycos.solver.core.impl.cotwin.common.CotwinAccessType;
-import greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 import greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
 import greycos.solver.core.impl.islandmodel.DefaultIslandModelPhaseFactory;
@@ -285,53 +278,10 @@ public final class DefaultSolverFactory<Solution_> implements SolverFactory<Solu
       SolverTermination<Solution_> termination) {
     var phaseConfigList = solverConfig.getPhaseConfigList();
     if (ConfigUtils.isEmptyCollection(phaseConfigList)) {
-      var genuineEntityDescriptorCollection =
-          configPolicy.getSolutionDescriptor().getGenuineEntityDescriptors();
-      phaseConfigList = new ArrayList<>(genuineEntityDescriptorCollection.size() + 2);
-      for (var entityDescriptor : genuineEntityDescriptorCollection) {
-        if (entityDescriptor.hasBothListAndBasicVariables()) {
-          // We add a separate step for each variable type
-          phaseConfigList.add(
-              buildConstructionHeuristicPhaseConfigForBasicVariable(
-                  configPolicy, entityDescriptor));
-          phaseConfigList.add(
-              buildConstructionHeuristicPhaseConfigForListVariable(configPolicy, entityDescriptor));
-        } else if (entityDescriptor.hasAnyListVariables()) {
-          // There is no need to revalidate the number of list variables,
-          // as it has already been validated in SolutionDescriptor
-          phaseConfigList.add(
-              buildConstructionHeuristicPhaseConfigForListVariable(configPolicy, entityDescriptor));
-        } else {
-          phaseConfigList.add(
-              buildConstructionHeuristicPhaseConfigForBasicVariable(
-                  configPolicy, entityDescriptor));
-        }
-      }
-      phaseConfigList.add(new LocalSearchPhaseConfig());
+      phaseConfigList = PhaseFactory.buildDefaultPhaseConfigList(configPolicy);
     }
     return PhaseFactory.buildPhases(
         phaseConfigList, configPolicy, bestSolutionRecaller, termination);
-  }
-
-  private ConstructionHeuristicPhaseConfig buildConstructionHeuristicPhaseConfigForBasicVariable(
-      HeuristicConfigPolicy<Solution_> configPolicy, EntityDescriptor<Solution_> entityDescriptor) {
-    var constructionHeuristicPhaseConfig = new ConstructionHeuristicPhaseConfig();
-    constructionHeuristicPhaseConfig.setEntityPlacerConfig(
-        new QueuedEntityPlacerConfig()
-            .withEntitySelectorConfig(
-                AbstractFromConfigFactory.getDefaultEntitySelectorConfigForEntity(
-                    configPolicy, entityDescriptor)));
-    return constructionHeuristicPhaseConfig;
-  }
-
-  private ConstructionHeuristicPhaseConfig buildConstructionHeuristicPhaseConfigForListVariable(
-      HeuristicConfigPolicy<Solution_> configPolicy, EntityDescriptor<Solution_> entityDescriptor) {
-    var constructionHeuristicPhaseConfig = new ConstructionHeuristicPhaseConfig();
-    var listVariableDescriptor = entityDescriptor.getListVariableDescriptor();
-    constructionHeuristicPhaseConfig.setEntityPlacerConfig(
-        DefaultConstructionHeuristicPhaseFactory.buildListVariableQueuedValuePlacerConfig(
-            configPolicy, listVariableDescriptor));
-    return constructionHeuristicPhaseConfig;
   }
 
   public void ensurePreviewFeature(PreviewFeature previewFeature) {

@@ -57,25 +57,6 @@ public final class DefaultMoveStreamFactory<Solution_> implements MoveStreamFact
 
   @Override
   public <A> UniEnumeratingStream<Solution_, A> forEach(Class<A> sourceClass, boolean includeNull) {
-    var entityDescriptor = getSolutionDescriptor().findEntityDescriptor(sourceClass);
-    if (entityDescriptor == null) { // Not an entity, can't be pinned.
-      return enumeratingStreamFactory.forEachNonDiscriminating(sourceClass, includeNull);
-    }
-    if (entityDescriptor.isGenuine()) { // Genuine entity can be pinned.
-      return enumeratingStreamFactory.forEachExcludingPinned(sourceClass, includeNull);
-    }
-    // From now on, we are testing a shadow entity.
-    var listVariableDescriptor = getSolutionDescriptor().getListVariableDescriptor();
-    if (listVariableDescriptor == null) { // Can't be pinned when there are only basic variables.
-      return enumeratingStreamFactory.forEachNonDiscriminating(sourceClass, includeNull);
-    }
-    if (!listVariableDescriptor.supportsPinning()) { // The genuine entity does not support pinning.
-      return enumeratingStreamFactory.forEachNonDiscriminating(sourceClass, includeNull);
-    }
-    if (!listVariableDescriptor.acceptsValueType(sourceClass)) { // Can't be used as an element.
-      return enumeratingStreamFactory.forEachNonDiscriminating(sourceClass, includeNull);
-    }
-    // Finally a valid pin-supporting type.
     return enumeratingStreamFactory.forEachExcludingPinned(sourceClass, includeNull);
   }
 
@@ -107,6 +88,7 @@ public final class DefaultMoveStreamFactory<Solution_> implements MoveStreamFact
       PlanningListVariableMetaModel<Solution_, Entity_, Value_> variableMetaModel) {
     var nodeSharingSupportFunctions = getNodeSharingSupportFunctions(variableMetaModel);
     return forEach(variableMetaModel.type(), false)
+        .filter(nodeSharingSupportFunctions.movableValueFilter)
         .filter(nodeSharingSupportFunctions.assignedValueFilter);
   }
 
@@ -203,6 +185,7 @@ public final class DefaultMoveStreamFactory<Solution_> implements MoveStreamFact
 
   public record ListVariableNodeSharingSupportFunctions<Solution_, Entity_, Value_>(
       PlanningListVariableMetaModel<Solution_, Entity_, Value_> variableMetaModel,
+      UniNeighborhoodsPredicate<Solution_, Value_> movableValueFilter,
       UniNeighborhoodsPredicate<Solution_, Value_> assignedValueOrNullFilter,
       UniNeighborhoodsPredicate<Solution_, Value_> assignedValueFilter,
       UniNeighborhoodsPredicate<Solution_, Value_> unassignedValueFilter,
@@ -216,6 +199,7 @@ public final class DefaultMoveStreamFactory<Solution_> implements MoveStreamFact
         PlanningListVariableMetaModel<Solution_, Entity_, Value_> variableMetaModel) {
       this(
           variableMetaModel,
+          (solutionView, value) -> !solutionView.isPinned(variableMetaModel, value),
           (solutionView, value) ->
               value == null || solutionView.isAssigned(variableMetaModel, value),
           (solutionView, value) -> solutionView.isAssigned(variableMetaModel, value),

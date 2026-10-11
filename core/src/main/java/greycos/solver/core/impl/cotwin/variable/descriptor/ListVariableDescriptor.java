@@ -30,6 +30,8 @@ public final class ListVariableDescriptor<Solution_> extends GenuineVariableDesc
 
   private boolean allowsUnassignedValues = true;
   private boolean supportsPinning;
+  // Resolve lazily to retain validation timing; the member's generic type is immutable.
+  private volatile Class<?> elementType;
 
   public ListVariableDescriptor(
       int ordinal,
@@ -76,13 +78,19 @@ public final class ListVariableDescriptor<Solution_> extends GenuineVariableDesc
   }
 
   public Class<?> getElementType() {
-    return ConfigUtils.extractGenericTypeParameterOrFail(
-        "entityClass",
-        entityDescriptor.getEntityClass(),
-        variableMemberAccessor.getType(),
-        variableMemberAccessor.getGenericType(),
-        PlanningListVariable.class,
-        variableMemberAccessor.getName());
+    var resolvedElementType = elementType;
+    if (resolvedElementType == null) {
+      resolvedElementType =
+          ConfigUtils.extractGenericTypeParameterOrFail(
+              "entityClass",
+              entityDescriptor.getEntityClass(),
+              variableMemberAccessor.getType(),
+              variableMemberAccessor.getGenericType(),
+              PlanningListVariable.class,
+              variableMemberAccessor.getName());
+      elementType = resolvedElementType;
+    }
+    return resolvedElementType;
   }
 
   public InverseRelationShadowVariableDescriptor<Solution_>
@@ -176,7 +184,8 @@ public final class ListVariableDescriptor<Solution_> extends GenuineVariableDesc
             .anyMatch(
                 descriptor ->
                     descriptor.getGenuineVariableDescriptor(getVariableName()) == this
-                        && descriptor.supportsPinning());
+                        && (descriptor.hasEffectiveMovableEntityFilter()
+                            || descriptor.getEffectivePlanningPinToIndexReader(this) != null));
   }
 
   private EntityDescriptor<Solution_> getEntityDescriptor(Object entity) {
@@ -196,7 +205,7 @@ public final class ListVariableDescriptor<Solution_> extends GenuineVariableDesc
         workingSolution, entity)) { // Skipping due to @PlanningPin.
       return true;
     } else {
-      var pinIndexReader = effectiveEntityDescriptor.getEffectivePlanningPinToIndexReader();
+      var pinIndexReader = effectiveEntityDescriptor.getEffectivePlanningPinToIndexReader(this);
       return pinIndexReader != null && index < pinIndexReader.applyAsInt(entity);
     }
   }
@@ -228,7 +237,7 @@ public final class ListVariableDescriptor<Solution_> extends GenuineVariableDesc
       return 0;
     }
     var effectivePlanningPinToIndexReader =
-        getEntityDescriptor(entity).getEffectivePlanningPinToIndexReader();
+        getEntityDescriptor(entity).getEffectivePlanningPinToIndexReader(this);
     if (effectivePlanningPinToIndexReader == null) { // There is no @PlanningPinToIndex.
       return 0;
     } else {

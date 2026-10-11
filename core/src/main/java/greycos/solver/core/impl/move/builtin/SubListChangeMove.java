@@ -10,6 +10,7 @@ import greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import greycos.solver.core.api.cotwin.variable.PlanningListVariable;
 import greycos.solver.core.api.cotwin.variable.PlanningVariable;
 import greycos.solver.core.impl.move.AbstractMove;
+import greycos.solver.core.impl.move.VariableDescriptorRebaser;
 import greycos.solver.core.preview.api.cotwin.metamodel.PlanningListVariableMetaModel;
 import greycos.solver.core.preview.api.cotwin.metamodel.PositionInList;
 import greycos.solver.core.preview.api.move.MutableSolutionView;
@@ -104,7 +105,10 @@ public final class SubListChangeMove<Solution_, Entity_, Value_> extends Abstrac
   @Override
   public SubListChangeMove<Solution_, Entity_, Value_> rebase(Lookup lookup) {
     return new SubListChangeMove<>(
-        variableMetaModel, source.rebase(lookup), destination.rebase(lookup), reversing);
+        VariableDescriptorRebaser.rebase(variableMetaModel, lookup),
+        source.rebase(lookup),
+        destination.rebase(lookup),
+        reversing);
   }
 
   @Override

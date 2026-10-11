@@ -5,6 +5,7 @@ import java.util.List;
 import greycos.solver.core.api.cotwin.lookup.Lookup;
 import greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDescriptor;
 import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
+import greycos.solver.core.impl.move.VariableDescriptorRebaser;
 import greycos.solver.core.impl.score.director.VariableDescriptorAwareScoreDirector;
 
 /** Resolved genuine-variable mutation. It contains no provider, evaluator or callback. */
@@ -90,7 +91,7 @@ record ResolvedMutation<Solution_>(
 
   ResolvedMutation<Solution_> rebase(Lookup lookup) {
     return new ResolvedMutation<>(
-        descriptor,
+        VariableDescriptorRebaser.rebase(descriptor, lookup),
         lookup.lookUpWorkingObject(entity),
         value == null ? null : lookup.lookUpWorkingObject(value),
         fromIndex,

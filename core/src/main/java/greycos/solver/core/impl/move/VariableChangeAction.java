@@ -20,6 +20,6 @@ record VariableChangeAction<Solution_, Entity_, Value_>(
     return new VariableChangeAction<>(
         lookup.lookUpWorkingObject(entity),
         lookup.lookUpWorkingObject(oldValue),
-        variableDescriptor);
+        VariableDescriptorRebaser.rebase(variableDescriptor, lookup));
   }
 }

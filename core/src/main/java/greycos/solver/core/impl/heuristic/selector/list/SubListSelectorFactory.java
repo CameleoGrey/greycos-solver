@@ -204,11 +204,12 @@ public final class SubListSelectorFactory<Solution_>
     if (valueSelectorConfig == null) {
       valueSelectorConfig = new ValueSelectorConfig();
     }
-    // Mixed models require that the variable name be set
-    if (configPolicy.getSolutionDescriptor().hasBothBasicAndListVariables()
-        && valueSelectorConfig.getVariableName() == null) {
-      var variableName = entityDescriptor.getGenuineListVariableDescriptor().getVariableName();
-      valueSelectorConfig.setVariableName(variableName);
+    if (valueSelectorConfig.getMimicSelectorRef() == null) {
+      valueSelectorConfig = valueSelectorConfig.copyConfig();
+      var descriptor =
+          ListVariableSelectorSupport.resolve(
+              configPolicy, entityDescriptor.getEntityClass(), valueSelectorConfig);
+      valueSelectorConfig.setVariableName(descriptor.getVariableName());
     }
     if (config.getNearbySelectionConfig() != null) {
       return ValueSelectorFactory.<Solution_>create(valueSelectorConfig)

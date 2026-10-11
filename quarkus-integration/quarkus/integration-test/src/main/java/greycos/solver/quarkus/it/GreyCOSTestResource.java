@@ -17,10 +17,14 @@ import jakarta.ws.rs.core.MediaType;
 
 import greycos.solver.core.api.score.HardSoftScore;
 import greycos.solver.core.api.solver.SolverConfigOverride;
+import greycos.solver.core.api.solver.SolverFactory;
 import greycos.solver.core.api.solver.SolverManager;
 import greycos.solver.core.config.solver.termination.TerminationConfig;
+import greycos.solver.core.impl.cotwin.solution.cloner.gizmo.GizmoSolutionCloner;
+import greycos.solver.core.impl.solver.DefaultSolverFactory;
 import greycos.solver.core.impl.solver.DefaultSolverJob;
 import greycos.solver.core.impl.solver.scope.SolverScope;
+import greycos.solver.quarkus.it.cotwin.TestdataMultiListFixture;
 import greycos.solver.quarkus.it.cotwin.TestdataStringLengthShadowEntity;
 import greycos.solver.quarkus.it.cotwin.TestdataStringLengthShadowSolution;
 
@@ -28,6 +32,8 @@ import greycos.solver.quarkus.it.cotwin.TestdataStringLengthShadowSolution;
 public class GreyCOSTestResource {
 
   private final SolverManager<TestdataStringLengthShadowSolution> solverManager;
+
+  @Inject SolverFactory<TestdataStringLengthShadowSolution> solverFactory;
 
   @Inject
   public GreyCOSTestResource(SolverManager<TestdataStringLengthShadowSolution> solverManager) {
@@ -100,5 +106,20 @@ public class GreyCOSTestResource {
     } catch (ExecutionException e) {
       throw new IllegalStateException("Solving failed.", e);
     }
+  }
+
+  @POST
+  @Path("/multiple-lists")
+  @Produces(MediaType.TEXT_PLAIN)
+  public String solveMultipleLists() throws ExecutionException, InterruptedException {
+    var factory = (DefaultSolverFactory<TestdataStringLengthShadowSolution>) solverFactory;
+    if (!(factory.getSolutionDescriptor().getSolutionCloner() instanceof GizmoSolutionCloner<?>)) {
+      throw new IllegalStateException("The Gizmo smoke test must use the generated cloner.");
+    }
+    var problem = generateProblem();
+    TestdataMultiListFixture.initialize(problem);
+    var solution = solverManager.solve(2L, problem).getFinalBestSolution();
+    TestdataMultiListFixture.verify(problem, solution);
+    return solution.getScore() + ";lists=3/4;pins=1/2;shadows=valid;clone=independent";
   }
 }

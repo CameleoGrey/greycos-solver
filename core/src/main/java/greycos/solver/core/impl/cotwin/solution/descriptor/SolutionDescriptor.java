@@ -10,12 +10,14 @@ import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Field;
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.EnumSet;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -296,7 +298,7 @@ public final class SolutionDescriptor<Solution_> {
   private SolutionCloner<Solution_> solutionCloner;
   private List<EntityDescriptor<Solution_>> genuineEntityDescriptorList;
   private List<BasicVariableDescriptor<Solution_>> basicVariableDescriptorList;
-  private @Nullable ListVariableDescriptor<Solution_> listVariableDescriptor;
+  private List<ListVariableDescriptor<Solution_>> listVariableDescriptorList = List.of();
   private List<DeclarativeShadowVariableDescriptor<Solution_>>
       declarativeShadowVariableDescriptorList;
 
@@ -656,13 +658,16 @@ public final class SolutionDescriptor<Solution_> {
     for (var entityDescriptor : entityDescriptorMap.values()) {
       entityDescriptor.linkEntityDescriptors(descriptorPolicy);
     }
+    // Shadow sources and pin readers resolve against canonical declarations, including inherited
+    // ones. Populate the registry before linking either of them.
+    listVariableDescriptorList = collectListVariableDescriptors();
+    validateListVariableTypes();
     for (var entityDescriptor : entityDescriptorMap.values()) {
       entityDescriptor.linkVariableDescriptors(descriptorPolicy);
     }
 
     problemFactOrEntityClassSet = collectEntityAndProblemFactClasses();
-    listVariableDescriptor = findListVariableDescriptor();
-    if (listVariableDescriptor != null) {
+    for (var listVariableDescriptor : listVariableDescriptorList) {
       listVariableDescriptor.linkPinningSupport();
     }
 
@@ -715,27 +720,71 @@ public final class SolutionDescriptor<Solution_> {
     return problemFactOrEntityClassStream.collect(Collectors.toCollection(LinkedHashSet::new));
   }
 
-  private @Nullable ListVariableDescriptor<Solution_> findListVariableDescriptor() {
-    var listVariableDescriptorList =
-        getGenuineEntityDescriptors().stream()
-            .map(EntityDescriptor::getGenuineVariableDescriptorList)
-            .flatMap(Collection::stream)
-            .flatMap(
-                e ->
-                    e instanceof ListVariableDescriptor<Solution_> listVariableDescriptor
-                        ? Stream.of(listVariableDescriptor)
-                        : Stream.empty())
-            .distinct()
-            .toList();
-    if (listVariableDescriptorList.isEmpty()) {
-      return null;
+  private List<ListVariableDescriptor<Solution_>> collectListVariableDescriptors() {
+    var descriptors = new ArrayList<ListVariableDescriptor<Solution_>>();
+    var seen =
+        Collections.newSetFromMap(
+            new IdentityHashMap<ListVariableDescriptor<Solution_>, Boolean>());
+    for (var entityDescriptor : entityDescriptorMap.values()) {
+      for (var descriptor : entityDescriptor.getListVariableDescriptorList()) {
+        if (seen.add(descriptor)) {
+          descriptors.add(descriptor);
+        }
+      }
     }
-    if (listVariableDescriptorList.size() > 1) {
-      throw new UnsupportedOperationException(
-          "Defining multiple list variables (%s) across the model is currently not supported."
-              .formatted(listVariableDescriptorList));
+    return List.copyOf(descriptors);
+  }
+
+  private void validateListVariableTypes() {
+    if (listVariableDescriptorList.size() < 2) {
+      return; // Preserve the existing model contract for solutions with at most one list.
     }
-    return listVariableDescriptorList.getFirst();
+    for (var i = 0; i < listVariableDescriptorList.size(); i++) {
+      var descriptor = listVariableDescriptorList.get(i);
+      var elementType = descriptor.getElementType();
+      for (var j = i + 1; j < listVariableDescriptorList.size(); j++) {
+        var other = listVariableDescriptorList.get(j);
+        if (typesMayOverlap(elementType, other.getElementType())) {
+          throw new IllegalArgumentException(
+              ("The planning list variables (%s) and (%s) have overlapping or ambiguous element types (%s) and (%s)."
+                      + "\nMaybe use distinct allocation classes whose type domains do not overlap.")
+                  .formatted(
+                      descriptor, other, elementType.getName(), other.getElementType().getName()));
+        }
+      }
+      for (var ownerDescriptor : listVariableDescriptorList) {
+        if (typesMayOverlap(elementType, ownerDescriptor.getEntityDescriptor().getEntityClass())) {
+          throw new IllegalArgumentException(
+              ("The planning list variable (%s) has element type (%s), which overlaps the owner type (%s) of planning list variable (%s)."
+                      + "\nNested planning list ownership is not supported. Maybe use separate fixed owners and allocation elements.")
+                  .formatted(
+                      descriptor,
+                      elementType.getName(),
+                      ownerDescriptor.getEntityDescriptor().getEntityClass().getName(),
+                      ownerDescriptor));
+        }
+      }
+    }
+  }
+
+  private static boolean typesMayOverlap(Class<?> left, Class<?> right) {
+    if (left.isAssignableFrom(right) || right.isAssignableFrom(left)) {
+      return true;
+    }
+    if (left.isSealed()) {
+      return Arrays.stream(left.getPermittedSubclasses())
+          .anyMatch(type -> typesMayOverlap(type, right));
+    }
+    if (right.isSealed()) {
+      return Arrays.stream(right.getPermittedSubclasses())
+          .anyMatch(type -> typesMayOverlap(left, type));
+    }
+    // Unrelated classes cannot have a common subclass. An interface may still be implemented by
+    // a subclass of a non-final class, or by the same class as an unrelated interface.
+    if (left.isInterface()) {
+      return right.isInterface() || !Modifier.isFinal(right.getModifiers());
+    }
+    return right.isInterface() && !Modifier.isFinal(left.getModifiers());
   }
 
   private void initSolutionCloner(DescriptorPolicy descriptorPolicy) {
@@ -802,8 +851,65 @@ public final class SolutionDescriptor<Solution_> {
     return problemFactOrEntityClassSet;
   }
 
-  public ListVariableDescriptor<Solution_> getListVariableDescriptor() {
-    return listVariableDescriptor;
+  public @Nullable ListVariableDescriptor<Solution_> getListVariableDescriptor() {
+    if (listVariableDescriptorList.isEmpty()) {
+      return null;
+    }
+    if (listVariableDescriptorList.size() > 1) {
+      throw new IllegalStateException(
+          "The solution (%s) has multiple planning list variables (%s). Select a specific list variable."
+              .formatted(solutionClass.getName(), listVariableDescriptorList));
+    }
+    return listVariableDescriptorList.getFirst();
+  }
+
+  public List<ListVariableDescriptor<Solution_>> getListVariableDescriptorList() {
+    return listVariableDescriptorList;
+  }
+
+  public @Nullable ListVariableDescriptor<Solution_> findListVariableDescriptorForValueType(
+      Class<?> valueType) {
+    ListVariableDescriptor<Solution_> result = null;
+    for (var descriptor : listVariableDescriptorList) {
+      if (!descriptor.acceptsValueType(valueType)) {
+        continue;
+      }
+      if (result != null) {
+        throw new IllegalArgumentException(
+            "The value type (%s) matches multiple planning list variables (%s, %s). Select a concrete element type."
+                .formatted(valueType.getName(), result, descriptor));
+      }
+      result = descriptor;
+    }
+    return result;
+  }
+
+  public ListVariableDescriptor<Solution_> resolveListVariableDescriptor(
+      @Nullable Class<?> ownerClass, @Nullable String variableName) {
+    var ownerDescriptor = ownerClass == null ? null : findEntityDescriptor(ownerClass);
+    var candidates =
+        ownerClass == null
+            ? listVariableDescriptorList
+            : ownerDescriptor == null
+                ? List.<ListVariableDescriptor<Solution_>>of()
+                : ownerDescriptor.getListVariableDescriptorList();
+    var matches =
+        variableName == null || variableName.isEmpty()
+            ? candidates
+            : candidates.stream()
+                .filter(descriptor -> descriptor.getVariableName().equals(variableName))
+                .toList();
+    if (matches.size() != 1) {
+      throw new IllegalArgumentException(
+          ("The planning list target (entityClass=%s, variableName=%s) resolves to (%s), but exactly one planning list variable is required. Available planning list variables: %s."
+                  + "\nMaybe specify both entityClass and variableName.")
+              .formatted(
+                  ownerClass == null ? null : ownerClass.getName(),
+                  variableName,
+                  matches,
+                  listVariableDescriptorList));
+    }
+    return matches.getFirst();
   }
 
   public SolutionCloner<Solution_> getSolutionCloner() {
@@ -864,7 +970,7 @@ public final class SolutionDescriptor<Solution_> {
   }
 
   public boolean hasListVariable() {
-    return getListVariableDescriptor() != null;
+    return !listVariableDescriptorList.isEmpty();
   }
 
   public boolean hasBothBasicAndListVariables() {

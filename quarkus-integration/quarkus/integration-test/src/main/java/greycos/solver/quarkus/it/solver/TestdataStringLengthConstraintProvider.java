@@ -5,6 +5,7 @@ import greycos.solver.core.api.score.stream.Constraint;
 import greycos.solver.core.api.score.stream.ConstraintFactory;
 import greycos.solver.core.api.score.stream.ConstraintProvider;
 import greycos.solver.core.api.score.stream.Joiners;
+import greycos.solver.quarkus.it.cotwin.TestdataMultiListFixture;
 import greycos.solver.quarkus.it.cotwin.TestdataStringLengthShadowEntity;
 
 import org.jspecify.annotations.NonNull;
@@ -14,6 +15,16 @@ public class TestdataStringLengthConstraintProvider implements ConstraintProvide
   @Override
   public Constraint @NonNull [] defineConstraints(@NonNull ConstraintFactory factory) {
     return new Constraint[] {
+      factory
+          .forEach(TestdataMultiListFixture.FirstElement.class)
+          .filter(TestdataMultiListFixture.FirstElement::hasInvalidShadows)
+          .penalize(HardSoftScore.ONE_HARD)
+          .asConstraint("First-list shadows must be consistent"),
+      factory
+          .forEach(TestdataMultiListFixture.SecondElement.class)
+          .filter(TestdataMultiListFixture.SecondElement::hasInvalidShadows)
+          .penalize(HardSoftScore.ONE_HARD)
+          .asConstraint("Second-list shadows must be consistent"),
       factory
           .forEach(TestdataStringLengthShadowEntity.class)
           .join(

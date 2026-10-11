@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-import greycos.solver.core.api.cotwin.variable.PlanningListVariable;
 import greycos.solver.core.config.heuristic.selector.common.SelectionCacheType;
 import greycos.solver.core.config.heuristic.selector.common.SelectionOrder;
 import greycos.solver.core.config.heuristic.selector.move.MoveSelectorConfig;
@@ -14,8 +13,8 @@ import greycos.solver.core.config.heuristic.selector.value.ValueSelectorConfig;
 import greycos.solver.core.config.util.ConfigUtils;
 import greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
-import greycos.solver.core.impl.cotwin.variable.descriptor.VariableDescriptor;
 import greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
+import greycos.solver.core.impl.heuristic.selector.list.ListVariableSelectorSupport;
 import greycos.solver.core.impl.heuristic.selector.move.AbstractMoveSelectorFactory;
 import greycos.solver.core.impl.heuristic.selector.move.MoveSelector;
 import greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector;
@@ -41,14 +40,18 @@ public class ListSwapMoveSelectorFactory<Solution_>
         Objects.requireNonNullElseGet(
             config.getSecondaryValueSelectorConfig(), valueSelectorConfig::copyConfig);
     var selectionOrder = SelectionOrder.fromRandomSelectionBoolean(randomSelection);
-    var entityDescriptor =
-        getTheOnlyEntityDescriptorWithListVariable(configPolicy.getSolutionDescriptor());
+    var listDescriptor =
+        ListVariableSelectorSupport.resolve(
+            configPolicy,
+            config.getEntityClass(),
+            valueSelectorConfig,
+            secondaryValueSelectorConfig);
+    var entityDescriptor = listDescriptor.getEntityDescriptor();
     // When enabling entity value range filtering,
     // the recorder ID from the origin selector is required for FilteringEntityValueRangeSelector
     // and FilteringValueRangeSelector
     // to replay the selected value and return only reachable values.
-    var enableEntityValueRangeFilter =
-        !entityDescriptor.getListVariableDescriptor().canExtractValueRangeFromSolution();
+    var enableEntityValueRangeFilter = !listDescriptor.canExtractValueRangeFromSolution();
     // A null ID means to turn off the entity value range filtering
     String entityValueRangeRecorderId = null;
     if (enableEntityValueRangeFilter) {
@@ -138,52 +141,23 @@ public class ListSwapMoveSelectorFactory<Solution_>
   @Override
   protected MoveSelectorConfig<?> buildUnfoldedMoveSelectorConfig(
       HeuristicConfigPolicy<Solution_> configPolicy) {
-    var entityDescriptor =
-        getTheOnlyEntityDescriptorWithListVariable(configPolicy.getSolutionDescriptor());
-    var onlyVariableDescriptor =
-        config.getValueSelectorConfig() == null
-            ? null
-            : ValueSelectorFactory.<Solution_>create(config.getValueSelectorConfig())
-                .extractVariableDescriptor(configPolicy, entityDescriptor);
-    if (config.getSecondaryValueSelectorConfig() != null) {
-      var onlySecondaryVariableDescriptor =
-          ValueSelectorFactory.<Solution_>create(config.getSecondaryValueSelectorConfig())
-              .extractVariableDescriptor(configPolicy, entityDescriptor);
-      if (onlyVariableDescriptor != onlySecondaryVariableDescriptor) {
-        throw new IllegalArgumentException(
-            "The valueSelector (%s)'s variableName (%s) and secondaryValueSelectorConfig (%s)'s variableName (%s) must be the same planning list variable."
-                .formatted(
-                    config.getValueSelectorConfig(),
-                    onlyVariableDescriptor == null
-                        ? null
-                        : onlyVariableDescriptor.getVariableName(),
-                    config.getSecondaryValueSelectorConfig(),
-                    onlySecondaryVariableDescriptor == null
-                        ? null
-                        : onlySecondaryVariableDescriptor.getVariableName()));
-      }
-    }
-    if (onlyVariableDescriptor != null) {
-      if (!onlyVariableDescriptor.isListVariable()) {
-        throw new IllegalArgumentException(
-            "Impossible state: the listSwapMoveSelector (%s) is configured to use a planning variable (%s), which is not a planning list variable. Either fix your annotations and use a @%s on the variable to make it work with listSwapMoveSelector or use a swapMoveSelector instead."
-                .formatted(
-                    config, onlyVariableDescriptor, PlanningListVariable.class.getSimpleName()));
-      }
-      // No need for unfolding or deducing
+    var descriptor =
+        ListVariableSelectorSupport.resolve(
+            configPolicy,
+            config.getEntityClass(),
+            config.getValueSelectorConfig(),
+            config.getSecondaryValueSelectorConfig());
+    var valueConfig = config.getValueSelectorConfig();
+    var secondaryConfig = config.getSecondaryValueSelectorConfig();
+    if (config.getEntityClass() != null
+        && valueConfig != null
+        && (valueConfig.getVariableName() != null || valueConfig.getMimicSelectorRef() != null)
+        && (secondaryConfig == null
+            || secondaryConfig.getVariableName() != null
+            || secondaryConfig.getMimicSelectorRef() != null)) {
       return null;
     }
-    var variableDescriptorList =
-        entityDescriptor.getGenuineVariableDescriptorList().stream()
-            .filter(VariableDescriptor::isListVariable)
-            .map(variableDescriptor -> ((ListVariableDescriptor<Solution_>) variableDescriptor))
-            .toList();
-    if (variableDescriptorList.isEmpty()) {
-      throw new IllegalArgumentException(
-          "Impossible state: the listSwapMoveSelector (%s) cannot unfold because there are no planning list variables for the only entity (%s) or no planning list variables at all."
-              .formatted(config, entityDescriptor));
-    }
-    return buildUnfoldedMoveSelectorConfig(variableDescriptorList);
+    return buildUnfoldedMoveSelectorConfig(List.of(descriptor));
   }
 
   protected MoveSelectorConfig<?> buildUnfoldedMoveSelectorConfig(
@@ -191,7 +165,9 @@ public class ListSwapMoveSelectorFactory<Solution_>
     var moveSelectorConfigList = new ArrayList<MoveSelectorConfig>(variableDescriptorList.size());
     for (var variableDescriptor : variableDescriptorList) {
       // No childMoveSelectorConfig.inherit() because of unfoldedMoveSelectorConfig.inheritFolded()
-      var childMoveSelectorConfig = new ListSwapMoveSelectorConfig();
+      var childMoveSelectorConfig =
+          new ListSwapMoveSelectorConfig()
+              .withEntityClass(variableDescriptor.getEntityDescriptor().getEntityClass());
       var childValueSelectorConfig = new ValueSelectorConfig(config.getValueSelectorConfig());
       if (childValueSelectorConfig.getMimicSelectorRef() == null) {
         childValueSelectorConfig.setVariableName(variableDescriptor.getVariableName());

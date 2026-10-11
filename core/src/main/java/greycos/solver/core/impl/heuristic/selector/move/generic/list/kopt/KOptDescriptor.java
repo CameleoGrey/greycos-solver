@@ -9,6 +9,7 @@ import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.IntStream;
 
+import greycos.solver.core.api.cotwin.lookup.Lookup;
 import greycos.solver.core.api.function.TriPredicate;
 import greycos.solver.core.impl.cotwin.variable.ListVariableState;
 import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
@@ -38,6 +39,20 @@ record KOptDescriptor<Node_>(
     int[] removedEdgeIndexToTourOrder,
     int[] inverseRemovedEdgeIndexToTourOrder,
     int[] addedEdgeToOtherEndpoint) {
+
+  KOptDescriptor<Node_> rebase(Lookup lookup) {
+    var rebasedEdges = removedEdges.clone();
+    for (int i = 0; i < rebasedEdges.length; i++) {
+      if (rebasedEdges[i] != null)
+        rebasedEdges[i] = lookup.lookUpNonNullWorkingObject(rebasedEdges[i]);
+    }
+    return new KOptDescriptor<>(
+        k,
+        rebasedEdges,
+        removedEdgeIndexToTourOrder,
+        inverseRemovedEdgeIndexToTourOrder,
+        addedEdgeToOtherEndpoint);
+  }
 
   static <Node_> int[] computeInEdgesForSequentialMove(Node_[] removedEdges) {
     var out = new int[removedEdges.length];

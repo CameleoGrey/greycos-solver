@@ -12,6 +12,7 @@ import greycos.solver.core.impl.cotwin.variable.descriptor.BasicVariableDescript
 import greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDescriptor;
 import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import greycos.solver.core.impl.heuristic.thread.MoveEvaluationSource;
+import greycos.solver.core.impl.move.VariableDescriptorRebaser;
 import greycos.solver.core.preview.api.move.Move;
 
 /** Immutable alternatives at one baseline; list positions are represented by destination spans. */
@@ -146,7 +147,7 @@ final class AlnsPreparedAssignments<Solution_> implements MoveEvaluationSource<S
     for (var value : basicValues) rebasedValues.add(rebase(lookup, value));
     return new AlnsPreparedAssignments<>(
         rebasedTarget,
-        descriptor,
+        VariableDescriptorRebaser.rebase(descriptor, lookup),
         rebasedCurrent,
         rebasedDestinations,
         rebasedValues,
@@ -161,7 +162,7 @@ final class AlnsPreparedAssignments<Solution_> implements MoveEvaluationSource<S
     private final Object currentValue;
 
     private RebasedBasicSource(BasicVariableDescriptor<Solution_> basic, Lookup lookup) {
-      this.basic = basic;
+      this.basic = VariableDescriptorRebaser.rebase(basic, lookup);
       this.lookup = Objects.requireNonNull(lookup);
       entity = AlnsPreparedAssignments.rebase(lookup, target.entity());
       currentValue = AlnsPreparedAssignments.rebase(lookup, current.value());

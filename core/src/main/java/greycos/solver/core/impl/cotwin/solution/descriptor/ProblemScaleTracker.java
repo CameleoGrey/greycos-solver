@@ -1,5 +1,7 @@
 package greycos.solver.core.impl.cotwin.solution.descriptor;
 
+import java.util.List;
+
 import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import greycos.solver.core.impl.score.director.ListValueRangeStatistics;
 import greycos.solver.core.impl.score.director.ValueRangeManager;
@@ -7,25 +9,29 @@ import greycos.solver.core.impl.util.MathUtils;
 
 public class ProblemScaleTracker<Solution_> {
   private final long logBase;
-  private final ListValueRangeStatistics<Solution_> listValueRangeStatistics;
+  private final List<ListValueRangeStatistics<Solution_>> listValueRangeStatistics;
   private long basicProblemScaleLog = 0L;
   private long cachedTotalProblemScaleLog = -1L;
 
   public ProblemScaleTracker(
-      ListVariableDescriptor<Solution_> listVariableDescriptor,
+      List<ListVariableDescriptor<Solution_>> listVariableDescriptors,
       ValueRangeManager<Solution_> valueRangeManager,
       long logBase) {
     this.logBase = logBase;
     this.listValueRangeStatistics =
-        new ListValueRangeStatistics<>(listVariableDescriptor, valueRangeManager);
+        listVariableDescriptors.stream()
+            .map(descriptor -> new ListValueRangeStatistics<>(descriptor, valueRangeManager))
+            .toList();
   }
 
   public long getProblemScaleLog() {
     if (cachedTotalProblemScaleLog != -1L) {
       return cachedTotalProblemScaleLog;
     }
-    cachedTotalProblemScaleLog =
-        basicProblemScaleLog + listValueRangeStatistics.computeListProblemScaleLog(logBase);
+    cachedTotalProblemScaleLog = basicProblemScaleLog;
+    for (var statistics : listValueRangeStatistics) {
+      cachedTotalProblemScaleLog += statistics.computeListProblemScaleLog(logBase);
+    }
     return cachedTotalProblemScaleLog;
   }
 

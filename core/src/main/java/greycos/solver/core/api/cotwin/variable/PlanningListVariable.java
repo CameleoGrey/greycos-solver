@@ -30,21 +30,28 @@ import greycos.solver.core.api.cotwin.variable.PlanningVariable.NullComparatorFa
  *
  * <h2>Disjoint lists</h2>
  *
- * <p>Furthermore, the current implementation works under the assumption that the list variables of
- * all entity instances are "disjoint lists":
+ * <p>For each list-variable declaration, the lists of all owner instances are disjoint:
  *
  * <ul>
  *   <li><strong>List</strong> means that the order of elements inside a list planning variable is
  *       significant.
  *   <li><strong>Disjoint</strong> means that any given pair of entities have no common elements in
  *       their list variables. In other words, each element from the list variable's value range
- *       appears in exactly one entity's list variable.
+ *       appears in exactly one entity's list variable, unless {@link #allowsUnassignedValues()}
+ *       permits it to remain unassigned.
  * </ul>
  *
  * <p>This makes sense for common use cases, for example the Vehicle Routing Problem or Task
  * Assigning. In both cases the <em>order</em> in which customers are visited and tasks are being
  * worked on matters. Also, each customer must be visited <em>once</em> and each task must be
  * completed by <em>exactly one</em> employee.
+ *
+ * <p>A solution may have multiple list-variable declarations, on the same or different entity
+ * classes, alongside basic planning variables. Their element type domains and value populations
+ * must be disjoint: shared elements, overlapping element types, and nested list ownership are not
+ * supported. Moves between owners remain within one list-variable declaration. Each declaration has
+ * its own assignment policy and shadows. Use {@link PlanningPinToIndex#variableName()} to select
+ * the list affected by a pin reader when its declaring entity has multiple list variables.
  *
  * @see PlanningPin
  * @see PlanningPinToIndex

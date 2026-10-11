@@ -19,6 +19,10 @@ import greycos.solver.core.impl.score.director.InnerScoreDirector;
 import greycos.solver.core.testcotwin.list.TestdataListEntity;
 import greycos.solver.core.testcotwin.list.TestdataListSolution;
 import greycos.solver.core.testcotwin.list.TestdataListValue;
+import greycos.solver.core.testcotwin.multiplelist.TestdataMultipleListEntity;
+import greycos.solver.core.testcotwin.multiplelist.TestdataMultipleListFirstValue;
+import greycos.solver.core.testcotwin.multiplelist.TestdataMultipleListSecondValue;
+import greycos.solver.core.testcotwin.multiplelist.TestdataMultipleListSolution;
 
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -36,6 +40,56 @@ class VariableChangeRecordingScoreDirectorTest {
   private static VariableChangeRecordingScoreDirector<TestdataListSolution, SimpleScore>
       recorder() {
     return new VariableChangeRecordingScoreDirector<>(mockBacking());
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void simultaneouslyOpenFieldsOnOneOwnerUndoIndependently() {
+    var descriptor = TestdataMultipleListSolution.buildSolutionDescriptor();
+    var firstDescriptor =
+        descriptor.resolveListVariableDescriptor(
+            TestdataMultipleListEntity.class, "firstValueList");
+    var secondDescriptor =
+        descriptor.resolveListVariableDescriptor(
+            TestdataMultipleListEntity.class, "secondValueList");
+    var entity = new TestdataMultipleListEntity("owner");
+    var first = new TestdataMultipleListFirstValue("first");
+    var second = new TestdataMultipleListSecondValue("second");
+    var added = new TestdataMultipleListSecondValue("added");
+    entity.getFirstValueList().add(first);
+    entity.getSecondValueList().add(second);
+    InnerScoreDirector<TestdataMultipleListSolution, SimpleScore> backing =
+        mock(InnerScoreDirector.class);
+    var recorder = new VariableChangeRecordingScoreDirector<>(backing);
+    var nonDelegating = recorder.getNonDelegating();
+
+    recorder.beforeListVariableChanged(firstDescriptor, entity, 0, 1);
+    // A mismatched after-call must leave the first field's bracket open.
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> recorder.afterListVariableChanged(secondDescriptor, entity, 0, 1))
+        .withMessageContaining("secondValueList")
+        .withMessageContaining("has no matching beforeListVariableChanged");
+    nonDelegating.beforeListVariableChanged(secondDescriptor, entity, 1, 1);
+    // Rejecting an overlapping bracket must retain the original pending action.
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> recorder.beforeListVariableChanged(firstDescriptor, entity, 0, 0))
+        .withMessageContaining("already has an open beforeListVariableChanged");
+    entity.getFirstValueList().clear();
+    entity.getSecondValueList().add(added);
+    nonDelegating.afterListVariableChanged(firstDescriptor, entity, 0, 0);
+    recorder.afterListVariableChanged(secondDescriptor, entity, 1, 2);
+
+    clearInvocations(backing);
+    recorder.undoChanges();
+
+    assertThat(entity.getFirstValueList()).containsExactly(first);
+    assertThat(entity.getSecondValueList()).containsExactly(second);
+    verify(backing).beforeListVariableChanged(firstDescriptor, entity, 0, 0);
+    verify(backing).afterListVariableChanged(firstDescriptor, entity, 0, 1);
+    verify(backing).beforeListVariableChanged(secondDescriptor, entity, 1, 2);
+    verify(backing).afterListVariableChanged(secondDescriptor, entity, 1, 1);
+    verify(backing).updateShadowVariables();
+    verifyNoMoreInteractions(backing);
   }
 
   /**

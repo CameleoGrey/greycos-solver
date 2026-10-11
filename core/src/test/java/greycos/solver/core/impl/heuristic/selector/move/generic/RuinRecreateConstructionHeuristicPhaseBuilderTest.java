@@ -130,6 +130,8 @@ class RuinRecreateConstructionHeuristicPhaseBuilderTest {
         RuinRecreateConstructionHeuristicPhaseBuilder.create(
             solverConfigPolicy, constructionHeuristicConfig);
     var scoreDirector = mock(InnerScoreDirector.class);
+    when(scoreDirector.getSolutionDescriptor())
+        .thenReturn(solverConfigPolicy.getSolutionDescriptor());
     when(scoreDirector.isDerived()).thenReturn(derived);
     var phase = builder.ensureThreadSafe(scoreDirector).build();
     assertThat(phase.getEntityPlacer()).isNotSameAs(builder.getEntityPlacer());
@@ -150,6 +152,7 @@ class RuinRecreateConstructionHeuristicPhaseBuilderTest {
         RuinRecreateConstructionHeuristicPhaseBuilder.create(
             enclosingPolicy, new ConstructionHeuristicPhaseConfig().withMoveThreadCount("NONE"));
     var scoreDirector = mock(InnerScoreDirector.class);
+    when(scoreDirector.getSolutionDescriptor()).thenReturn(enclosingPolicy.getSolutionDescriptor());
     when(scoreDirector.isDerived()).thenReturn(true);
 
     var first = builder.ensureThreadSafe(scoreDirector);
@@ -182,6 +185,7 @@ class RuinRecreateConstructionHeuristicPhaseBuilderTest {
             enclosingPolicy,
             new ConstructionHeuristicPhaseConfig().withMoveThreadCount(nestedMoveThreadCount));
     var scoreDirector = mock(InnerScoreDirector.class);
+    when(scoreDirector.getSolutionDescriptor()).thenReturn(enclosingPolicy.getSolutionDescriptor());
     when(scoreDirector.isDerived()).thenReturn(true);
     var copy = builder.ensureThreadSafe(scoreDirector);
     assertThat(copy).isNotSameAs(builder);
@@ -192,6 +196,47 @@ class RuinRecreateConstructionHeuristicPhaseBuilderTest {
     assertThat(anotherCopy.getEntityPlacer())
         .isNotSameAs(builder.getEntityPlacer())
         .isNotSameAs(copy.getEntityPlacer());
+  }
+
+  @Test
+  void independentModelRebuildPreservesNearbyConfigurationAndEnvironment() {
+    var sourceDescriptor = TestdataSolution.buildSolutionDescriptor();
+    var destinationDescriptor = TestdataSolution.buildSolutionDescriptor();
+    var policy =
+        new HeuristicConfigPolicy.Builder<TestdataSolution>()
+            .withEnvironmentMode(EnvironmentMode.FULL_ASSERT)
+            .withSolutionDescriptor(sourceDescriptor)
+            .withInitializingScoreTrend(
+                InitializingScoreTrend.buildUniformTrend(InitializingScoreTrendLevel.ANY, 1))
+            .withConstructionHeuristicNearbyProfiles(
+                ConstructionHeuristicNearbyProfileResolver.resolveGlobal(
+                    sourceDescriptor, TestNearbyDistanceMeter.class))
+            .build();
+    var constructionConfig =
+        new ConstructionHeuristicPhaseConfig()
+            .withNearbySelectionAutoConfigurationEnabled(true)
+            .withNearbySelectionSize(5)
+            .withMoveThreadCount("NONE");
+    var builder = RuinRecreateConstructionHeuristicPhaseBuilder.create(policy, constructionConfig);
+    // The builder retains the original configuration snapshot even if its caller changes theirs.
+    constructionConfig.setNearbySelectionAutoConfigurationEnabled(false);
+    var director = mock(InnerScoreDirector.class);
+    when(director.getSolutionDescriptor()).thenReturn(destinationDescriptor);
+
+    var first = builder.ensureThreadSafe(director);
+    var second = builder.ensureThreadSafe(director);
+
+    assertThat(first).isNotSameAs(builder).isNotSameAs(second);
+    assertThat(first.getEntityPlacer())
+        .isNotSameAs(builder.getEntityPlacer())
+        .isNotSameAs(second.getEntityPlacer());
+    assertThat(first.build().getEnvironmentMode()).isEqualTo(EnvironmentMode.FULL_ASSERT);
+    assertThat(first.getEntityPlacer().getCandidateMoveSelectors())
+        .singleElement()
+        .isInstanceOf(ConstructionHeuristicNearbyMoveSelector.class);
+    assertThat(second.getEntityPlacer().getCandidateMoveSelectors())
+        .singleElement()
+        .isInstanceOf(ConstructionHeuristicNearbyMoveSelector.class);
   }
 
   public static final class TestNearbyDistanceMeter

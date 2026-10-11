@@ -201,6 +201,8 @@ public final class ConstructionHeuristicNearbyProfileResolver {
     private final Map<String, EntitySelectorConfig> entityRecorders = new HashMap<>();
     private final Map<String, ValueBinding> valueRecorders = new HashMap<>();
     private final Map<String, SubListSelectorConfig> subListRecorders = new HashMap<>();
+    private final Map<SubListSelectorConfig, EntitySelectorConfig> subListOwners =
+        new java.util.IdentityHashMap<>();
 
     private Discovery(
         SolutionDescriptor<?> solutionDescriptor,
@@ -236,20 +238,31 @@ public final class ConstructionHeuristicNearbyProfileResolver {
         indexEntity(swap.getEntitySelectorConfig());
         indexEntity(swap.getSecondaryEntitySelectorConfig());
       } else if (selector instanceof ListChangeMoveSelectorConfig change) {
-        indexValue(change.getValueSelectorConfig(), null);
+        indexValue(
+            change.getValueSelectorConfig(),
+            change.getDestinationSelectorConfig() == null
+                ? null
+                : change.getDestinationSelectorConfig().getEntitySelectorConfig());
         indexDestination(change.getDestinationSelectorConfig());
       } else if (selector instanceof ListSwapMoveSelectorConfig swap) {
-        indexValue(swap.getValueSelectorConfig(), null);
-        indexValue(swap.getSecondaryValueSelectorConfig(), null);
+        var entity = new EntitySelectorConfig(swap.getEntityClass());
+        indexValue(swap.getValueSelectorConfig(), entity);
+        indexValue(swap.getSecondaryValueSelectorConfig(), entity);
       } else if (selector instanceof SubListChangeMoveSelectorConfig change) {
-        indexSubList(change.getSubListSelectorConfig());
+        indexSubList(
+            change.getSubListSelectorConfig(),
+            change.getDestinationSelectorConfig() == null
+                ? null
+                : change.getDestinationSelectorConfig().getEntitySelectorConfig());
         indexDestination(change.getDestinationSelectorConfig());
       } else if (selector instanceof SubListSwapMoveSelectorConfig swap) {
-        indexSubList(swap.getSubListSelectorConfig());
-        indexSubList(swap.getSecondarySubListSelectorConfig());
+        var entity = new EntitySelectorConfig(swap.getEntityClass());
+        indexSubList(swap.getSubListSelectorConfig(), entity);
+        indexSubList(swap.getSecondarySubListSelectorConfig(), entity);
       } else if (selector instanceof KOptListMoveSelectorConfig kOpt) {
-        indexValue(kOpt.getOriginSelectorConfig(), null);
-        indexValue(kOpt.getValueSelectorConfig(), null);
+        var entity = new EntitySelectorConfig(kOpt.getEntityClass());
+        indexValue(kOpt.getOriginSelectorConfig(), entity);
+        indexValue(kOpt.getValueSelectorConfig(), entity);
       } else if (selector instanceof AbstractPillarMoveSelectorConfig<?> pillar) {
         var pillarSelector = pillar.getPillarSelectorConfig();
         var entity = pillarSelector == null ? null : pillarSelector.getEntitySelectorConfig();
@@ -275,12 +288,13 @@ public final class ConstructionHeuristicNearbyProfileResolver {
       }
     }
 
-    private void indexSubList(SubListSelectorConfig selector) {
+    private void indexSubList(SubListSelectorConfig selector, EntitySelectorConfig owner) {
       if (selector != null) {
+        subListOwners.put(selector, owner);
         if (selector.getId() != null) {
           subListRecorders.put(selector.getId(), selector);
         }
-        indexValue(selector.getValueSelectorConfig(), null);
+        indexValue(selector.getValueSelectorConfig(), owner);
       }
     }
 
@@ -357,13 +371,18 @@ public final class ConstructionHeuristicNearbyProfileResolver {
             autoConfigured);
       } else if (selector instanceof ListSwapMoveSelectorConfig swap) {
         listValues(
+            new EntitySelectorConfig(swap.getEntityClass()),
             swap.getValueSelectorConfig(),
             swap.getSecondaryValueSelectorConfig(),
             path,
             autoConfigured);
       } else if (selector instanceof KOptListMoveSelectorConfig kOpt) {
         listValues(
-            kOpt.getOriginSelectorConfig(), kOpt.getValueSelectorConfig(), path, autoConfigured);
+            new EntitySelectorConfig(kOpt.getEntityClass()),
+            kOpt.getOriginSelectorConfig(),
+            kOpt.getValueSelectorConfig(),
+            path,
+            autoConfigured);
       } else if (selector instanceof SubListChangeMoveSelectorConfig change) {
         var origin = effectiveSubList(change.getSubListSelectorConfig());
         listChange(
@@ -433,11 +452,12 @@ public final class ConstructionHeuristicNearbyProfileResolver {
     }
 
     private void listValues(
+        EntitySelectorConfig entity,
         ValueSelectorConfig first,
         ValueSelectorConfig second,
         String path,
         boolean autoConfigured) {
-      for (var binding : variableBindings(null, first == null ? second : first, true)) {
+      for (var binding : variableBindings(entity, first == null ? second : first, true)) {
         var variable = binding.variableDescriptor();
         manual(binding, nearby(first), VALUE_VALUE, path + ".originValueSelector");
         manual(binding, nearby(second), VALUE_VALUE, path + ".valueSelector");
@@ -449,7 +469,9 @@ public final class ConstructionHeuristicNearbyProfileResolver {
 
     private void manualSubList(SubListSelectorConfig selector, String path) {
       if (selector != null) {
-        for (var binding : variableBindings(null, selector.getValueSelectorConfig(), true)) {
+        for (var binding :
+            variableBindings(
+                subListOwners.get(selector), selector.getValueSelectorConfig(), true)) {
           manual(binding, selector.getNearbySelectionConfig(), VALUE_VALUE, path);
           manual(
               binding,
@@ -515,14 +537,16 @@ public final class ConstructionHeuristicNearbyProfileResolver {
       }
       if (valueOrigin) {
         var originValue = nearby.getOriginValueSelectorConfig();
+        EntitySelectorConfig originOwner = null;
         if (originValue == null) {
           var originSubList = effectiveSubList(nearby.getOriginSubListSelectorConfig());
           if (originSubList == null) {
             return;
           }
           originValue = originSubList.getValueSelectorConfig();
+          originOwner = subListOwners.get(originSubList);
         }
-        if (variableBindings(null, originValue, true).stream()
+        if (variableBindings(originOwner, originValue, true).stream()
             .noneMatch(originBinding -> originBinding.variableDescriptor() == variable)) {
           return;
         }

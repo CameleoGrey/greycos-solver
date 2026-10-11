@@ -8,7 +8,6 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 import greycos.solver.core.api.score.SimpleScore;
 import greycos.solver.core.impl.score.director.InnerScoreDirector;
-import greycos.solver.core.testcotwin.TestdataSolution;
 import greycos.solver.core.testcotwin.list.TestdataListEntity;
 import greycos.solver.core.testcotwin.list.TestdataListSolution;
 import greycos.solver.core.testcotwin.list.TestdataListValue;
@@ -66,11 +65,20 @@ class ListUnassignMoveTest {
 
   @Test
   void rebase() {
-    var solutionDescriptor = TestdataSolution.buildSolutionDescriptor();
-    var destinationScoreDirector = mockRebasingScoreDirector(solutionDescriptor, new Object[][] {});
-    var move = new ListUnassignMove<TestdataSolution>(null, null, 0);
-    var rebasedMove = move.rebase(destinationScoreDirector);
+    var sourceDescriptor = TestdataListSolution.buildSolutionDescriptor();
+    var destinationDescriptor = TestdataListSolution.buildSolutionDescriptor();
+    var source = TestdataListEntity.createWithValues("entity", new TestdataListValue("value"));
+    var destination = TestdataListEntity.createWithValues("entity", new TestdataListValue("value"));
+    var destinationScoreDirector =
+        mockRebasingScoreDirector(destinationDescriptor, new Object[][] {{source, destination}});
+    var move = new ListUnassignMove<>(sourceDescriptor.getListVariableDescriptor(), source, 0);
+    var rebasedMove =
+        (ListUnassignMove<TestdataListSolution>) move.rebase(destinationScoreDirector);
     assertThat(rebasedMove).isNotSameAs(move);
+    assertThat(rebasedMove.getVariableDescriptor())
+        .isSameAs(destinationDescriptor.getListVariableDescriptor());
+    assertThat(rebasedMove.getSourceEntity()).isSameAs(destination);
+    assertThat(rebasedMove.getSourceIndex()).isZero();
   }
 
   @Test

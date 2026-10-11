@@ -6,6 +6,7 @@ import java.util.SequencedCollection;
 
 import greycos.solver.core.api.cotwin.lookup.Lookup;
 import greycos.solver.core.impl.move.AbstractMove;
+import greycos.solver.core.impl.move.VariableDescriptorRebaser;
 import greycos.solver.core.preview.api.cotwin.metamodel.PlanningListVariableMetaModel;
 import greycos.solver.core.preview.api.move.Move;
 import greycos.solver.core.preview.api.move.MutableSolutionView;
@@ -45,7 +46,7 @@ public final class ListAssignMove<Solution_, Entity_, Value_> extends AbstractMo
   @Override
   public Move<Solution_> rebase(Lookup lookup) {
     return new ListAssignMove<>(
-        variableMetaModel,
+        VariableDescriptorRebaser.rebase(variableMetaModel, lookup),
         lookup.lookUpNonNullWorkingObject(planningValue),
         lookup.lookUpNonNullWorkingObject(destinationEntity),
         destinationIndex);

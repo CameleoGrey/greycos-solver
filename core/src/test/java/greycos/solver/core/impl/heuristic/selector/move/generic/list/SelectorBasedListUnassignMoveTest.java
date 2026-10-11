@@ -8,8 +8,6 @@ import static org.mockito.Mockito.verify;
 
 import greycos.solver.core.api.score.SimpleScore;
 import greycos.solver.core.impl.score.director.InnerScoreDirector;
-import greycos.solver.core.testcotwin.TestdataEntity;
-import greycos.solver.core.testcotwin.TestdataSolution;
 import greycos.solver.core.testcotwin.list.TestdataListEntity;
 import greycos.solver.core.testcotwin.list.TestdataListSolution;
 import greycos.solver.core.testcotwin.list.TestdataListValue;
@@ -64,18 +62,22 @@ class SelectorBasedListUnassignMoveTest {
 
   @Test
   void rebase() {
-    var solutionDescriptor = TestdataSolution.buildSolutionDescriptor();
-    var source = new TestdataEntity();
-    var destination = new TestdataEntity();
+    var sourceDescriptor = TestdataListSolution.buildSolutionDescriptor();
+    var destinationDescriptor = TestdataListSolution.buildSolutionDescriptor();
+    var source = TestdataListEntity.createWithValues("entity", new TestdataListValue("value"));
+    var destination = TestdataListEntity.createWithValues("entity", new TestdataListValue("value"));
     var destinationScoreDirector =
-        mockRebasingScoreDirector(
-            solutionDescriptor,
-            new Object[][] {
-              {source, destination},
-            });
-    var move = new SelectorBasedListUnassignMove<TestdataSolution>(null, source, 0);
-    var rebasedMove = move.rebase(destinationScoreDirector);
+        mockRebasingScoreDirector(destinationDescriptor, new Object[][] {{source, destination}});
+    var move =
+        new SelectorBasedListUnassignMove<>(
+            sourceDescriptor.getListVariableDescriptor(), source, 0);
+    var rebasedMove =
+        (SelectorBasedListUnassignMove<TestdataListSolution>) move.rebase(destinationScoreDirector);
     assertThat(rebasedMove).isNotSameAs(move);
+    assertThat(rebasedMove.getVariableDescriptor())
+        .isSameAs(destinationDescriptor.getListVariableDescriptor());
+    assertThat(rebasedMove.getSourceEntity()).isSameAs(destination);
+    assertThat(rebasedMove.getSourceIndex()).isZero();
   }
 
   @Test

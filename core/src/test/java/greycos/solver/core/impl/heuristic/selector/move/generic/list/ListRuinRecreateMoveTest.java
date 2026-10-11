@@ -53,7 +53,7 @@ class ListRuinRecreateMoveTest {
 
     var move =
         new ListRuinRecreateMove<TestdataListSolution>(
-            mock(ListVariableDescriptor.class),
+            variableDescriptor,
             mock(RuinRecreateConstructionHeuristicPhaseBuilder.class),
             mock(SolverScope.class),
             Arrays.asList(v1, v2),
