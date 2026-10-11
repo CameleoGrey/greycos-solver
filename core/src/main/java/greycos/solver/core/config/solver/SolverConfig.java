@@ -8,6 +8,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.io.UnsupportedEncodingException;
+import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Duration;
@@ -211,6 +212,17 @@ public final class SolverConfig extends AbstractConfig<SolverConfig> {
     SolverConfig solverConfig = solverConfigIO.read(reader);
     solverConfig.setClassLoader(classLoader);
     return solverConfig;
+  }
+
+  /**
+   * Writes this configuration using the existing solver XML representation. The writer remains open
+   * and belongs to the caller. Runtime-only objects such as clocks, generated accessors and custom
+   * phase command instances are not serialized; this is not a solver checkpoint.
+   *
+   * @param writer the destination, which is not closed
+   */
+  public void writeXml(@NonNull Writer writer) {
+    new SolverConfigIO().write(this, writer);
   }
 
   // ************************************************************************

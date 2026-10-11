@@ -81,6 +81,51 @@ class SolverConfigTest {
     assertThat(roundTrippedConfig).usingRecursiveComparison().isEqualTo(jaxbSolverConfig);
   }
 
+  @ParameterizedTest
+  @ValueSource(strings = {TEST_SOLVER_CONFIG_WITHOUT_NAMESPACE, TEST_SOLVER_CONFIG_WITH_NAMESPACE})
+  void publicXmlWriterRoundTripsWithoutClosingCallerWriter(String solverConfigResource) {
+    var config = readSolverConfig(solverConfigResource);
+    var writer =
+        new StringWriter() {
+          @Override
+          public void close() {
+            throw new AssertionError("The caller owns the writer.");
+          }
+        };
+    config.writeXml(writer);
+
+    var reloaded = SolverConfig.createFromXmlReader(new StringReader(writer.toString()));
+    assertThat(reloaded).usingRecursiveComparison().isEqualTo(config);
+    writer.append("still open");
+    assertThat(writer.toString()).endsWith("still open");
+  }
+
+  @Test
+  void publicXmlWriterPreservesSerializationFailureAndWriterOwnership() {
+    var failure = new IllegalStateException("write failed");
+    var writer =
+        new StringWriter() {
+          @Override
+          public void write(String text) {
+            throw failure;
+          }
+
+          @Override
+          public void write(char[] chars, int offset, int length) {
+            throw failure;
+          }
+
+          @Override
+          public void close() {
+            throw new AssertionError("The caller owns the writer.");
+          }
+        };
+
+    assertThatThrownBy(() -> new SolverConfig().writeXml(writer))
+        .isInstanceOf(GreyCOSXmlSerializationException.class)
+        .hasRootCause(failure);
+  }
+
   @Test
   void readXmlConfigWithNamespace() {
     var solverConfig = readSolverConfig(TEST_SOLVER_CONFIG_WITH_NAMESPACE);

@@ -33,6 +33,17 @@
       -->
       <dependency>
         <groupId>io.github.cameleogrey</groupId>
+        <artifactId>greycos-solver-greybay</artifactId>
+        <version>${version.greycos.solver}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.github.cameleogrey</groupId>
+        <artifactId>greycos-solver-greybay</artifactId>
+        <version>${version.greycos.solver}</version>
+        <classifier>sources</classifier>
+      </dependency>
+      <dependency>
+        <groupId>io.github.cameleogrey</groupId>
         <artifactId>greycos-solver-core</artifactId>
         <version>${version.greycos.solver}</version>
       </dependency>

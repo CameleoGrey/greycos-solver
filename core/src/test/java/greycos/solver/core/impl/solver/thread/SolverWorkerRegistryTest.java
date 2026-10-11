@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 
+import java.time.Duration;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -57,6 +58,9 @@ class SolverWorkerRegistryTest {
 
       assertThat(future.isDone()).isTrue();
       assertThat(executor.isShutdown()).isTrue();
+      assertThat(registry.activeWorkerLabels()).containsExactly("island move workers");
+      assertThat(registry.awaitQuiescence(Duration.ZERO)).isFalse();
+      assertThat(registry.awaitQuiescence(Duration.ofMillis(1))).isFalse();
       assertThatThrownBy(registry::assertNoActiveWorkers)
           .isInstanceOf(IllegalStateException.class)
           .hasMessageContaining("island move workers")
@@ -67,6 +71,7 @@ class SolverWorkerRegistryTest {
       assertThat(executor.awaitTermination(5, TimeUnit.SECONDS)).isTrue();
     }
     assertThatCode(registry::assertNoActiveWorkers).doesNotThrowAnyException();
+    assertThat(registry.awaitQuiescence(Duration.ZERO)).isTrue();
   }
 
   @Test
@@ -91,11 +96,55 @@ class SolverWorkerRegistryTest {
     var second = new Thread(() -> {}, "not-started-second");
     registry.registerThread(first, "first raw worker");
     registry.registerThread(second, "second raw worker");
+    var labels = registry.activeWorkerLabels();
+    assertThat(labels).containsExactly("first raw worker", "second raw worker");
+    assertThatThrownBy(() -> labels.add("mutated"))
+        .isInstanceOf(UnsupportedOperationException.class);
 
     registry.unregisterThread(second);
     assertThatThrownBy(registry::assertNoActiveWorkers).hasMessageContaining("first raw worker");
     registry.unregisterThread(first);
     assertThatCode(registry::assertNoActiveWorkers).doesNotThrowAnyException();
+    assertThat(labels).hasSize(2);
+  }
+
+  @Test
+  void awaitQuiescenceObservesActualRawThreadExit() throws Exception {
+    var registry = new SolverWorkerRegistry();
+    var release = new CountDownLatch(1);
+    var worker = new Thread(() -> awaitUninterruptibly(release));
+    registry.registerThread(worker, "raw worker");
+    assertThat(registry.awaitQuiescence(Duration.ZERO)).isFalse();
+    worker.start();
+    try {
+      release.countDown();
+      assertThat(registry.awaitQuiescence(Duration.ofSeconds(5))).isTrue();
+      assertThat(worker.isAlive()).isFalse();
+      assertThat(registry.activeWorkerLabels()).isEmpty();
+    } finally {
+      release.countDown();
+      worker.join(5000);
+    }
+  }
+
+  @Test
+  void interruptedWaitDoesNotReleaseWorkers() {
+    var registry = new SolverWorkerRegistry();
+    var worker = new Thread(() -> {});
+    registry.registerThread(worker, "not started");
+    Thread.currentThread().interrupt();
+    try {
+      assertThatThrownBy(() -> registry.awaitQuiescence(Duration.ofSeconds(5)))
+          .isInstanceOf(InterruptedException.class);
+      assertThat(registry.activeWorkerLabels()).containsExactly("not started");
+    } finally {
+      Thread.interrupted();
+      registry.unregisterThread(worker);
+    }
+    assertThatThrownBy(() -> registry.awaitQuiescence(Duration.ofNanos(-1)))
+        .isInstanceOf(IllegalArgumentException.class);
+    assertThatThrownBy(() -> registry.awaitQuiescence(Duration.ofSeconds(Long.MAX_VALUE)))
+        .isInstanceOf(IllegalArgumentException.class);
   }
 
   @Test

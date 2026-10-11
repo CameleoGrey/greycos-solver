@@ -11,6 +11,7 @@
 ** xref:using-greycos-solver/modeling-planning-problems.adoc[leveloffset=+1]
 ** xref:using-greycos-solver/running-the-solver.adoc[leveloffset=+1]
 ** xref:using-greycos-solver/benchmarking-and-tweaking.adoc[leveloffset=+1]
+** xref:using-greycos-solver/greybay.adoc[leveloffset=+1]
 * Constraints and Score
 ** xref:constraints-and-score/overview.adoc[leveloffset=+1]
 ** xref:constraints-and-score/score-calculation.adoc[leveloffset=+1]

@@ -28,7 +28,17 @@ public interface BestSolutionChangedEvent<Solution_> {
   EventProducerId getProducerId();
 
   /**
-   * Note that:
+   * Returns a published planning clone. The caller may retain it read-only after this callback
+   * returns: later improvements, phase handoffs and solver cleanup do not change its planning
+   * assignments or shadow variables. A custom solution cloner must satisfy the independence
+   * requirements of {@link greycos.solver.core.api.cotwin.solution.cloner.SolutionCloner}.
+   *
+   * <p>Problem facts may be shared between planning clones. This is not a deep immutable copy of
+   * the entire graph, and application changes to shared facts can invalidate an earlier snapshot.
+   * Do not modify the published solution while solving is active. In particular, defer operations
+   * that recalculate its score or shadow variables until the solve has returned.
+   *
+   * <p>Note that:
    *
    * <ul>
    *   <li>In real-time planning, not all {@link ProblemChange}s might be processed: check {@link

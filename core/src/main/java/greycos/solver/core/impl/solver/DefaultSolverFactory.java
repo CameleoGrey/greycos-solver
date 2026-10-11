@@ -159,60 +159,71 @@ public final class DefaultSolverFactory<Solution_> implements SolverFactory<Solu
             .withConstraintMatchPolicy(
                 decideConstraintMatchPolicy(solverScope, globalEnvironmentMode))
             .build();
-    solverScope.setScoreDirector(scoreDirector);
-    solverScope.setProblemChangeDirector(new DefaultProblemChangeDirector<>(scoreDirector));
-    var moveThreadCount = resolveMoveThreadCount(true);
-    var previewFeaturesEnabled = solverConfig.getEnablePreviewFeatureSet();
-    var scoreDirectorFactoryConfig = solverConfig.getScoreDirectorFactoryConfig();
-    if (scoreDirectorFactoryConfig != null) {
-      var profilingEnabled = scoreDirectorFactoryConfig.getConstraintStreamProfilingEnabled();
-      if (moveThreadCount != null && Boolean.TRUE.equals(profilingEnabled)) {
-        throw new UnsupportedOperationException(
-            "Multithreaded solving is not supported together with constraintStreamProfilingEnabled (%s)."
-                .formatted(profilingEnabled));
+    try {
+      solverScope.setScoreDirector(scoreDirector);
+      solverScope.setProblemChangeDirector(new DefaultProblemChangeDirector<>(scoreDirector));
+      var moveThreadCount = resolveMoveThreadCount(true);
+      var previewFeaturesEnabled = solverConfig.getEnablePreviewFeatureSet();
+      var scoreDirectorFactoryConfig = solverConfig.getScoreDirectorFactoryConfig();
+      if (scoreDirectorFactoryConfig != null) {
+        var profilingEnabled = scoreDirectorFactoryConfig.getConstraintStreamProfilingEnabled();
+        if (moveThreadCount != null && Boolean.TRUE.equals(profilingEnabled)) {
+          throw new UnsupportedOperationException(
+              "Multithreaded solving is not supported together with constraintStreamProfilingEnabled (%s)."
+                  .formatted(profilingEnabled));
+        }
       }
+
+      var randomFactory = buildRandomSupplier(globalEnvironmentMode);
+      var configPolicy =
+          new HeuristicConfigPolicy.Builder<Solution_>()
+              .withPreviewFeatureSet(previewFeaturesEnabled)
+              .withEnvironmentMode(globalEnvironmentMode)
+              .withMoveThreadCount(moveThreadCount)
+              .withMoveThreadBufferSize(solverConfig.getMoveThreadBufferSize())
+              .withConstraintStreamProfilingEnabled(
+                  scoreDirectorFactoryConfig != null
+                      && Boolean.TRUE.equals(
+                          scoreDirectorFactoryConfig.getConstraintStreamProfilingEnabled()))
+              .withThreadFactoryClass(solverConfig.getThreadFactoryClass())
+              .withNearbyDistanceMeterClass(solverConfig.getNearbyDistanceMeterClass())
+              .withConstructionHeuristicNearbyProfiles(
+                  ConstructionHeuristicNearbyProfileResolver.resolveGlobal(
+                      solutionDescriptor, solverConfig.getNearbyDistanceMeterClass()))
+              .withRandom(randomFactory.get())
+              .withInitializingScoreTrend(scoreDirectorFactory.getInitializingScoreTrend())
+              .withSolutionDescriptor(solutionDescriptor)
+              .withClassInstanceCache(ClassInstanceCache.create())
+              .build();
+      var basicPlumbingTermination = new BasicPlumbingTermination<Solution_>(isDaemon);
+      var termination = buildTermination(basicPlumbingTermination, configPolicy, configOverride);
+      var bestSolutionRecaller =
+          BestSolutionRecallerFactory.create()
+              .<Solution_>buildBestSolutionRecaller(globalEnvironmentMode);
+      var phaseList = buildPhaseList(configPolicy, bestSolutionRecaller, termination);
+
+      return new DefaultSolver<>(
+          globalEnvironmentMode,
+          scoreDirectorFactory,
+          randomFactory,
+          bestSolutionRecaller,
+          basicPlumbingTermination,
+          (UniversalTermination<Solution_>) termination,
+          phaseList,
+          solverScope,
+          moveThreadCount == null
+              ? SolverConfig.MOVE_THREAD_COUNT_NONE
+              : Integer.toString(moveThreadCount));
+    } catch (RuntimeException | Error failure) {
+      try {
+        scoreDirector.close();
+      } catch (RuntimeException | Error closeFailure) {
+        if (closeFailure != failure) {
+          failure.addSuppressed(closeFailure);
+        }
+      }
+      throw failure;
     }
-
-    var randomFactory = buildRandomSupplier(globalEnvironmentMode);
-    var configPolicy =
-        new HeuristicConfigPolicy.Builder<Solution_>()
-            .withPreviewFeatureSet(previewFeaturesEnabled)
-            .withEnvironmentMode(globalEnvironmentMode)
-            .withMoveThreadCount(moveThreadCount)
-            .withMoveThreadBufferSize(solverConfig.getMoveThreadBufferSize())
-            .withConstraintStreamProfilingEnabled(
-                scoreDirectorFactoryConfig != null
-                    && Boolean.TRUE.equals(
-                        scoreDirectorFactoryConfig.getConstraintStreamProfilingEnabled()))
-            .withThreadFactoryClass(solverConfig.getThreadFactoryClass())
-            .withNearbyDistanceMeterClass(solverConfig.getNearbyDistanceMeterClass())
-            .withConstructionHeuristicNearbyProfiles(
-                ConstructionHeuristicNearbyProfileResolver.resolveGlobal(
-                    solutionDescriptor, solverConfig.getNearbyDistanceMeterClass()))
-            .withRandom(randomFactory.get())
-            .withInitializingScoreTrend(scoreDirectorFactory.getInitializingScoreTrend())
-            .withSolutionDescriptor(solutionDescriptor)
-            .withClassInstanceCache(ClassInstanceCache.create())
-            .build();
-    var basicPlumbingTermination = new BasicPlumbingTermination<Solution_>(isDaemon);
-    var termination = buildTermination(basicPlumbingTermination, configPolicy, configOverride);
-    var bestSolutionRecaller =
-        BestSolutionRecallerFactory.create()
-            .<Solution_>buildBestSolutionRecaller(globalEnvironmentMode);
-    var phaseList = buildPhaseList(configPolicy, bestSolutionRecaller, termination);
-
-    return new DefaultSolver<>(
-        globalEnvironmentMode,
-        scoreDirectorFactory,
-        randomFactory,
-        bestSolutionRecaller,
-        basicPlumbingTermination,
-        (UniversalTermination<Solution_>) termination,
-        phaseList,
-        solverScope,
-        moveThreadCount == null
-            ? SolverConfig.MOVE_THREAD_COUNT_NONE
-            : Integer.toString(moveThreadCount));
   }
 
   public @Nullable Integer resolveMoveThreadCount(boolean enforceMaximum) {

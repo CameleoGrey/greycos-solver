@@ -1,0 +1,185 @@
+= Tuning configurations with Greybay
+:page-aliases: greybay.adoc
+
+Greybay is a Java-native configuration-search tool for a representative family of planning problems.
+It evaluates complete solver configurations on fixed instance and seed panels, retains durable observations,
+and qualifies one frozen selection on held-out instances and fresh seeds.
+The `io.github.cameleogrey:greycos-solver-greybay` artifact is a separate module; core does not depend on it.
+Benchmark is an optional application dependency for supplemental reports.
+
+The delivered workflow supports conditional TPE and random search.
+Its correctness tests and runnable examples do not establish that TPE finds better configurations or uses less compute.
+Such claims require a separate, frozen effectiveness experiment.
+
+== Prepare the model and panels
+
+Implement `ProblemAdapter<Solution_>` with a stable component identity, a content fingerprint and capability description
+for every problem ID, and `loadFresh` that returns independently owned mutable planning objects.
+Use stable IDs to reconstruct planning assignments and shadows from immutable business inputs.
+An input path alone is not a content identity.
+File-backed adapters declare input paths so export can protect inputs from filesystem aliases.
+
+An optional `BusinessVerifier` independently replays the result against original business demand.
+This is stronger than recalculating the solver score: if demand was removed before recalculation,
+the score can still be internally consistent.
+A verifier can check original ID populations, assignments, list coverage, facts, graph membership,
+shadow consistency and the business objective.
+Return an invalid verdict for a detected invalid result; an unexpected verifier exception is an execution failure.
+Absence of a verifier is explicitly recorded.
+
+Declare training and held-out `ProblemPanel`s with disjoint problem IDs and solver seeds.
+Preflight and warmup seeds must also be separate.
+Keep unrelated business score families in separate studies.
+Use representative small, medium and large instances for an effectiveness study; tiny examples only exercise the workflow.
+
+== Define the search space
+
+`GreybayStudyDefinition.builder()` requires the base solver configuration, adapter, panels, templates,
+objective, sampler, explicit optimizer seed, fixed solve duration and admission limits.
+It also accepts a warmup duration and resource policy.
+Use `new BalancedQualityObjective<>()` with `.sampler(new TpeSamplerConfig())`
+or `.sampler(new RandomSamplerConfig())`; the sampler overload also accepts a custom `Sampler`.
+The required `optimizerSeed` controls proposals; panel seeds control solver randomness.
+Warmup defaults to 30 seconds and should be set explicitly for a reproducible protocol.
+
+The optional `baselineCandidateAssignment` describes a baseline represented in the declared search space,
+including its `template` choice.
+Greybay verifies that this assignment materializes exactly the effective baseline before including it in sampler history.
+Omit it when the baseline is outside the space; no parameter assignment is fabricated.
+
+Templates materialize fresh configurations from typed assignments.
+`SearchSpace` supports categorical, integer, real and fixed dimensions with conditional activation.
+Missing active values and unexpected inactive values are invalid.
+Bounds and defaults are application choices, not generally optimal settings.
+`ReferenceTemplates` supplies ordinary local-search variants, GLS, ALNS, and ALNS/GLS-to-local-search pipelines.
+Registered move and ALNS portfolios declare capabilities and callback identities.
+The configuration is validated before evaluation; GLS does not silently combine with ordinary acceptors.
+Pipeline phase limits preserve the full scored horizon and declared first-phase fraction.
+
+Every custom adapter, verifier, template, objective, sampler, callback and reconstruction provider supplies
+`ComponentIdentity(id, version, artifactIdentity)`.
+Keep the identity stable only while the component's behavior, dependencies and fixed configuration remain stable.
+Change it when scoring weights or application implementation change.
+Custom objectives additionally provide deterministic codecs and a transitive comparator.
+Runtime-only configuration requires explicit reconstruction; XML cannot serialize live callback instances or native resources.
+
+== Run, stop and resume
+
+[source,java]
+----
+try (var study = GreybayStudies.create(studyDirectory, definition)) {
+    var training = study.run();
+    if (training.hasEligibleIncumbent()) {
+        var qualification = study.qualify();
+        var exported = study.exportSelected(studyDirectory.resolve("selected"));
+        System.out.println(qualification.status());
+        System.out.println(exported.solverConfigPath());
+    }
+}
+----
+
+Creation refuses an existing study directory.
+`run`, `qualify` and `exportSelected` are synchronous and mutually exclusive.
+`requestStop` and immutable `snapshot` are thread-safe.
+Stop prevents new admissions and requests cooperative termination of active work.
+The study returns and releases its lock only after owned work and cleanup finish;
+a blocked custom callback can therefore delay shutdown.
+Snapshots contain committed observations only.
+
+[source,java]
+----
+try (var study = GreybayStudies.resume(studyDirectory, definition,
+        StudyRunLimits.of(140, Duration.ofHours(36)))) {
+    study.run();
+}
+----
+
+Resume requires the same immutable experiment identities.
+Candidate and active-time limits may increase, but consumed work never resets.
+Baseline calibration does not consume a candidate trial slot.
+Interrupted attempts are restarted with fresh solver instances and graphs, with uncertain interrupted cost labeled.
+The journal and its referenced artifacts support durable recovery.
+The checkpoint is a recovery cache; the coordinator currently reconstructs state by replaying the full authoritative journal.
+Do not edit these files manually.
+Training cannot resume after selection is frozen or held-out evaluation begins.
+A saved solution or XML configuration does not restore adaptive algorithm state, clocks or RNGs.
+
+== Interpret training and qualification
+
+Each evaluation runs at the declared full horizon.
+Greybay selects the best complete solution observed on time and assesses a detached graph.
+A late final improvement does not replace the on-time observation.
+Cooperative termination overshoot and preparation, warmup, verification, sampler, failure and recovery costs are reported.
+Resource and instrumentation settings remain fixed across candidates.
+A shorter annealing run is not treated as a prefix of a longer run.
+
+The default objective rejects incomplete or invalid panels.
+It first compares feasibility rate, then normalized native score levels lexicographically using exact rational arithmetic.
+Seeds are averaged within each instance and instances have equal weight.
+Baseline calibration freezes the scales; adding candidates never changes historical values.
+Exact ties retain the earlier incumbent, including the baseline.
+Constraint-match attribution is separate from objective comparison.
+
+`qualify` freezes the training selection before held-out evaluation.
+It evaluates the baseline and frozen selection using the same budget/resource protocol and fresh seeds,
+calibrating held-out scales from the held-out baseline.
+Held-out observations never feed the sampler or select a new winner.
+The result separates comparison (`BETTER`, `EQUAL`, `WORSE`, `UNAVAILABLE`) from status:
+failed measurement, inconclusive evidence, no fully feasible candidate, held-out improvement, or no held-out improvement.
+A better infeasible result remains a best-effort result.
+These conclusions apply to the declared panel and are not statistical-significance claims.
+
+== Export and optional benchmark reports
+
+Export requires a frozen selection and writes solver XML, selection/provenance JSON,
+per-evaluation CSV and a Markdown report, committing the manifest last.
+Failed or incomplete qualification remains explicitly labeled.
+The runnable XML uses the first training seed by default, labeled as an example seed rather than an optimized seed.
+An existing same-selection destination returns its verified immutable snapshot at the recorded journal position.
+It does not refresh when qualification later changes.
+Use a new destination to export later qualification evidence.
+Inputs, unrelated files and other studies are protected from overwrite.
+
+`SolverConfig.writeXml(Writer)` leaves the writer owned by the caller.
+Reload exported XML with the application's classes available and verify the effective configuration.
+XML is a configuration artifact, not a solver checkpoint.
+
+An ordinary `PlannerBenchmarkConfig` can rerun the baseline and selection.
+Set warmup and parallelism explicitly.
+For arbitrary seed lists, create one named solver entry for every candidate/seed pair with `subSingleCount = 1`.
+Candidate-level aggregation remains Greybay's responsibility.
+Benchmark reports use ordinary returned final scores, so their observations do not overwrite Greybay's cutoff evidence.
+Report their extra compute and diagnostics separately; the benchmark favorite is not a replacement study selection.
+
+== Runnable complete examples
+
+The module's test sources contain complete annotated models, public constructors/accessors, adapters, score calculators,
+independent verifiers and runnable launchers.
+`SchedulingExample` assigns work to workers with required basic variables.
+`RoutingExample` orders visits in list variables and validates inverse/index shadows.
+Both retain solver-free immutable business records, content fingerprints and fresh stable-ID reconstruction.
+The examples are not shipped as production runtime models.
+
+From the repository root:
+
+[source,shell]
+----
+./mvnw -pl tools/greybay -am install -DskipTests
+./mvnw -f tools/greybay/pom.xml test-compile exec:java \
+  -Dexec.classpathScope=test \
+  -Dexec.mainClass=greycos.solver.greybay.examples.GreybayWorkflowExample \
+  -Dexec.args="scheduling target/scheduling-study"
+----
+
+Replace `scheduling` with `routing` and use a new directory for the routing example.
+The launcher creates, runs, stops, closes, resumes, qualifies, exports, reloads XML and independently verifies a new solve.
+It uses zero warmup and a one-second horizon for a short correctness walkthrough.
+Its two TPE startup trials do not demonstrate adaptive-sampling effectiveness.
+The final reload solve is an explicitly separate demonstration cost.
+
+`ExportedBenchmarkExample` accepts the family, selected XML, benchmark output directory and comma-separated solver seeds.
+The module README provides its complete command, source links and the focused workflow test command.
+The separate `QUALIFICATION.md` documents a frozen equal-compute TPE/random effectiveness harness.
+It requires representative family data, declared budgets and seeds, held-out qualification,
+paired per-instance differences and uncertainty reporting.
+No effectiveness measurements are produced by the feature's unit tests.

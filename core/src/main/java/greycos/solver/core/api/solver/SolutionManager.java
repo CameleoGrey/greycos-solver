@@ -84,6 +84,24 @@ public interface SolutionManager<Solution_, Score_ extends Score<Score_>> {
   @Nullable Score_ update(Solution_ solution, SolutionUpdatePolicy solutionUpdatePolicy);
 
   /**
+   * Updates all shadow variables and the score, and reports missing required assignments from the
+   * same solution state. Like {@link #update(Object)}, this method modifies the supplied solution;
+   * the caller must have exclusive access to it for the duration of this call.
+   *
+   * <p>Constraint matching is not required. Easy and incremental score calculators are supported.
+   * Allowed unassignment is excluded from the missing count. Structural inconsistency follows the
+   * same failure policy as {@link #update(Object)}; this method does not repair genuine
+   * assignments.
+   *
+   * @param solution the solution to assess
+   * @return the recalculated score and missing required assignment count
+   * @throws UnsupportedOperationException if this implementation does not support assessment
+   */
+  default SolutionAssessment<Score_> assess(Solution_ solution) {
+    throw new UnsupportedOperationException("Solution assessment is not supported");
+  }
+
+  /**
    * This method updates all shadow variables at the entity level, simplifying the requirements of
    * {@link SolutionManager#update(Object)}. Unlike the latter method, it does not require the
    * complete configuration necessary to obtain an instance of {@link SolutionManager}.

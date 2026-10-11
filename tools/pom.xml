@@ -26,6 +26,7 @@
   <modules>
     <module>webui</module>
     <module>benchmark</module>
+    <module>greybay</module>
     <module>benchmark-aggregator</module>
     <module>migration</module>
   </modules>

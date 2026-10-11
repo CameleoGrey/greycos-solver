@@ -13,6 +13,7 @@ import greycos.solver.core.api.score.analysis.ScoreAnalysis;
 import greycos.solver.core.api.score.analysis.VariableLoop;
 import greycos.solver.core.api.solver.RecommendedAssignment;
 import greycos.solver.core.api.solver.ScoreAnalysisFetchPolicy;
+import greycos.solver.core.api.solver.SolutionAssessment;
 import greycos.solver.core.api.solver.SolutionManager;
 import greycos.solver.core.api.solver.SolutionUpdatePolicy;
 import greycos.solver.core.api.solver.SolverFactory;
@@ -63,6 +64,21 @@ public final class DefaultSolutionManager<Solution_, Score_ extends Score<Score_
         solution,
         solutionUpdatePolicy,
         (s, inconsistentEntities) -> s.getSolutionDescriptor().getScore(s.getWorkingSolution()),
+        ConstraintMatchPolicy.DISABLED,
+        false,
+        false);
+  }
+
+  @Override
+  public SolutionAssessment<Score_> assess(Solution_ solution) {
+    return callScoreDirector(
+        "Solution assessment",
+        solution,
+        SolutionUpdatePolicy.UPDATE_ALL,
+        (director, inconsistentEntities) ->
+            new SolutionAssessment<>(
+                director.getSolutionDescriptor().<Score_>getScore(director.getWorkingSolution()),
+                -director.getWorkingInitScore()),
         ConstraintMatchPolicy.DISABLED,
         false,
         false);
