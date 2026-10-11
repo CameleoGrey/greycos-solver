@@ -36,6 +36,11 @@ public class DefaultIslandModelPhaseFactory<Solution_>
       BestSolutionRecaller<Solution_> bestSolutionRecaller,
       SolverTermination<Solution_> solverTermination) {
 
+    if (solverConfigPolicy.isConstraintStreamProfilingEnabled()) {
+      throw new UnsupportedOperationException(
+          "Island Model phases are not supported together with constraintStreamProfilingEnabled (true), regardless of island count.");
+    }
+
     var configurationPath = "phase[" + phaseIndex + "].islandModel";
     validateConfig(phaseConfig, configurationPath);
     validateConfigList(phaseConfig.getPhaseConfigList(), configurationPath);

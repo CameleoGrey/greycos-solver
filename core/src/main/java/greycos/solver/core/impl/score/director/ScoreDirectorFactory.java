@@ -41,6 +41,11 @@ public interface ScoreDirectorFactory<Solution_, Score_ extends Score<Score_>> {
 
   ScoreDefinition<Score_> getScoreDefinition();
 
+  /** Immutable enablement; mutable profiling state belongs to an admitted solve. */
+  default boolean isConstraintStreamProfilingEnabled() {
+    return false;
+  }
+
   /**
    * Prepares a score director which runs in the given environment mode, regardless of the mode this
    * factory was built for.

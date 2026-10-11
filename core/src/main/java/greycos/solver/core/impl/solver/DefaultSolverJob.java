@@ -3,6 +3,7 @@ package greycos.solver.core.impl.solver;
 import java.time.Duration;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
@@ -17,6 +18,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 import greycos.solver.core.api.cotwin.solution.PlanningSolution;
+import greycos.solver.core.api.score.profile.ConstraintProfile;
 import greycos.solver.core.api.solver.ProblemSizeStatistics;
 import greycos.solver.core.api.solver.Solver;
 import greycos.solver.core.api.solver.SolverJob;
@@ -125,6 +127,11 @@ public final class DefaultSolverJob<Solution_>
   @Override
   public SolverStatus getSolverStatus() {
     return solverStatus.get();
+  }
+
+  @Override
+  public Optional<ConstraintProfile> getConstraintProfile() {
+    return solver.getConstraintProfile();
   }
 
   @Override

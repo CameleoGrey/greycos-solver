@@ -1,5 +1,6 @@
 package greycos.solver.core.impl.bavet.common;
 
+import java.util.Collections;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
@@ -48,12 +49,15 @@ public abstract sealed class AbstractNode
 
   public SortedSet<ConstraintNodeLocation> getLocationSet() {
     if (locationSet == null) {
-      return new TreeSet<>();
+      return Collections.emptySortedSet();
     }
     return locationSet;
   }
 
   public void addLocationSet(Set<ConstraintNodeLocation> locationSet) {
+    if (locationSet.isEmpty()) {
+      return;
+    }
     if (this.locationSet == null) {
       this.locationSet = new TreeSet<>();
     }

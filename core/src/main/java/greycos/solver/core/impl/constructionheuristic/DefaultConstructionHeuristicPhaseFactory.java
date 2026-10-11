@@ -66,6 +66,11 @@ public class DefaultConstructionHeuristicPhaseFactory<Solution_>
     var moveThreadCount =
         resolveMoveThreadCount(
             phaseConfig.getMoveThreadCount(), solverConfigPolicy.getMoveThreadCount(), true);
+    if (moveThreadCount != null && solverConfigPolicy.isConstraintStreamProfilingEnabled()) {
+      throw new UnsupportedOperationException(
+          "Construction Heuristic move workers (moveThreadCount=%s) are not supported together with constraintStreamProfilingEnabled (true)."
+              .formatted(moveThreadCount));
+    }
     var nearbySelectionSize =
         Objects.requireNonNullElse(
             phaseConfig.getNearbySelectionSize(),

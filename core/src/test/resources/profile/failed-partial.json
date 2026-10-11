@@ -1,0 +1,192 @@
+{
+  "schemaVersion": 1,
+  "outcome": "FAILED",
+  "initialization": {
+    "scoringWallNanos": 20,
+    "measuredNanos": 12,
+    "unmeasuredNanos": 8,
+    "eventCount": 1,
+    "failureCount": 1,
+    "coverage": 0.6,
+    "buckets": [
+      {
+        "owners": [
+          "A's constraint"
+        ],
+        "exclusiveNanos": 8,
+        "eventCount": 0,
+        "failureCount": 0,
+        "partialInvocations": true,
+        "measuredShare": 0.6666666666666666,
+        "averageNanosPerCall": null
+      },
+      {
+        "owners": [],
+        "exclusiveNanos": 4,
+        "eventCount": 1,
+        "failureCount": 1,
+        "partialInvocations": false,
+        "measuredShare": 0.3333333333333333,
+        "averageNanosPerCall": 4.0
+      }
+    ]
+  },
+  "search": {
+    "scoringWallNanos": 20,
+    "measuredNanos": 12,
+    "unmeasuredNanos": 8,
+    "eventCount": 1,
+    "failureCount": 1,
+    "coverage": 0.6,
+    "buckets": [
+      {
+        "owners": [
+          "A's constraint"
+        ],
+        "exclusiveNanos": 12,
+        "eventCount": 1,
+        "failureCount": 1,
+        "partialInvocations": true,
+        "measuredShare": 1.0,
+        "averageNanosPerCall": null
+      }
+    ]
+  },
+  "combined": {
+    "scoringWallNanos": 40,
+    "measuredNanos": 24,
+    "unmeasuredNanos": 16,
+    "eventCount": 2,
+    "failureCount": 2,
+    "coverage": 0.6,
+    "buckets": [
+      {
+        "owners": [
+          "A's constraint"
+        ],
+        "exclusiveNanos": 20,
+        "eventCount": 1,
+        "failureCount": 1,
+        "partialInvocations": false,
+        "measuredShare": 0.8333333333333334,
+        "averageNanosPerCall": 20.0
+      },
+      {
+        "owners": [],
+        "exclusiveNanos": 4,
+        "eventCount": 1,
+        "failureCount": 1,
+        "partialInvocations": false,
+        "measuredShare": 0.16666666666666666,
+        "averageNanosPerCall": 4.0
+      }
+    ]
+  },
+  "generations": [
+    {
+      "generationId": 4294967296,
+      "initializationCompleted": true,
+      "ownershipEpochs": [
+        {
+          "ownershipEpoch": 0,
+          "ownershipState": "ENABLED_CANDIDATES"
+        },
+        {
+          "ownershipEpoch": 1,
+          "ownershipState": "ACTIVE"
+        }
+      ],
+      "constraints": [
+        {
+          "constraintRef": "A's constraint",
+          "activity": "ACTIVE"
+        },
+        {
+          "constraintRef": "B constraint",
+          "activity": "ACTIVE"
+        },
+        {
+          "constraintRef": "Disabled",
+          "activity": "DISABLED_WEIGHT"
+        },
+        {
+          "constraintRef": "Inactive",
+          "activity": "INACTIVE"
+        }
+      ]
+    },
+    {
+      "generationId": 4294967297,
+      "initializationCompleted": false,
+      "ownershipEpochs": [
+        {
+          "ownershipEpoch": 0,
+          "ownershipState": "UNRESOLVED"
+        }
+      ],
+      "constraints": [
+        {
+          "constraintRef": "A's constraint",
+          "activity": "UNRESOLVED"
+        }
+      ]
+    }
+  ],
+  "units": [
+    {
+      "generationId": 4294967296,
+      "unitId": 8589934592,
+      "kind": "Join",
+      "role": "RIGHT_INPUT",
+      "sourceLocations": [],
+      "measurements": [
+        {
+          "stage": "INITIALIZATION",
+          "ownershipEpoch": 1,
+          "ownershipState": "ACTIVE",
+          "operation": "UPDATE",
+          "owners": [
+            "A's constraint"
+          ],
+          "exclusiveNanos": 8,
+          "eventCount": 0,
+          "failureCount": 0,
+          "partialInvocations": true
+        },
+        {
+          "stage": "SEARCH",
+          "ownershipEpoch": 1,
+          "ownershipState": "ACTIVE",
+          "operation": "UPDATE",
+          "owners": [
+            "A's constraint"
+          ],
+          "exclusiveNanos": 12,
+          "eventCount": 1,
+          "failureCount": 1,
+          "partialInvocations": true
+        }
+      ]
+    },
+    {
+      "generationId": 4294967297,
+      "unitId": 8589934593,
+      "kind": "Filter",
+      "role": "LIFECYCLE",
+      "sourceLocations": [],
+      "measurements": [
+        {
+          "stage": "INITIALIZATION",
+          "ownershipEpoch": 0,
+          "ownershipState": "UNRESOLVED",
+          "operation": "INSERT",
+          "owners": [],
+          "exclusiveNanos": 4,
+          "eventCount": 1,
+          "failureCount": 1,
+          "partialInvocations": false
+        }
+      ]
+    }
+  ]
+}

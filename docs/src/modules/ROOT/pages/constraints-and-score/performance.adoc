@@ -332,8 +332,10 @@ We provide a xref:using-greycos-solver/benchmarking-and-tweaking.adoc#benchmarke
 [#constraintProfiling]
 == Constraint profiling
 
-Constraint profiling identifies which constraints consume the most score-calculation time.
-Enable it only while diagnosing performance, because collecting timings adds overhead.
+Constraint profiling records where measured Constraint Streams score work occurs during one solve.
+It separates initialization from search, accounts for shared work once, and publishes an immutable final result.
+Enable it while diagnosing performance: collecting timings adds overhead and can change the search trajectory
+of a time-limited solve.
 
 [tabs]
 ====
@@ -360,14 +362,163 @@ Quarkus::
 ----
 quarkus.greycos.solver.constraint-stream-profiling-enabled=true
 ----
+
+Java::
++
+[source,java,options="nowrap"]
+----
+solverConfig.getScoreDirectorFactoryConfig()
+        .setConstraintStreamProfilingEnabled(true);
+----
 ====
 
-At the end of solving, GreyCOS Solver logs a summary ordered from the most expensive constraint to the least expensive.
-The timings are wall-clock measurements and may include garbage collection pauses,
-so use them to locate bottlenecks rather than as exact measurements.
+Profiling supports xref:score-calculation.adoc#constraintStreams[Constraint Streams].
+Set `moveThreadCount` to `NONE`, including any construction-heuristic, local-search, or ALNS phase overrides.
+An explicit worker count of `1` still uses a worker and is unsupported.
+`AUTO` is accepted only when it resolves to no workers.
+Island-model and partitioned-search phases are unsupported even with one worker.
+Several independent single-threaded `SolverManager` jobs may run concurrently;
+each job has an isolated profile.
+Easy and incremental score calculators do not support this feature.
 
-Constraint profiling supports xref:score-calculation.adoc#constraintStreams[Constraint Streams]
-and requires xref:advanced-features/advanced-features.adoc#multithreadedSolving[multi-threaded solving] to be disabled.
+=== Retrieve the final result
+
+The following examples assume an application provides `MySolution`, `solverConfig`, and `problem`:
+
+[source,java,options="nowrap"]
+----
+solverConfig.setMoveThreadCount(SolverConfig.MOVE_THREAD_COUNT_NONE);
+solverConfig.getScoreDirectorFactoryConfig()
+        .setConstraintStreamProfilingEnabled(true);
+Solver<MySolution> solver = SolverFactory.<MySolution>create(solverConfig).buildSolver();
+MySolution best = solver.solve(problem);
+ConstraintProfile profile = solver.getConstraintProfile().orElseThrow();
+long initializationNanos = profile.initialization().scoringWallNanos();
+long searchNanos = profile.search().scoringWallNanos();
+----
+
+`ConstraintProfile` is in `greycos.solver.core.api.score.profile`.
+For asynchronous solving, retrieve the profile from the job:
+
+[source,java,options="nowrap"]
+----
+try (SolverManager<MySolution> manager = SolverManager.create(solverConfig)) {
+    SolverJob<MySolution> job = manager.solve(42L, problem);
+    MySolution best = job.getFinalBestSolution();
+    Optional<ConstraintProfile> profile = job.getConstraintProfile();
+}
+----
+
+Handle the `InterruptedException` and `ExecutionException` declared by `getFinalBestSolution()`.
+Both profile getters are thread-safe, nonblocking, and independent of logging.
+They return empty when profiling is disabled, before a solve is admitted, and while its final snapshot is unavailable.
+A final snapshot is published after solver cleanup and before the admitted solve normally returns or propagates an ordinary failure.
+The outcome is `COMPLETED`, `TERMINATED_EARLY`, or `FAILED`; a cleanup failure also makes the outcome `FAILED`.
+On an ordinary solving failure, inspect the getter in the exception handler.
+
+Admitting another invocation on the same solver clears the previous result;
+previously retrieved snapshots remain valid.
+Problem-change restarts remain part of the same profile.
+A queued job canceled before execution has no profile.
+Cancellation, manager shutdown, or `SolverStatus.NOT_SOLVING` does not guarantee publication:
+`getFinalBestSolution()` may return the input problem through its cancellation fallback before solver cleanup finishes.
+Consumer-callback failures reported separately by the manager do not retroactively change the solve outcome.
+A failure to construct the snapshot is reported explicitly; resource exhaustion may prevent publication.
+
+=== Interpret the measurements
+
+Each profile contains `initialization`, `search`, and `combined` sections.
+Every new Bavet session contributes initialization work through its first successful settlement,
+including initial fact loading, deferred preparation, and precompute.
+Later calls in that session contribute search work.
+A rebuilt network or a sequential algorithm helper has its own initialization interval,
+even if the main search has already started.
+Generation metadata retains the constraints' activity in each network:
+`DISABLED_WEIGHT`, `UNRESOLVED`, `ACTIVE`, or `INACTIVE`.
+
+Each section reports these quantities:
+
+[cols="1,3",options="header"]
+|===
+| Field | Meaning
+| `scoringWallNanos` | Time within session construction, fact notifications, settlement, and score extraction, counting nested intervals once.
+| `measuredNanos` | Sum of exclusive callback durations, including callbacks with no recorded owners.
+| `unmeasuredNanos` | Scoring wall time minus measured time, including uncovered dispatch and bookkeeping.
+| `coverage` | Measured time divided by scoring wall time; unavailable when wall time is zero.
+| `eventCount`, `failureCount` | Entered callback invocations and invocations that exited exceptionally.
+|===
+
+A callback's exclusive time excludes its measured children.
+A propagator pass counts once even when its queue is empty;
+counts do not represent score calculations, tuples, constraint matches, or moves.
+A failed nested callback and its failed parent each contribute one failed invocation.
+All durations are integer nanoseconds.
+GC pauses, thread descheduling, and instrumentation overhead can affect the measurements.
+
+Buckets group work by its exact *recorded owners*.
+A singleton belongs to that constraint, `Shared: A, B` belongs to the exact pair,
+and `Unattributed` has no recorded owners.
+Shared work is never divided among the singleton buckets.
+Before activity pruning, owners are enabled candidates; later invocations use active owners.
+The profile preserves the owners recorded when each invocation began,
+so initialization work for a branch that later becomes inactive remains visible.
+Disabled constraints remain in activity metadata even when they have no measured work.
+
+`measuredShare` is a bucket's fraction of measured work, including unattributed work in the denominator.
+It is unavailable when measured time is zero.
+`averageNanosPerCall` is unavailable when a bucket has no calls or contains partial invocations.
+When an invocation crosses a nested initialization/search boundary, its duration is split between sections,
+while its call and failure counts stay in its entry section.
+Affected section buckets and unit rows have `partialInvocations=true`.
+Combined buckets recombine those durations and counts and can report a complete average.
+The combined section is derived from initialization and search; it contains no additional events.
+
+The profile excludes solution cloning, search orchestration, move generation, acceptance,
+provider definition and source capture at factory creation, report rendering, and snapshot construction.
+Shadow-listener calls into Bavet are included; other listener work is excluded.
+Sequential algorithm helper scoring is included.
+Separate scratch assertion directors, standalone `SolutionManager` operations, and `ConstraintVerifier`
+operations do not join the profile; assertions on the main director remain included.
+After checking model correctness, use `NO_ASSERT` for representative profiling.
+Precompute is measured through its outer callback; its internal graph has no independent unit breakdown.
+
+A constraint's share of measured work does not predict the speedup from removing it:
+changing a constraint can change graph sharing, data volume, caches, and search decisions.
+Use the measurements to select work for investigation and compare repeated runs with matching configurations.
+
+=== Logging and JSON export
+
+GreyCOS logs one final report through `greycos.solver.core.impl.bavet.common.DefaultConstraintProfiler`:
+
+* `INFO`: outcome, wall time and coverage, and owner buckets for initialization, search, and combined work.
+* `DEBUG`: unit and generation IDs, roles, source locations, ownership states, and inactive or disabled constraints.
+* `TRACE`: per-unit operation durations, calls, and failures. There is no per-event trace stream.
+
+Bucket percentages are labeled "share of measured work".
+INFO summaries and bucket totals use milliseconds; per-call averages, TRACE durations, and structured results use nanoseconds.
+Disabling these log levels leaves collection and public result access enabled.
+
+The Jackson persistence module and Quarkus Jackson integration serialize the same versioned profile schema.
+For the persistence module, register its module and write the snapshot:
+
+[source,java,options="nowrap"]
+----
+var mapper = tools.jackson.databind.json.JsonMapper.builder()
+        .addModule(greycos.solver.jackson.api.GreyCOSJacksonModule.createModule())
+        .build();
+String json = mapper.writeValueAsString(profile);
+----
+
+Quarkus registers its Jackson module automatically when the GreyCOS Jackson integration is present;
+use the injected `com.fasterxml.jackson.databind.ObjectMapper` to serialize the profile.
+Schema version `1` uses the Java record component names.
+IDs, counts, and durations are JSON integers; enums are uppercase strings;
+owner references and activity constraint references are constraint ID strings.
+`coverage`, `measuredShare`, and `averageNanosPerCall` are numeric fractions or nanosecond averages,
+with explicit JSON `null` when unavailable, including under a mapper configured to omit null properties.
+An unknown source line number is also `null`.
+Serialization does not retain solutions, graph nodes, or exception objects.
+Profile deserialization is outside this version's contract.
 
 [#fullAssert]
 == Validate the implementation using FULL_ASSERT

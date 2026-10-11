@@ -44,6 +44,7 @@ public final class BavetConstraintFactory<Solution_>
 
   private final SolutionDescriptor<Solution_> solutionDescriptor;
   private final EnvironmentMode environmentMode;
+  private final boolean profilingEnabled;
 
   private final Map<
           BavetAbstractConstraintStream<Solution_>, BavetAbstractConstraintStream<Solution_>>
@@ -51,8 +52,20 @@ public final class BavetConstraintFactory<Solution_>
 
   public BavetConstraintFactory(
       SolutionDescriptor<Solution_> solutionDescriptor, EnvironmentMode environmentMode) {
+    this(solutionDescriptor, environmentMode, false);
+  }
+
+  public BavetConstraintFactory(
+      SolutionDescriptor<Solution_> solutionDescriptor,
+      EnvironmentMode environmentMode,
+      boolean profilingEnabled) {
     this.solutionDescriptor = solutionDescriptor;
     this.environmentMode = Objects.requireNonNull(environmentMode);
+    this.profilingEnabled = profilingEnabled;
+  }
+
+  public boolean isProfilingEnabled() {
+    return profilingEnabled;
   }
 
   public <Stream_ extends BavetAbstractConstraintStream<Solution_>> Stream_ share(Stream_ stream) {
@@ -84,7 +97,9 @@ public final class BavetConstraintFactory<Solution_>
                   consumer.accept(stream);
                   return stream;
                 });
-    out.addLocationSet(stream.getLocationSet());
+    if (profilingEnabled) {
+      out.addLocationSet(stream.getLocationSet());
+    }
     return out;
   }
 

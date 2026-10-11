@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "outcome": "COMPLETED",
+  "initialization": {
+    "scoringWallNanos": 0,
+    "measuredNanos": 0,
+    "unmeasuredNanos": 0,
+    "eventCount": 0,
+    "failureCount": 0,
+    "coverage": null,
+    "buckets": []
+  },
+  "search": {
+    "scoringWallNanos": 0,
+    "measuredNanos": 0,
+    "unmeasuredNanos": 0,
+    "eventCount": 0,
+    "failureCount": 0,
+    "coverage": null,
+    "buckets": []
+  },
+  "combined": {
+    "scoringWallNanos": 0,
+    "measuredNanos": 0,
+    "unmeasuredNanos": 0,
+    "eventCount": 0,
+    "failureCount": 0,
+    "coverage": null,
+    "buckets": []
+  },
+  "generations": [],
+  "units": []
+}

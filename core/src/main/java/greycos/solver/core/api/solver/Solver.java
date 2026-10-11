@@ -1,11 +1,13 @@
 package greycos.solver.core.api.solver;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Future;
 
 import greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import greycos.solver.core.api.score.Score;
+import greycos.solver.core.api.score.profile.ConstraintProfile;
 import greycos.solver.core.api.solver.change.ProblemChange;
 import greycos.solver.core.api.solver.event.SolverEventListener;
 import greycos.solver.core.impl.solver.termination.Termination;
@@ -43,6 +45,20 @@ public interface Solver<Solution_> {
    * @see #terminateEarly()
    */
   Solution_ solve(Solution_ problem);
+
+  /**
+   * Returns the immutable constraint profile of the most recently admitted solve, once its cleanup
+   * has completed and its profile has been published. This thread-safe, nonblocking method returns
+   * empty when profiling is disabled, no solve has started, or the current solve has not published
+   * its final profile. It does not throw the solving exception.
+   *
+   * <p>A new solve clears the previous result; previously returned snapshots remain valid. Separate
+   * scratch assertion directors are excluded, while scoring on the main director and supported
+   * sequential algorithm helpers is included.
+   */
+  default Optional<ConstraintProfile> getConstraintProfile() {
+    return Optional.empty();
+  }
 
   /**
    * Notifies the solver that it should stop at its earliest convenience. This method returns

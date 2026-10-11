@@ -83,6 +83,11 @@ public class DefaultLocalSearchPhaseFactory<Solution_>
     var moveThreadCount =
         resolveMoveThreadCount(
             phaseConfig.getMoveThreadCount(), solverConfigPolicy.getMoveThreadCount(), true);
+    if (moveThreadCount != null && solverConfigPolicy.isConstraintStreamProfilingEnabled()) {
+      throw new UnsupportedOperationException(
+          "Local Search move workers (moveThreadCount=%s) are not supported together with constraintStreamProfilingEnabled (true)."
+              .formatted(moveThreadCount));
+    }
     var phaseConfigPolicy =
         solverConfigPolicy
             .cloneBuilder()

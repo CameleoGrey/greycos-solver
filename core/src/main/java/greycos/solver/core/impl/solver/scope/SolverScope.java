@@ -20,6 +20,7 @@ import greycos.solver.core.api.score.Score;
 import greycos.solver.core.api.solver.ProblemSizeStatistics;
 import greycos.solver.core.api.solver.Solver;
 import greycos.solver.core.config.solver.monitoring.SolverMetric;
+import greycos.solver.core.impl.bavet.common.DefaultConstraintProfiler;
 import greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 import greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
 import greycos.solver.core.impl.score.definition.ScoreDefinition;
@@ -38,6 +39,8 @@ import greycos.solver.core.impl.solver.termination.PhaseTermination;
 import greycos.solver.core.impl.solver.thread.ChildThreadType;
 import greycos.solver.core.impl.solver.thread.SolverWorkerRegistry;
 import greycos.solver.core.preview.api.move.Move;
+
+import org.jspecify.annotations.Nullable;
 
 import io.micrometer.core.instrument.Tags;
 
@@ -73,6 +76,7 @@ public class SolverScope<Solution_> {
   private int startingSolverCount;
   private RandomSource workingRandom;
   private InnerScoreDirector<Solution_, ?> scoreDirector;
+  private @Nullable DefaultConstraintProfiler constraintProfiler;
   private AbstractSolver<Solution_> solver;
   private DefaultProblemChangeDirector<Solution_> problemChangeDirector;
   private final AtomicReference<PendingMove<Solution_>> pendingMove = new AtomicReference<>();
@@ -323,6 +327,14 @@ public class SolverScope<Solution_> {
 
   public void setScoreDirector(InnerScoreDirector<Solution_, ?> scoreDirector) {
     this.scoreDirector = scoreDirector;
+  }
+
+  public @Nullable DefaultConstraintProfiler getConstraintProfiler() {
+    return constraintProfiler;
+  }
+
+  public void setConstraintProfiler(@Nullable DefaultConstraintProfiler constraintProfiler) {
+    this.constraintProfiler = constraintProfiler;
   }
 
   public void setRunnableThreadSemaphore(Semaphore runnableThreadSemaphore) {

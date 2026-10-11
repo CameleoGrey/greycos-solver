@@ -10,6 +10,7 @@ import java.util.concurrent.ThreadFactory;
 import java.util.random.RandomGenerator;
 
 import greycos.solver.core.api.score.SimpleScore;
+import greycos.solver.core.api.score.profile.ConstraintProfile;
 import greycos.solver.core.api.solver.SolverFactory;
 import greycos.solver.core.api.solver.alns.AlnsAcceptancePolicy;
 import greycos.solver.core.api.solver.alns.AlnsContext;
@@ -32,7 +33,7 @@ import greycos.solver.core.impl.solver.DefaultSolver;
 
 import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.CsvSource;
 
 @Timeout(20)
 class AlnsResourceErrorLifecycleTest {
@@ -43,8 +44,9 @@ class AlnsResourceErrorLifecycleTest {
   private static RuntimeException secondCloseFailure;
 
   @ParameterizedTest
-  @ValueSource(ints = {0, 1, 2, 3})
-  void closeErrorStillClosesAllResourcesAfterRepairWork(int failureMode) throws Exception {
+  @CsvSource({"0,false", "1,false", "2,false", "3,false", "0,true", "1,true", "2,true", "3,true"})
+  void closeErrorStillClosesAllResourcesAfterRepairWork(int failureMode, boolean profiling)
+      throws Exception {
     WORKERS.clear();
     CLOSED.clear();
     firstCloseFailure = new AssertionError("Acceptance cleanup failed.");
@@ -58,13 +60,14 @@ class AlnsResourceErrorLifecycleTest {
     var config =
         AlnsMoveThreadingWorkload.config(
                 workload,
-                "2",
+                profiling ? "NONE" : "2",
                 0L,
                 2,
                 AlnsRepairOperatorType.RANDOMIZED_GREEDY,
                 new TerminationConfig().withStepCountLimit(1),
                 EnvironmentMode.NO_ASSERT)
             .withThreadFactoryClass(RecordingThreadFactory.class);
+    config.getScoreDirectorFactoryConfig().withConstraintStreamProfilingEnabled(profiling);
     var phaseConfig = (AlnsPhaseConfig) config.getPhaseConfigList().getFirst();
     phaseConfig
         .withMoveThreadingMode(AlnsMoveThreadingMode.REPAIR_ATTEMPTS)
@@ -105,9 +108,15 @@ class AlnsResourceErrorLifecycleTest {
         assertThat(bodyFailure.getSuppressed()).containsExactly(firstCloseFailure);
       assertThat(firstCloseFailure.getSuppressed()).containsExactly(secondCloseFailure);
       assertThat(CLOSED).containsExactly("acceptance", "selection", "destroy");
-      assertThat(WORKERS).hasSize(2);
+      assertThat(WORKERS).hasSize(profiling ? 0 : 2);
       assertThat(alive).isEmpty();
       assertThat(solver.getSolverScope().getScoreDirector().getWorkingSolution()).isNull();
+      if (profiling) {
+        var profile = solver.getConstraintProfile().orElseThrow();
+        assertThat(profile.outcome()).isEqualTo(ConstraintProfile.Outcome.FAILED);
+        assertThat(profile.generations()).hasSize(3);
+        assertThat(profile.search().eventCount()).isPositive();
+      }
     } finally {
       // Baseline implementations leak the repair executor after an operator close Error.
       for (var thread : WORKERS) thread.interrupt();

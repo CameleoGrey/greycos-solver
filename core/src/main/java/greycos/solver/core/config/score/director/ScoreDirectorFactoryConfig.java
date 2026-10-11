@@ -107,10 +107,35 @@ public final class ScoreDirectorFactoryConfig extends AbstractConfig<ScoreDirect
     this.constraintStreamAutomaticNodeSharing = constraintStreamAutomaticNodeSharing;
   }
 
+  /**
+   * Enables exclusive Constraint Streams timing for each solver invocation. Defaults to disabled.
+   * Final immutable results are available from {@link
+   * greycos.solver.core.api.solver.Solver#getConstraintProfile()} and {@link
+   * greycos.solver.core.api.solver.SolverJob#getConstraintProfile()}, independently of logging. The
+   * getter remains empty until final publication and when profiling is disabled.
+   *
+   * <p>Profiles separate each session's initialization from subsequent search scoring and preserve
+   * shared work in exact owner-set buckets. They measure score-engine work, including supported
+   * sequential helper scoring, rather than the entire solve. Precompute internals are included
+   * through their outer callback; separate scratch assertion directors are excluded. Assertions on
+   * the main director remain included.
+   *
+   * <p>Requires Constraint Streams and no effective move workers, including phase overrides. Island
+   * and partitioned-search phases are unsupported even with one worker. Independent single-threaded
+   * SolverManager jobs may be profiled concurrently. Profiling adds overhead; use it for diagnosis
+   * after checking model correctness, preferably with NO_ASSERT.
+   *
+   * @return {@code true} to collect a profile; {@code null} or {@code false} to disable collection
+   */
   public Boolean getConstraintStreamProfilingEnabled() {
     return constraintStreamProfilingEnabled;
   }
 
+  /**
+   * Sets whether to collect a final Constraint Streams profile for each solve.
+   *
+   * @see #getConstraintStreamProfilingEnabled()
+   */
   public void setConstraintStreamProfilingEnabled(Boolean constraintStreamProfilingEnabled) {
     this.constraintStreamProfilingEnabled = constraintStreamProfilingEnabled;
   }
@@ -188,6 +213,11 @@ public final class ScoreDirectorFactoryConfig extends AbstractConfig<ScoreDirect
     return this;
   }
 
+  /**
+   * Enables or disables per-solve Constraint Streams profiling and returns this configuration.
+   *
+   * @see #getConstraintStreamProfilingEnabled()
+   */
   public @NonNull ScoreDirectorFactoryConfig withConstraintStreamProfilingEnabled(
       Boolean constraintStreamProfiling) {
     this.constraintStreamProfilingEnabled = constraintStreamProfiling;

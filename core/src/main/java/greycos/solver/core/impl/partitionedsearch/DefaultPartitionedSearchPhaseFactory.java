@@ -50,6 +50,11 @@ public class DefaultPartitionedSearchPhaseFactory<Solution_>
       BestSolutionRecaller<Solution_> bestSolutionRecaller,
       SolverTermination<Solution_> solverTermination) {
 
+    if (solverConfigPolicy.isConstraintStreamProfilingEnabled()) {
+      throw new UnsupportedOperationException(
+          "Partitioned Search phases are not supported together with constraintStreamProfilingEnabled (true), regardless of worker count.");
+    }
+
     HeuristicConfigPolicy<Solution_> phaseConfigPolicy =
         solverConfigPolicy.copyPhaseConfigPolicy(resolveEnvironmentMode(solverConfigPolicy));
 

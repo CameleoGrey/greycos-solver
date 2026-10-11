@@ -88,7 +88,8 @@ public final class BavetConstraintStreamScoreDirector<Solution_, Score_ extends 
             workingSolution,
             variableSupport.getConsistencyTracker(),
             constraintMatchPolicy,
-            derived);
+            derived,
+            constraintProfiler);
     super.setWorkingSolutionWithoutUpdatingShadows(workingSolution, session::insert);
   }
 
@@ -129,11 +130,9 @@ public final class BavetConstraintStreamScoreDirector<Solution_, Score_ extends 
   @Override
   public void close() {
     propertyChangeSessionMap.clear();
-    super.close();
-    if (session != null) {
-      if (!derived) {
-        session.summarizeProfileIfPresent();
-      }
+    try {
+      super.close();
+    } finally {
       session = null;
     }
   }

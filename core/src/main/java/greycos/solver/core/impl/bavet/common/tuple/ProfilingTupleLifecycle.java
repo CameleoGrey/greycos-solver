@@ -2,58 +2,86 @@ package greycos.solver.core.impl.bavet.common.tuple;
 
 import java.util.Objects;
 
-import greycos.solver.core.impl.bavet.common.ConstraintNodeProfileId;
-import greycos.solver.core.impl.bavet.common.InnerConstraintProfiler;
+import greycos.solver.core.api.score.profile.ConstraintProfile.Operation;
+import greycos.solver.core.impl.bavet.common.DefaultConstraintProfiler;
+import greycos.solver.core.impl.bavet.common.DefaultConstraintProfiler.Unit;
 
 import org.jspecify.annotations.NullMarked;
 
 @NullMarked
 public final class ProfilingTupleLifecycle<Tuple_ extends Tuple> implements TupleLifecycle<Tuple_> {
-
-  private final InnerConstraintProfiler constraintProfiler;
-  private final ConstraintNodeProfileId profileId;
+  private final DefaultConstraintProfiler profiler;
+  private final Unit unit;
   private final TupleLifecycle<Tuple_> delegate;
+  private boolean active;
 
   public ProfilingTupleLifecycle(
-      InnerConstraintProfiler constraintProfiler,
-      ConstraintNodeProfileId profileId,
-      TupleLifecycle<Tuple_> delegate) {
-    constraintProfiler.register(profileId);
-    this.constraintProfiler = constraintProfiler;
-    this.profileId = profileId;
+      DefaultConstraintProfiler profiler, Unit unit, TupleLifecycle<Tuple_> delegate) {
+    this.profiler = profiler;
+    this.unit = unit;
     this.delegate = delegate;
   }
 
   @Override
   public void afterAllFactsInserted(boolean upstreamCanProduceTuples) {
-    this.delegate.afterAllFactsInserted(upstreamCanProduceTuples);
+    delegate.afterAllFactsInserted(upstreamCanProduceTuples);
   }
 
   @Override
   public boolean isActive() {
-    return delegate.isActive();
+    active = delegate.isActive();
+    return active;
+  }
+
+  /** The result observed during normal network activation; does not rerun activation. */
+  public boolean wasActive() {
+    return active;
   }
 
   @Override
   public void insert(Tuple_ tuple) {
-    constraintProfiler.measure(
-        profileId, InnerConstraintProfiler.Operation.INSERT, () -> delegate.insert(tuple));
+    profiler.enterUnit(unit, Operation.INSERT);
+    Throwable failure = null;
+    try {
+      delegate.insert(tuple);
+    } catch (RuntimeException | Error e) {
+      failure = e;
+      throw e;
+    } finally {
+      profiler.exitUnit(failure);
+    }
   }
 
   @Override
   public void update(Tuple_ tuple) {
-    constraintProfiler.measure(
-        profileId, InnerConstraintProfiler.Operation.UPDATE, () -> delegate.update(tuple));
+    profiler.enterUnit(unit, Operation.UPDATE);
+    Throwable failure = null;
+    try {
+      delegate.update(tuple);
+    } catch (RuntimeException | Error e) {
+      failure = e;
+      throw e;
+    } finally {
+      profiler.exitUnit(failure);
+    }
   }
 
   @Override
   public void retract(Tuple_ tuple) {
-    constraintProfiler.measure(
-        profileId, InnerConstraintProfiler.Operation.RETRACT, () -> delegate.retract(tuple));
+    profiler.enterUnit(unit, Operation.RETRACT);
+    Throwable failure = null;
+    try {
+      delegate.retract(tuple);
+    } catch (RuntimeException | Error e) {
+      failure = e;
+      throw e;
+    } finally {
+      profiler.exitUnit(failure);
+    }
   }
 
-  public ConstraintNodeProfileId profileId() {
-    return profileId;
+  public Unit unit() {
+    return unit;
   }
 
   public TupleLifecycle<Tuple_> delegate() {
@@ -66,18 +94,18 @@ public final class ProfilingTupleLifecycle<Tuple_ extends Tuple> implements Tupl
       return true;
     }
     return obj instanceof ProfilingTupleLifecycle<?> other
-        && Objects.equals(constraintProfiler, other.constraintProfiler)
-        && Objects.equals(profileId, other.profileId)
+        && Objects.equals(profiler, other.profiler)
+        && Objects.equals(unit, other.unit)
         && Objects.equals(delegate, other.delegate);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(constraintProfiler, profileId, delegate);
+    return Objects.hash(profiler, unit, delegate);
   }
 
   @Override
   public String toString() {
-    return "ProfilingTupleLifecycle[%s, %s, %s]".formatted(constraintProfiler, profileId, delegate);
+    return "ProfilingTupleLifecycle[%s, %s]".formatted(unit.unitId(), delegate);
   }
 }

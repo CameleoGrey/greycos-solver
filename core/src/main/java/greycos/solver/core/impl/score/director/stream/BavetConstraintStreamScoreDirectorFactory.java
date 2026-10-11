@@ -8,6 +8,7 @@ import greycos.solver.core.api.score.stream.ConstraintProvider;
 import greycos.solver.core.config.score.director.ScoreDirectorFactoryConfig;
 import greycos.solver.core.config.solver.EnvironmentMode;
 import greycos.solver.core.config.util.ConfigUtils;
+import greycos.solver.core.impl.bavet.common.DefaultConstraintProfiler;
 import greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 import greycos.solver.core.impl.cotwin.variable.declarative.ConsistencyTracker;
 import greycos.solver.core.impl.nodesharing.DefaultConstraintProviderNodeSharer;
@@ -107,7 +108,8 @@ public sealed class BavetConstraintStreamScoreDirectorFactory<
       boolean profilingEnabled) {
     super(solutionDescriptor, globalEnvironmentMode);
     this.constraintStreamProfilingEnabled = profilingEnabled;
-    var constraintFactory = new BavetConstraintFactory<>(solutionDescriptor, globalEnvironmentMode);
+    var constraintFactory =
+        new BavetConstraintFactory<>(solutionDescriptor, globalEnvironmentMode, profilingEnabled);
     constraintMetaModel =
         DefaultConstraintMetaModel.of(constraintFactory.buildConstraints(constraintProvider));
     constraintSessionFactory =
@@ -137,13 +139,32 @@ public sealed class BavetConstraintStreamScoreDirectorFactory<
     return constraintSessionFactory.supportsEntityPropertyRefresh();
   }
 
+  @Override
+  public boolean isConstraintStreamProfilingEnabled() {
+    return constraintStreamProfilingEnabled;
+  }
+
   public BavetConstraintSession<Score_> newSession(
       @Nullable Solution_ workingSolution,
       ConsistencyTracker<Solution_> consistencyTracker,
       ConstraintMatchPolicy constraintMatchPolicy,
       boolean scoreDirectorDerived) {
+    return newSession(
+        workingSolution, consistencyTracker, constraintMatchPolicy, scoreDirectorDerived, null);
+  }
+
+  public BavetConstraintSession<Score_> newSession(
+      @Nullable Solution_ workingSolution,
+      ConsistencyTracker<Solution_> consistencyTracker,
+      ConstraintMatchPolicy constraintMatchPolicy,
+      boolean scoreDirectorDerived,
+      @Nullable DefaultConstraintProfiler constraintProfiler) {
     return constraintSessionFactory.buildSession(
-        workingSolution, consistencyTracker, constraintMatchPolicy, scoreDirectorDerived);
+        workingSolution,
+        consistencyTracker,
+        constraintMatchPolicy,
+        scoreDirectorDerived,
+        constraintProfiler);
   }
 
   @Override

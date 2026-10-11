@@ -152,15 +152,6 @@ public final class DefaultSolverFactory<Solution_> implements SolverFactory<Solu
               + " solver performance.",
           solverMetricList.stream().filter(SolverMetric::isMetricConstraintMatchBased).toList());
     }
-    var scoreDirector =
-        scoreDirectorFactory
-            .createScoreDirectorBuilder(globalEnvironmentMode)
-            .withLookUpEnabled(true) // Custom phases and problem changes may rely on lookups.
-            .withConstraintMatchPolicy(
-                decideConstraintMatchPolicy(solverScope, globalEnvironmentMode))
-            .build();
-    solverScope.setScoreDirector(scoreDirector);
-    solverScope.setProblemChangeDirector(new DefaultProblemChangeDirector<>(scoreDirector));
     var moveThreadCount = resolveMoveThreadCount(true);
     var previewFeaturesEnabled = solverConfig.getEnablePreviewFeatureSet();
     var scoreDirectorFactoryConfig = solverConfig.getScoreDirectorFactoryConfig();
@@ -200,6 +191,16 @@ public final class DefaultSolverFactory<Solution_> implements SolverFactory<Solu
         BestSolutionRecallerFactory.create()
             .<Solution_>buildBestSolutionRecaller(globalEnvironmentMode);
     var phaseList = buildPhaseList(configPolicy, bestSolutionRecaller, termination);
+
+    var scoreDirector =
+        scoreDirectorFactory
+            .createScoreDirectorBuilder(globalEnvironmentMode)
+            .withLookUpEnabled(true) // Custom phases and problem changes may rely on lookups.
+            .withConstraintMatchPolicy(
+                decideConstraintMatchPolicy(solverScope, globalEnvironmentMode))
+            .build();
+    solverScope.setScoreDirector(scoreDirector);
+    solverScope.setProblemChangeDirector(new DefaultProblemChangeDirector<>(scoreDirector));
 
     return new DefaultSolver<>(
         globalEnvironmentMode,

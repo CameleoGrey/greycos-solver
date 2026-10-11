@@ -13,6 +13,7 @@ module greycos.solver.core {
   exports greycos.solver.core.api.score;
   exports greycos.solver.core.api.score.analysis;
   exports greycos.solver.core.api.score.calculator;
+  exports greycos.solver.core.api.score.profile;
   exports greycos.solver.core.api.score.stream;
   exports greycos.solver.core.api.score.stream.bi;
   exports greycos.solver.core.api.score.stream.common;

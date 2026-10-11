@@ -3,16 +3,19 @@ package greycos.solver.core.impl.solver;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
 
 import greycos.solver.core.api.cotwin.lookup.PlanningId;
 import greycos.solver.core.api.cotwin.solution.PlanningSolution;
+import greycos.solver.core.api.score.profile.ConstraintProfile;
 import greycos.solver.core.api.solver.Solver;
 import greycos.solver.core.api.solver.change.ProblemChange;
 import greycos.solver.core.api.solver.event.EventProducerId;
 import greycos.solver.core.config.solver.EnvironmentMode;
 import greycos.solver.core.config.solver.monitoring.SolverMetric;
+import greycos.solver.core.impl.bavet.common.DefaultConstraintProfiler;
 import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import greycos.solver.core.impl.phase.Phase;
 import greycos.solver.core.impl.score.director.InnerScore;
@@ -28,6 +31,8 @@ import greycos.solver.core.impl.solver.recaller.BestSolutionRecaller;
 import greycos.solver.core.impl.solver.scope.SolverScope;
 import greycos.solver.core.impl.solver.termination.BasicPlumbingTermination;
 import greycos.solver.core.impl.solver.termination.UniversalTermination;
+
+import org.jspecify.annotations.Nullable;
 
 import io.micrometer.core.instrument.Metrics;
 
@@ -46,6 +51,9 @@ public class DefaultSolver<Solution_> extends AbstractSolver<Solution_>
   private final AtomicBoolean solving = new AtomicBoolean(false);
   private final SolverScope<Solution_> solverScope;
   private final String moveThreadCountDescription;
+  private volatile @Nullable ConstraintProfile constraintProfile;
+  private volatile long constraintProfileFreezeNanos;
+  private volatile long constraintProfileReportNanos;
 
   // ************************************************************************
   // Constructors and simple getters/setters
@@ -76,6 +84,19 @@ public class DefaultSolver<Solution_> extends AbstractSolver<Solution_>
 
   public SolverScope<Solution_> getSolverScope() {
     return solverScope;
+  }
+
+  @Override
+  public Optional<ConstraintProfile> getConstraintProfile() {
+    return Optional.ofNullable(constraintProfile);
+  }
+
+  public long getConstraintProfileFreezeNanos() {
+    return constraintProfileFreezeNanos;
+  }
+
+  public long getConstraintProfileReportNanos() {
+    return constraintProfileReportNanos;
   }
 
   // ************************************************************************
@@ -151,11 +172,19 @@ public class DefaultSolver<Solution_> extends AbstractSolver<Solution_>
   public final Solution_ solve(Solution_ problem) {
     // A rejected reuse must not reset or clean up state still owned by previous workers.
     solverScope.getWorkerRegistry().assertNoActiveWorkers();
-    // No tags for these metrics; they are global
-    var solveLengthTimer = Metrics.more().longTaskTimer(SolverMetric.SOLVE_DURATION.getMeterId());
-    var errorCounter = Metrics.counter(SolverMetric.ERROR_COUNT.getMeterId());
-
+    constraintProfile = null;
+    constraintProfileFreezeNanos = 0L;
+    constraintProfileReportNanos = 0L;
+    solverScope.setConstraintProfiler(null);
+    Throwable solveFailure = null;
+    io.micrometer.core.instrument.Counter errorCounter = null;
     try {
+      if (getScoreDirectorFactory().isConstraintStreamProfilingEnabled()) {
+        solverScope.setConstraintProfiler(createConstraintProfiler());
+      }
+      // No tags for these metrics; they are global.
+      var solveLengthTimer = Metrics.more().longTaskTimer(SolverMetric.SOLVE_DURATION.getMeterId());
+      errorCounter = Metrics.counter(SolverMetric.ERROR_COUNT.getMeterId());
       prepareForSolving(solverScope);
       solverScope.setInitialSolution(
           Objects.requireNonNull(problem, "The problem must not be null."));
@@ -176,8 +205,18 @@ public class DefaultSolver<Solution_> extends AbstractSolver<Solution_>
           runFailure = failure;
           throw failure;
         } finally {
-          solverScope.getMetricRun().seal();
-          solverScope.getIslandWorkAccounting().seal();
+          try {
+            solverScope.getMetricRun().seal();
+          } catch (RuntimeException | Error cleanupFailure) {
+            if (runFailure == null) runFailure = cleanupFailure;
+            else if (runFailure != cleanupFailure) runFailure.addSuppressed(cleanupFailure);
+          }
+          try {
+            solverScope.getIslandWorkAccounting().seal();
+          } catch (RuntimeException | Error cleanupFailure) {
+            if (runFailure == null) runFailure = cleanupFailure;
+            else if (runFailure != cleanupFailure) runFailure.addSuppressed(cleanupFailure);
+          }
           try {
             sample.stop();
           } catch (RuntimeException | Error cleanupFailure) {
@@ -187,8 +226,8 @@ public class DefaultSolver<Solution_> extends AbstractSolver<Solution_>
           try {
             solverScope.getMetricRun().cleanup(this::unregisterSolverSpecificMetrics);
           } catch (RuntimeException | Error cleanupFailure) {
-            if (runFailure == null) throw cleanupFailure;
-            if (runFailure != cleanupFailure) runFailure.addSuppressed(cleanupFailure);
+            if (runFailure == null) runFailure = cleanupFailure;
+            else if (runFailure != cleanupFailure) runFailure.addSuppressed(cleanupFailure);
           }
           // Timer failures on an otherwise successful run must not be hidden.
           if (runFailure instanceof RuntimeException exception) throw exception;
@@ -198,8 +237,15 @@ public class DefaultSolver<Solution_> extends AbstractSolver<Solution_>
       }
       outerSolvingEnded(solverScope);
       return solverScope.getBestSolution();
-    } catch (Exception | Error failure) {
-      errorCounter.increment();
+    } catch (RuntimeException | Error failure) {
+      solveFailure = failure;
+      if (errorCounter != null) {
+        try {
+          errorCounter.increment();
+        } catch (RuntimeException | Error cleanupFailure) {
+          if (cleanupFailure != failure) failure.addSuppressed(cleanupFailure);
+        }
+      }
       try {
         solvingError(solverScope, failure);
       } catch (Throwable cleanupFailure) {
@@ -209,7 +255,54 @@ public class DefaultSolver<Solution_> extends AbstractSolver<Solution_>
       }
       throw failure;
     } finally {
-      solving.set(false);
+      try {
+        finalizeConstraintProfile(solveFailure);
+      } finally {
+        solving.set(false);
+      }
+    }
+  }
+
+  DefaultConstraintProfiler createConstraintProfiler() {
+    return new DefaultConstraintProfiler();
+  }
+
+  private void finalizeConstraintProfile(@Nullable Throwable solveFailure) {
+    var profiler = solverScope.getConstraintProfiler();
+    if (profiler == null) return;
+    try {
+      ConstraintProfile frozen;
+      var start = System.nanoTime();
+      try {
+        frozen =
+            profiler.freeze(
+                solveFailure != null
+                    ? ConstraintProfile.Outcome.FAILED
+                    : isTerminateEarly()
+                        ? ConstraintProfile.Outcome.TERMINATED_EARLY
+                        : ConstraintProfile.Outcome.COMPLETED);
+      } finally {
+        constraintProfileFreezeNanos = System.nanoTime() - start;
+      }
+      constraintProfile = frozen;
+      start = System.nanoTime();
+      try {
+        profiler.report(frozen);
+      } catch (RuntimeException | Error renderingFailure) {
+        try {
+          logger.error("Failed to render the finalized constraint profile.", renderingFailure);
+        } catch (RuntimeException | Error loggingFailure) {
+          // Diagnostic infrastructure must not replace a successful solver result either.
+          if (loggingFailure != renderingFailure) renderingFailure.addSuppressed(loggingFailure);
+        }
+      } finally {
+        constraintProfileReportNanos = System.nanoTime() - start;
+      }
+    } catch (RuntimeException | Error snapshotFailure) {
+      if (solveFailure == null) throw snapshotFailure;
+      if (snapshotFailure != solveFailure) solveFailure.addSuppressed(snapshotFailure);
+    } finally {
+      solverScope.setConstraintProfiler(null);
     }
   }
 

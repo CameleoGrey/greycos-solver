@@ -149,6 +149,7 @@ public abstract class AbstractBavetNodeNetwork {
               .filter(layer -> layer.length > 0)
               .toArray(AbstractNode[][]::new);
       this.activeNodeSet = activeNodes;
+      activationCompleted(activeNodes);
       layeredActivePropagators =
           Arrays.stream(layeredActiveNodes)
               .map(layer -> Arrays.stream(layer).map(propagatorFunction).toArray(Propagator[]::new))
@@ -162,7 +163,7 @@ public abstract class AbstractBavetNodeNetwork {
                               s ->
                                   s instanceof DeferredSettleAware deferredSettleAware
                                       && deferredSettleAware.canDeferWork())
-                          .map(DeferredSettleAware.class::cast)
+                          .map(this::getDeferredSettleAware)
                           .toArray(DeferredSettleAware[]::new))
               .toArray(DeferredSettleAware[][]::new);
       notifyPreload(true);
@@ -173,6 +174,14 @@ public abstract class AbstractBavetNodeNetwork {
     if (preloadingActive) {
       notifyPreload(false);
     }
+  }
+
+  /** Called once, after ordinary activity pruning and before any propagation. */
+  protected void activationCompleted(Set<AbstractNode> activeNodes) {}
+
+  /** Allows an enabled profiler to instrument preparation without replacing graph nodes. */
+  protected DeferredSettleAware getDeferredSettleAware(AbstractNode node) {
+    return (DeferredSettleAware) node;
   }
 
   private void notifyPreload(boolean preloadingActive) {

@@ -1,7 +1,5 @@
 package greycos.solver.core.impl.bavet.common.tuple;
 
-import static greycos.solver.core.impl.bavet.common.ConstraintNodeProfileId.Qualifier;
-
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.function.BiPredicate;
@@ -9,10 +7,10 @@ import java.util.function.Predicate;
 
 import greycos.solver.core.api.function.QuadPredicate;
 import greycos.solver.core.api.function.TriPredicate;
+import greycos.solver.core.api.score.profile.ConstraintProfile.Role;
 import greycos.solver.core.impl.bavet.common.AbstractNode;
+import greycos.solver.core.impl.bavet.common.BavetSessionProfile;
 import greycos.solver.core.impl.bavet.common.BavetStream;
-import greycos.solver.core.impl.bavet.common.ConstraintNodeProfileId;
-import greycos.solver.core.impl.bavet.common.InnerConstraintProfiler;
 import greycos.solver.core.impl.bavet.common.StreamKind;
 import greycos.solver.core.impl.score.stream.bavet.common.Scorer;
 
@@ -72,33 +70,27 @@ public interface TupleLifecycle<Tuple_ extends Tuple> extends ActivitySupport {
   }
 
   static <Stream_ extends BavetStream, Tuple_ extends Tuple> TupleLifecycle<Tuple_> profiling(
-      InnerConstraintProfiler constraintProfiler,
-      int lifecycleId,
-      Stream_ stream,
-      TupleLifecycle<Tuple_> delegate) {
+      BavetSessionProfile sessionProfile, Stream_ stream, TupleLifecycle<Tuple_> delegate) {
     if (delegate instanceof AggregatedTupleLifecycle) {
-      // Do not profile aggregated tuple lifecycles; that will double
-      // count the lifecycles being aggregated.
+      // Aggregate forwarding is deliberately outside the measured work units.
       return delegate;
     }
 
     var streamKind = StreamKind.FILTER;
-    var qualifier = Qualifier.NONE;
+    var role = Role.LIFECYCLE;
 
     if (delegate instanceof AbstractNode node) {
       streamKind = node.getStreamKind();
-      qualifier = Qualifier.NODE;
     } else if (delegate instanceof LeftBridgeTupleLifecycle<?> parent
         && parent.leftTupleLifecycle() instanceof AbstractNode node) {
       streamKind = node.getStreamKind();
-      qualifier = Qualifier.LEFT_INPUT;
+      role = Role.LEFT_INPUT;
     } else if (delegate instanceof RightBridgeTupleLifecycle<?> parent
         && parent.rightTupleLifecycle() instanceof AbstractNode node) {
       streamKind = node.getStreamKind();
-      qualifier = Qualifier.RIGHT_INPUT;
+      role = Role.RIGHT_INPUT;
     } else if (delegate instanceof RecordingTupleLifecycle<Tuple_>) {
       streamKind = StreamKind.PRECOMPUTE;
-      qualifier = Qualifier.NODE;
     } else if (delegate instanceof Scorer<Tuple_>) {
       streamKind = StreamKind.SCORING;
     } else if (!(delegate instanceof ConditionalTupleLifecycle<Tuple_>)) {
@@ -106,9 +98,11 @@ public interface TupleLifecycle<Tuple_ extends Tuple> extends ActivitySupport {
           "Impossible state: encounter tuple lifecycle (%s) which is not a node and is not a known lifecycle implementation."
               .formatted(delegate.getClass()));
     }
-    var profileId =
-        new ConstraintNodeProfileId(lifecycleId, streamKind, qualifier, stream.getLocationSet());
-    return new ProfilingTupleLifecycle<>(constraintProfiler, profileId, delegate);
+    var profiler = sessionProfile.profiler();
+    var unit =
+        profiler.registerUnit(
+            sessionProfile.generation(), streamKind.name(), role, stream.getLocationSet());
+    return new ProfilingTupleLifecycle<>(profiler, unit, delegate);
   }
 
   void insert(Tuple_ tuple);

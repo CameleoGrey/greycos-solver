@@ -46,7 +46,7 @@ class NodeSharingLocationTest {
       throws ReflectiveOperationException {
     var factory =
         new BavetConstraintFactory<>(
-            TestdataSolution.buildSolutionDescriptor(), EnvironmentMode.NO_ASSERT);
+            TestdataSolution.buildSolutionDescriptor(), EnvironmentMode.NO_ASSERT, true);
     provider.defineConstraints(factory);
     var field = BavetConstraintFactory.class.getDeclaredField("sharingStreamMap");
     field.setAccessible(true);

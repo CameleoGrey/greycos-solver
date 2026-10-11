@@ -1,0 +1,269 @@
+{
+  "schemaVersion": 1,
+  "outcome": "COMPLETED",
+  "initialization": {
+    "scoringWallNanos": 100,
+    "measuredNanos": 50,
+    "unmeasuredNanos": 50,
+    "eventCount": 5,
+    "failureCount": 0,
+    "coverage": 0.5,
+    "buckets": [
+      {
+        "owners": [
+          "A's constraint",
+          "B constraint"
+        ],
+        "exclusiveNanos": 30,
+        "eventCount": 3,
+        "failureCount": 0,
+        "partialInvocations": false,
+        "measuredShare": 0.6,
+        "averageNanosPerCall": 10.0
+      },
+      {
+        "owners": [],
+        "exclusiveNanos": 10,
+        "eventCount": 1,
+        "failureCount": 0,
+        "partialInvocations": false,
+        "measuredShare": 0.2,
+        "averageNanosPerCall": 10.0
+      },
+      {
+        "owners": [
+          "A's constraint"
+        ],
+        "exclusiveNanos": 10,
+        "eventCount": 1,
+        "failureCount": 0,
+        "partialInvocations": false,
+        "measuredShare": 0.2,
+        "averageNanosPerCall": 10.0
+      }
+    ]
+  },
+  "search": {
+    "scoringWallNanos": 100,
+    "measuredNanos": 50,
+    "unmeasuredNanos": 50,
+    "eventCount": 5,
+    "failureCount": 0,
+    "coverage": 0.5,
+    "buckets": [
+      {
+        "owners": [
+          "A's constraint",
+          "B constraint"
+        ],
+        "exclusiveNanos": 30,
+        "eventCount": 3,
+        "failureCount": 0,
+        "partialInvocations": false,
+        "measuredShare": 0.6,
+        "averageNanosPerCall": 10.0
+      },
+      {
+        "owners": [
+          "A's constraint"
+        ],
+        "exclusiveNanos": 20,
+        "eventCount": 2,
+        "failureCount": 0,
+        "partialInvocations": false,
+        "measuredShare": 0.4,
+        "averageNanosPerCall": 10.0
+      }
+    ]
+  },
+  "combined": {
+    "scoringWallNanos": 200,
+    "measuredNanos": 100,
+    "unmeasuredNanos": 100,
+    "eventCount": 10,
+    "failureCount": 0,
+    "coverage": 0.5,
+    "buckets": [
+      {
+        "owners": [
+          "A's constraint",
+          "B constraint"
+        ],
+        "exclusiveNanos": 60,
+        "eventCount": 6,
+        "failureCount": 0,
+        "partialInvocations": false,
+        "measuredShare": 0.6,
+        "averageNanosPerCall": 10.0
+      },
+      {
+        "owners": [
+          "A's constraint"
+        ],
+        "exclusiveNanos": 30,
+        "eventCount": 3,
+        "failureCount": 0,
+        "partialInvocations": false,
+        "measuredShare": 0.3,
+        "averageNanosPerCall": 10.0
+      },
+      {
+        "owners": [],
+        "exclusiveNanos": 10,
+        "eventCount": 1,
+        "failureCount": 0,
+        "partialInvocations": false,
+        "measuredShare": 0.1,
+        "averageNanosPerCall": 10.0
+      }
+    ]
+  },
+  "generations": [
+    {
+      "generationId": 4294967296,
+      "initializationCompleted": true,
+      "ownershipEpochs": [
+        {
+          "ownershipEpoch": 0,
+          "ownershipState": "ENABLED_CANDIDATES"
+        },
+        {
+          "ownershipEpoch": 1,
+          "ownershipState": "ACTIVE"
+        }
+      ],
+      "constraints": [
+        {
+          "constraintRef": "A's constraint",
+          "activity": "ACTIVE"
+        },
+        {
+          "constraintRef": "B constraint",
+          "activity": "ACTIVE"
+        },
+        {
+          "constraintRef": "Disabled",
+          "activity": "DISABLED_WEIGHT"
+        },
+        {
+          "constraintRef": "Inactive",
+          "activity": "INACTIVE"
+        }
+      ]
+    }
+  ],
+  "units": [
+    {
+      "generationId": 4294967296,
+      "unitId": 8589934592,
+      "kind": "Root \"quoted\"\\path\nnext",
+      "role": "ROOT",
+      "sourceLocations": [
+        {
+          "className": "example.Provider",
+          "methodName": "known",
+          "lineNumber": 42
+        },
+        {
+          "className": "example.Provider\\generated",
+          "methodName": "unknown\"\n\t",
+          "lineNumber": null
+        }
+      ],
+      "measurements": [
+        {
+          "stage": "INITIALIZATION",
+          "ownershipEpoch": 0,
+          "ownershipState": "ENABLED_CANDIDATES",
+          "operation": "INSERT",
+          "owners": [
+            "A's constraint",
+            "B constraint"
+          ],
+          "exclusiveNanos": 30,
+          "eventCount": 3,
+          "failureCount": 0,
+          "partialInvocations": false
+        },
+        {
+          "stage": "SEARCH",
+          "ownershipEpoch": 1,
+          "ownershipState": "ACTIVE",
+          "operation": "UPDATE",
+          "owners": [
+            "A's constraint"
+          ],
+          "exclusiveNanos": 20,
+          "eventCount": 2,
+          "failureCount": 0,
+          "partialInvocations": false
+        }
+      ]
+    },
+    {
+      "generationId": 4294967296,
+      "unitId": 8589934593,
+      "kind": "Deferred",
+      "role": "PREPARATION",
+      "sourceLocations": [],
+      "measurements": [
+        {
+          "stage": "INITIALIZATION",
+          "ownershipEpoch": 1,
+          "ownershipState": "ACTIVE",
+          "operation": "PREPARE",
+          "owners": [
+            "A's constraint"
+          ],
+          "exclusiveNanos": 10,
+          "eventCount": 1,
+          "failureCount": 0,
+          "partialInvocations": false
+        }
+      ]
+    },
+    {
+      "generationId": 4294967296,
+      "unitId": 8589934594,
+      "kind": "Join",
+      "role": "PROPAGATOR",
+      "sourceLocations": [],
+      "measurements": [
+        {
+          "stage": "SEARCH",
+          "ownershipEpoch": 1,
+          "ownershipState": "ACTIVE",
+          "operation": "RETRACT",
+          "owners": [
+            "A's constraint",
+            "B constraint"
+          ],
+          "exclusiveNanos": 30,
+          "eventCount": 3,
+          "failureCount": 0,
+          "partialInvocations": false
+        }
+      ]
+    },
+    {
+      "generationId": 4294967296,
+      "unitId": 8589934595,
+      "kind": "Input",
+      "role": "LEFT_INPUT",
+      "sourceLocations": [],
+      "measurements": [
+        {
+          "stage": "INITIALIZATION",
+          "ownershipEpoch": 1,
+          "ownershipState": "ACTIVE",
+          "operation": "INSERT",
+          "owners": [],
+          "exclusiveNanos": 10,
+          "eventCount": 1,
+          "failureCount": 0,
+          "partialInvocations": false
+        }
+      ]
+    }
+  ]
+}

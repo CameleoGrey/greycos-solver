@@ -3,12 +3,19 @@ package greycos.solver.core.impl.solver;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.spy;
 
 import greycos.solver.core.api.score.SimpleScore;
 import greycos.solver.core.api.solver.SolverConfigOverride;
 import greycos.solver.core.api.solver.SolverFactory;
+import greycos.solver.core.config.alns.AlnsPhaseConfig;
 import greycos.solver.core.config.constructionheuristic.ConstructionHeuristicPhaseConfig;
+import greycos.solver.core.config.islandmodel.IslandModelPhaseConfig;
 import greycos.solver.core.config.localsearch.LocalSearchPhaseConfig;
+import greycos.solver.core.config.partitionedsearch.PartitionedSearchPhaseConfig;
+import greycos.solver.core.config.phase.PhaseConfig;
 import greycos.solver.core.config.score.director.ScoreDirectorFactoryConfig;
 import greycos.solver.core.config.solver.EnvironmentMode;
 import greycos.solver.core.config.solver.SolverConfig;
@@ -26,6 +33,8 @@ import greycos.solver.core.testutil.PlannerTestUtils;
 
 import org.assertj.core.api.SoftAssertions;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class DefaultSolverFactoryTest {
 
@@ -189,6 +198,38 @@ class DefaultSolverFactoryTest {
     assertThatCode(
             () -> new DefaultSolverFactory<>(solverConfig).buildSolver(new SolverConfigOverride()))
         .doesNotThrowAnyException();
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"global", "ch", "ls", "alns", "island", "partition"})
+  void constraintProfilingRejectsEveryWorkerRouteIncludingWidthOne(String route) {
+    var config = ConstraintProfilingLifecycleTest.config(true);
+    PhaseConfig<?> phase =
+        switch (route) {
+          case "ch" -> new ConstructionHeuristicPhaseConfig().withMoveThreadCount("1");
+          case "ls" -> new LocalSearchPhaseConfig().withMoveThreadCount("1");
+          case "alns" -> new AlnsPhaseConfig().withMoveThreadCount("1");
+          case "island" -> new IslandModelPhaseConfig().withIslandCount(1);
+          case "partition" -> new PartitionedSearchPhaseConfig().withRunnablePartThreadLimit("1");
+          default -> new ConstructionHeuristicPhaseConfig();
+        };
+    if (route.equals("global")) config.withMoveThreadCount("1");
+    config.withPhases(phase);
+    assertThatThrownBy(() -> SolverFactory.create(config).buildSolver())
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("constraintStreamProfilingEnabled");
+  }
+
+  @ParameterizedTest
+  @ValueSource(ints = {1, 2, 3, 4, 8})
+  void profilingAutoUsesResolvedGlobalWorkers(int cpuCount) {
+    var factory =
+        spy(
+            new DefaultSolverFactory<TestdataSolution>(
+                ConstraintProfilingLifecycleTest.config(true).withMoveThreadCount("AUTO")));
+    doReturn(mockMoveThreadCountResolverAuto(cpuCount)).when(factory).resolveMoveThreadCount(true);
+    if (cpuCount <= 3) assertThatCode(factory::buildSolver).doesNotThrowAnyException();
+    else assertThatThrownBy(factory::buildSolver).isInstanceOf(UnsupportedOperationException.class);
   }
 
   @Test

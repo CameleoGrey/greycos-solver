@@ -3,11 +3,13 @@ package greycos.solver.core.api.solver;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
 
 import greycos.solver.core.api.cotwin.solution.PlanningSolution;
+import greycos.solver.core.api.score.profile.ConstraintProfile;
 import greycos.solver.core.api.solver.change.ProblemChange;
 
 import org.jspecify.annotations.NullMarked;
@@ -33,6 +35,23 @@ public interface SolverJob<Solution_> {
    * <p>Returns {@link SolverStatus#NOT_SOLVING} if the solver already terminated.
    */
   SolverStatus getSolverStatus();
+
+  /**
+   * Returns the solver's final immutable constraint profile when available. This method is
+   * thread-safe and nonblocking; it does not wait for completion or throw the solving exception.
+   *
+   * <p>Returns empty when profiling is disabled, the solve has not started, or its profile has not
+   * been finalized. A queued canceled job has no profile. Cancellation and {@link
+   * SolverStatus#NOT_SOLVING} may precede actual solver cleanup; even {@link
+   * #getFinalBestSolution()} can return the input problem through its cancellation fallback before
+   * publication. Successful uncanceled completion after a solve has started makes its final profile
+   * available. Consumer callback failures do not retroactively change the profile's outcome.
+   *
+   * @see Solver#getConstraintProfile()
+   */
+  default Optional<ConstraintProfile> getConstraintProfile() {
+    return Optional.empty();
+  }
 
   /**
    * As defined by {@link #addProblemChanges(List)}, only for a single problem change. Prefer to

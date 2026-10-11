@@ -12,12 +12,14 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import greycos.solver.core.api.score.Score;
+import greycos.solver.core.api.score.profile.ConstraintProfile.Activity;
+import greycos.solver.core.api.score.profile.ConstraintProfile.Stage;
 import greycos.solver.core.api.score.stream.Constraint;
 import greycos.solver.core.api.score.stream.ConstraintMetaModel;
 import greycos.solver.core.impl.bavet.common.AbstractRootNode;
 import greycos.solver.core.impl.bavet.common.BavetAbstractConstraintStream;
+import greycos.solver.core.impl.bavet.common.BavetSessionProfile;
 import greycos.solver.core.impl.bavet.common.DefaultConstraintProfiler;
-import greycos.solver.core.impl.bavet.common.InnerConstraintProfiler;
 import greycos.solver.core.impl.bavet.uni.AbstractForEachUniNode;
 import greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 import greycos.solver.core.impl.cotwin.variable.declarative.ConsistencyTracker;
@@ -37,7 +39,6 @@ public final class BavetConstraintSessionFactory<Solution_, Score_ extends Score
 
   private final SolutionDescriptor<Solution_> solutionDescriptor;
   private final ConstraintMetaModel constraintMetaModel;
-  private final @Nullable InnerConstraintProfiler constraintProfiler;
   private final boolean entityPropertyRefreshSupported;
 
   @SuppressWarnings("unchecked")
@@ -47,7 +48,6 @@ public final class BavetConstraintSessionFactory<Solution_, Score_ extends Score
       boolean profilingEnabled) {
     this.solutionDescriptor = Objects.requireNonNull(solutionDescriptor);
     this.constraintMetaModel = Objects.requireNonNull(constraintMetaModel);
-    this.constraintProfiler = profilingEnabled ? new DefaultConstraintProfiler() : null;
     // Inspect every constraint, including those whose current weight is zero.
     var allStreams = new LinkedHashSet<BavetAbstractConstraintStream<Solution_>>();
     for (var constraint : constraintMetaModel.getConstraints()) {
@@ -69,12 +69,72 @@ public final class BavetConstraintSessionFactory<Solution_, Score_ extends Score
   // Node creation
   // ************************************************************************
 
-  @SuppressWarnings("unchecked")
   public BavetConstraintSession<Score_> buildSession(
       Solution_ workingSolution,
       ConsistencyTracker<Solution_> consistencyTracker,
       ConstraintMatchPolicy constraintMatchPolicy,
       boolean scoreDirectorDerived) {
+    return buildSession(
+        workingSolution, consistencyTracker, constraintMatchPolicy, scoreDirectorDerived, null);
+  }
+
+  public BavetConstraintSession<Score_> buildSession(
+      Solution_ workingSolution,
+      ConsistencyTracker<Solution_> consistencyTracker,
+      ConstraintMatchPolicy constraintMatchPolicy,
+      boolean scoreDirectorDerived,
+      @Nullable DefaultConstraintProfiler profiler) {
+    Map<Constraint, Score_> constraintWeightMap;
+    BavetConstraintSession<Score_> session;
+    if (profiler == null) {
+      constraintWeightMap = HashMap.newHashMap(constraintMetaModel.getConstraints().size());
+      session =
+          buildSessionInternal(
+              workingSolution,
+              consistencyTracker,
+              constraintMatchPolicy,
+              scoreDirectorDerived,
+              null,
+              constraintWeightMap);
+    } else {
+      profiler.enterWall(Stage.INITIALIZATION);
+      Throwable failure = null;
+      try {
+        var generation =
+            profiler.newGeneration(
+                constraintMetaModel.getConstraints().stream()
+                    .map(Constraint::getConstraintRef)
+                    .toList());
+        var profile = new BavetSessionProfile(profiler, generation);
+        constraintWeightMap = HashMap.newHashMap(constraintMetaModel.getConstraints().size());
+        session =
+            buildSessionInternal(
+                workingSolution,
+                consistencyTracker,
+                constraintMatchPolicy,
+                scoreDirectorDerived,
+                profile,
+                constraintWeightMap);
+      } catch (RuntimeException | Error e) {
+        failure = e;
+        throw e;
+      } finally {
+        profiler.exitWall(failure);
+      }
+    }
+    // Rendering and logger callbacks are deliberately outside the construction wall boundary.
+    logConstraintWeights(workingSolution, scoreDirectorDerived, constraintWeightMap, profiler);
+    return session;
+  }
+
+  @SuppressWarnings("unchecked")
+  private BavetConstraintSession<Score_> buildSessionInternal(
+      Solution_ workingSolution,
+      ConsistencyTracker<Solution_> consistencyTracker,
+      ConstraintMatchPolicy constraintMatchPolicy,
+      boolean scoreDirectorDerived,
+      @Nullable BavetSessionProfile sessionProfile,
+      Map<Constraint, Score_> constraintWeightMap) {
     var constraintWeightSupplier = solutionDescriptor.getConstraintWeightSupplier();
     var constraints = constraintMetaModel.getConstraints();
     if (constraintWeightSupplier != null) { // Fail fast on unknown constraints.
@@ -85,36 +145,12 @@ public final class BavetConstraintSessionFactory<Solution_, Score_ extends Score
     var scoreDefinition = solutionDescriptor.<Score_>getScoreDefinition();
     var zeroScore = scoreDefinition.getZeroScore();
     var constraintStreamSet = new LinkedHashSet<BavetAbstractConstraintStream<Solution_>>();
-    var constraintWeightMap = HashMap.<Constraint, Score_>newHashMap(constraints.size());
-
-    // Only log constraint weights if logging is enabled; otherwise we don't need to build the
-    // string.
-    var constraintWeightLoggingEnabled =
-        !scoreDirectorDerived && LOGGER.isEnabledForLevel(CONSTRAINT_WEIGHT_LOGGING_LEVEL);
-    var constraintWeightString =
-        constraintWeightLoggingEnabled
-            ? new StringBuilder(
-                "Constraint weights for solution (%s):%n".formatted(workingSolution))
-            : null;
 
     for (var constraint : constraints) {
       var constraintRef = constraint.getConstraintRef();
       var castConstraint = (BavetConstraint<Solution_>) constraint;
-      var defaultConstraintWeight = castConstraint.getConstraintWeight();
       var constraintWeight = (Score_) castConstraint.extractConstraintWeight(workingSolution);
       if (!constraintWeight.equals(zeroScore)) {
-        if (constraintWeightLoggingEnabled) {
-          if (defaultConstraintWeight != null
-              && !defaultConstraintWeight.equals(constraintWeight)) {
-            constraintWeightString.append(
-                "  Constraint (%s) weight overridden to (%s) from (%s).%n"
-                    .formatted(constraintRef, constraintWeight, defaultConstraintWeight));
-          } else {
-            constraintWeightString.append(
-                "  Constraint (%s) weight set to (%s).%n"
-                    .formatted(constraintRef, constraintWeight));
-          }
-        }
         /*
          * Relies on BavetConstraintFactory#share(Stream_) occurring for all constraint stream instances
          * to ensure there are no 2 equal ConstraintStream instances (with different child stream lists).
@@ -122,12 +158,10 @@ public final class BavetConstraintSessionFactory<Solution_, Score_ extends Score
         castConstraint.collectActiveConstraintStreams(constraintStreamSet);
         constraintWeightMap.put(constraint, constraintWeight);
       } else {
-        if (constraintWeightLoggingEnabled) {
-          /*
-           * Filter out nodes that only lead to constraints with zero weight.
-           * Note: Node sharing happens earlier, in BavetConstraintFactory#share(Stream_).
-           */
-          constraintWeightString.append("  Constraint (%s) disabled.%n".formatted(constraintRef));
+        if (sessionProfile != null) {
+          sessionProfile
+              .generation()
+              .setConstraintActivity(constraintRef, Activity.DISABLED_WEIGHT);
         }
       }
     }
@@ -135,35 +169,81 @@ public final class BavetConstraintSessionFactory<Solution_, Score_ extends Score
     var scoreInliner =
         AbstractScoreInliner.buildScoreInliner(
             scoreDefinition, constraintWeightMap, constraintMatchPolicy);
-    if (constraintStreamSet.isEmpty()) {
-      LOGGER.warn("No constraints enabled for solution ({}).", workingSolution);
+    if (constraintStreamSet.isEmpty() && sessionProfile == null) {
       return new BavetConstraintSession<>(scoreInliner);
     }
 
-    if (constraintWeightLoggingEnabled) {
-      LOGGER.atLevel(CONSTRAINT_WEIGHT_LOGGING_LEVEL).log(constraintWeightString.toString().trim());
-    }
     return new BavetConstraintSession<>(
         scoreInliner,
         buildNodeNetwork(
-            workingSolution,
             consistencyTracker,
             constraintStreamSet,
             scoreInliner,
-            constraintProfiler,
-            scoreDirectorDerived));
+            sessionProfile,
+            scoreDirectorDerived),
+        sessionProfile);
+  }
+
+  private void logConstraintWeights(
+      Solution_ workingSolution,
+      boolean scoreDirectorDerived,
+      Map<Constraint, Score_> constraintWeightMap,
+      @Nullable DefaultConstraintProfiler profiler) {
+    if (constraintWeightMap.isEmpty()
+        ? !LOGGER.isWarnEnabled()
+        : scoreDirectorDerived || !LOGGER.isEnabledForLevel(CONSTRAINT_WEIGHT_LOGGING_LEVEL)) {
+      return;
+    }
+    if (profiler == null) {
+      logConstraintWeightsInternal(workingSolution, constraintWeightMap);
+      return;
+    }
+    profiler.enterExcluded();
+    Throwable failure = null;
+    try {
+      logConstraintWeightsInternal(workingSolution, constraintWeightMap);
+    } catch (RuntimeException | Error e) {
+      failure = e;
+      throw e;
+    } finally {
+      profiler.exitExcluded(failure);
+    }
+  }
+
+  private void logConstraintWeightsInternal(
+      Solution_ workingSolution, Map<Constraint, Score_> constraintWeightMap) {
+    if (constraintWeightMap.isEmpty()) {
+      LOGGER.warn("No constraints enabled for solution ({}).", workingSolution);
+      return;
+    }
+    var text =
+        new StringBuilder("Constraint weights for solution (%s):%n".formatted(workingSolution));
+    for (var constraint : constraintMetaModel.getConstraints()) {
+      var ref = constraint.getConstraintRef();
+      var weight = constraintWeightMap.get(constraint);
+      var defaultWeight = ((BavetConstraint<?>) constraint).getConstraintWeight();
+      if (weight == null) {
+        text.append("  Constraint (%s) disabled.%n".formatted(ref));
+      } else if (defaultWeight != null && !defaultWeight.equals(weight)) {
+        text.append(
+            "  Constraint (%s) weight overridden to (%s) from (%s).%n"
+                .formatted(ref, weight, defaultWeight));
+      } else {
+        text.append("  Constraint (%s) weight set to (%s).%n".formatted(ref, weight));
+      }
+    }
+    LOGGER.atLevel(CONSTRAINT_WEIGHT_LOGGING_LEVEL).log(text.toString().trim());
   }
 
   private ConstraintStreamsBavetNodeNetwork buildNodeNetwork(
-      Solution_ workingSolution,
       ConsistencyTracker<Solution_> consistencyTracker,
       Set<BavetAbstractConstraintStream<Solution_>> constraintStreamSet,
       AbstractScoreInliner<Score_> scoreInliner,
-      InnerConstraintProfiler profiler,
+      @Nullable BavetSessionProfile sessionProfile,
       boolean scoreDirectorDerived) {
     var buildHelper =
         new ConstraintNodeBuildHelper<>(
-            consistencyTracker, constraintStreamSet, scoreInliner, profiler);
+            consistencyTracker, constraintStreamSet, scoreInliner, sessionProfile);
     var declaredClassToNodeMap = new LinkedHashMap<Class<?>, List<AbstractRootNode<?>>>();
     var nodeList =
         buildHelper.buildNodeList(
@@ -207,15 +287,6 @@ public final class BavetConstraintSessionFactory<Solution_, Score_ extends Score
                     constraint -> buildHelper.getScorer(constraint.getScoringConstraintStream()),
                     (a, b) -> a,
                     LinkedHashMap::new));
-
-    if (constraintProfiler != null) {
-      constraintProfiler.registerNodeGraph(
-          workingSolution,
-          nodeList,
-          scoreInliner.getConstraints(),
-          buildHelper::getNodeCreatingStream,
-          buildHelper::findParentNode);
-    }
 
     return buildHelper.buildNodeNetwork(
         nodeList, declaredClassToNodeMap, (Map) constraintToScorerMap, scoreDirectorDerived);

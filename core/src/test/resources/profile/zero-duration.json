@@ -1,0 +1,113 @@
+{
+  "schemaVersion": 1,
+  "outcome": "TERMINATED_EARLY",
+  "initialization": {
+    "scoringWallNanos": 0,
+    "measuredNanos": 0,
+    "unmeasuredNanos": 0,
+    "eventCount": 0,
+    "failureCount": 0,
+    "coverage": null,
+    "buckets": []
+  },
+  "search": {
+    "scoringWallNanos": 0,
+    "measuredNanos": 0,
+    "unmeasuredNanos": 0,
+    "eventCount": 3000000001,
+    "failureCount": 0,
+    "coverage": null,
+    "buckets": [
+      {
+        "owners": [
+          "A's constraint"
+        ],
+        "exclusiveNanos": 0,
+        "eventCount": 3000000001,
+        "failureCount": 0,
+        "partialInvocations": false,
+        "measuredShare": null,
+        "averageNanosPerCall": 0.0
+      }
+    ]
+  },
+  "combined": {
+    "scoringWallNanos": 0,
+    "measuredNanos": 0,
+    "unmeasuredNanos": 0,
+    "eventCount": 3000000001,
+    "failureCount": 0,
+    "coverage": null,
+    "buckets": [
+      {
+        "owners": [
+          "A's constraint"
+        ],
+        "exclusiveNanos": 0,
+        "eventCount": 3000000001,
+        "failureCount": 0,
+        "partialInvocations": false,
+        "measuredShare": null,
+        "averageNanosPerCall": 0.0
+      }
+    ]
+  },
+  "generations": [
+    {
+      "generationId": 4294967296,
+      "initializationCompleted": true,
+      "ownershipEpochs": [
+        {
+          "ownershipEpoch": 0,
+          "ownershipState": "ENABLED_CANDIDATES"
+        },
+        {
+          "ownershipEpoch": 1,
+          "ownershipState": "ACTIVE"
+        }
+      ],
+      "constraints": [
+        {
+          "constraintRef": "A's constraint",
+          "activity": "ACTIVE"
+        },
+        {
+          "constraintRef": "B constraint",
+          "activity": "ACTIVE"
+        },
+        {
+          "constraintRef": "Disabled",
+          "activity": "DISABLED_WEIGHT"
+        },
+        {
+          "constraintRef": "Inactive",
+          "activity": "INACTIVE"
+        }
+      ]
+    }
+  ],
+  "units": [
+    {
+      "generationId": 4294967296,
+      "unitId": 8589934592,
+      "kind": "Update",
+      "role": "ROOT",
+      "sourceLocations": [],
+      "measurements": [
+        {
+          "stage": "SEARCH",
+          "ownershipEpoch": 1,
+          "ownershipState": "ACTIVE",
+          "operation": "UPDATE",
+          "owners": [
+            "A's constraint"
+          ],
+          "exclusiveNanos": 0,
+          "eventCount": 3000000001,
+          "failureCount": 0,
+          "partialInvocations": false
+        }
+      ]
+    }
+  ]
+}

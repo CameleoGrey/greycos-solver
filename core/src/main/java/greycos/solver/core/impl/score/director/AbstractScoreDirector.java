@@ -21,6 +21,7 @@ import greycos.solver.core.api.solver.ScoreAnalysisFetchPolicy;
 import greycos.solver.core.api.solver.change.ProblemChange;
 import greycos.solver.core.api.solver.change.ProblemChangeDirector;
 import greycos.solver.core.config.solver.EnvironmentMode;
+import greycos.solver.core.impl.bavet.common.DefaultConstraintProfiler;
 import greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import greycos.solver.core.impl.cotwin.lookup.LookUpManager;
 import greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
@@ -127,10 +128,12 @@ public abstract class AbstractScoreDirector<
   private final boolean isAssertClonedSolution;
 
   private @Nullable MoveRepository<Solution_> moveRepository;
+  protected @Nullable DefaultConstraintProfiler constraintProfiler;
 
   protected AbstractScoreDirector(
       AbstractScoreDirectorBuilder<Solution_, Score_, Factory_, ?> builder) {
     this.environmentMode = builder.environmentMode;
+    this.constraintProfiler = builder.constraintProfiler;
     this.scoreDirectorFactory = builder.scoreDirectorFactory;
     this.neighborhoodsElementUpdateNotifier = new NeighborhoodNotifier<>();
     var solutionDescriptor = this.scoreDirectorFactory.getSolutionDescriptor();
@@ -815,6 +818,11 @@ public abstract class AbstractScoreDirector<
   }
 
   @Override
+  public @Nullable DefaultConstraintProfiler getConstraintProfiler() {
+    return constraintProfiler;
+  }
+
+  @Override
   public InnerScoreDirector<Solution_, Score_> createChildThreadScoreDirector(
       ChildThreadType childThreadType) {
     // Most score directors don't need derived status; CS will override this.
@@ -826,6 +834,7 @@ public abstract class AbstractScoreDirector<
                 .withLookUpEnabled(lookUpEnabled)
                 .withConstraintMatchPolicy(constraintMatchPolicy)
                 .withForceAllowInconsistentSolutions(!ignoreInconsistentSolutions)
+                .withConstraintProfiler(constraintProfiler)
                 .buildDerived();
         // ScoreCalculationCountTermination takes into account previous phases
         // but the calculationCount of partitions is maxed, not summed.
@@ -839,6 +848,7 @@ public abstract class AbstractScoreDirector<
                 .withLookUpEnabled(true)
                 .withConstraintMatchPolicy(constraintMatchPolicy)
                 .withForceAllowInconsistentSolutions(!ignoreInconsistentSolutions)
+                .withConstraintProfiler(constraintProfiler)
                 .buildDerived();
         childThreadScoreDirector.setWorkingSolution(cloneWorkingSolution());
         return childThreadScoreDirector;
@@ -851,36 +861,41 @@ public abstract class AbstractScoreDirector<
 
   @Override
   public void close() {
-    var observer = workingSolutionMutationObserver;
-    workingSolutionMutationObserver = null;
-    if (moveRepository != null) {
-      moveRepository.dispose();
-      moveRepository = null;
-      neighborhoodsElementUpdateNotifier.setMoveRepository(null);
-    }
-    workingSolution = null;
-    workingSolutionState = WorkingSolutionState.CLEAN;
-    workingSolutionFailure = null;
-    workingInitScore = 0;
-    if (lookUpEnabled) {
-      lookUpManager.reset();
-    }
     try {
-      variableSupport.close();
-    } catch (RuntimeException | Error failure) {
-      if (observer != null) {
-        try {
-          observer.close();
-        } catch (RuntimeException | Error closeFailure) {
-          if (closeFailure != failure) {
-            failure.addSuppressed(closeFailure);
+      var observer = workingSolutionMutationObserver;
+      workingSolutionMutationObserver = null;
+      if (moveRepository != null) {
+        moveRepository.dispose();
+        moveRepository = null;
+        neighborhoodsElementUpdateNotifier.setMoveRepository(null);
+      }
+      workingSolution = null;
+      workingSolutionState = WorkingSolutionState.CLEAN;
+      workingSolutionFailure = null;
+      workingInitScore = 0;
+      if (lookUpEnabled) {
+        lookUpManager.reset();
+      }
+      try {
+        variableSupport.close();
+      } catch (RuntimeException | Error failure) {
+        if (observer != null) {
+          try {
+            observer.close();
+          } catch (RuntimeException | Error closeFailure) {
+            if (closeFailure != failure) {
+              failure.addSuppressed(closeFailure);
+            }
           }
         }
+        throw failure;
       }
-      throw failure;
-    }
-    if (observer != null) {
-      observer.close();
+      if (observer != null) {
+        observer.close();
+      }
+    } finally {
+      // The solve scope owns finalization; other directors may still use the shared collector.
+      constraintProfiler = null;
     }
   }
 
@@ -1747,6 +1762,7 @@ public abstract class AbstractScoreDirector<
     protected boolean lookUpEnabled = false;
     protected boolean expectShadowVariablesInCorrectState = true;
     protected boolean forceAllowInconsistentSolutions = false;
+    protected @Nullable DefaultConstraintProfiler constraintProfiler;
 
     protected AbstractScoreDirectorBuilder(Factory_ scoreDirectorFactory) {
       this(scoreDirectorFactory, scoreDirectorFactory.getGlobalEnvironmentMode());
@@ -1784,6 +1800,13 @@ public abstract class AbstractScoreDirector<
     }
 
     public abstract AbstractScoreDirector<Solution_, Score_, Factory_> build();
+
+    /** Injects a solve collector; derived/scratch builders deliberately do not infer one. */
+    @SuppressWarnings("unchecked")
+    public Builder_ withConstraintProfiler(@Nullable DefaultConstraintProfiler constraintProfiler) {
+      this.constraintProfiler = constraintProfiler;
+      return (Builder_) this;
+    }
 
     /**
      * Optionally makes the score director a derived one; most score directors do not require this.

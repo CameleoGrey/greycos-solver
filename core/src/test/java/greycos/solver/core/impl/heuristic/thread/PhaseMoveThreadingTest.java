@@ -1,6 +1,8 @@
 package greycos.solver.core.impl.heuristic.thread;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.ArrayList;
 import java.util.IdentityHashMap;
@@ -49,6 +51,47 @@ import org.junit.jupiter.params.provider.CsvSource;
 class PhaseMoveThreadingTest {
 
   private static final int STEP_LIMIT = 12;
+
+  @ParameterizedTest
+  @CsvSource({"ch,3", "ch,4", "ls,3", "ls,4"})
+  void profilingValidatesResolvedPhaseAutoOverride(String phaseName, int cpuCount) {
+    var solverPolicy =
+        policy(null).cloneBuilder().withConstraintStreamProfilingEnabled(true).build();
+    Runnable build;
+    if (phaseName.equals("ch")) {
+      var factory =
+          new DefaultConstructionHeuristicPhaseFactory<TestdataSolution>(
+              new ConstructionHeuristicPhaseConfig().withMoveThreadCount("AUTO")) {
+            @Override
+            protected int getAvailableProcessors() {
+              return cpuCount;
+            }
+          };
+      build =
+          () ->
+              factory
+                  .getBuilder(0, true, solverPolicy, new BasicPlumbingTermination<>(false))
+                  .build();
+    } else {
+      var factory =
+          new DefaultLocalSearchPhaseFactory<TestdataSolution>(
+              new LocalSearchPhaseConfig().withMoveThreadCount("AUTO")) {
+            @Override
+            protected int getAvailableProcessors() {
+              return cpuCount;
+            }
+          };
+      build =
+          () ->
+              factory.buildPhase(
+                  0, false, solverPolicy, null, new BasicPlumbingTermination<>(false));
+    }
+    if (cpuCount == 3) assertThatCode(build::run).doesNotThrowAnyException();
+    else
+      assertThatThrownBy(build::run)
+          .isInstanceOf(UnsupportedOperationException.class)
+          .hasMessageContaining("constraintStreamProfilingEnabled");
+  }
 
   @ParameterizedTest
   @CsvSource(

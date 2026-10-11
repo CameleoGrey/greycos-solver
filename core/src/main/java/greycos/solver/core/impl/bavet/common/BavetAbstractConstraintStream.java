@@ -3,6 +3,7 @@ package greycos.solver.core.impl.bavet.common;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -34,15 +35,17 @@ import org.jspecify.annotations.NonNull;
 public abstract class BavetAbstractConstraintStream<Solution_>
     extends AbstractConstraintStream<Solution_> implements BavetStream {
 
-  private static final Set<String> constraintStreamApiMethodSet =
-      Stream.of(
-              UniConstraintStream.class,
-              BiConstraintStream.class,
-              TriConstraintStream.class,
-              QuadConstraintStream.class)
-          .flatMap(clazz -> Arrays.stream(clazz.getMethods()))
-          .map(Method::getName)
-          .collect(Collectors.toUnmodifiableSet());
+  private static final class SourceLocationSupport {
+    private static final Set<String> constraintStreamApiMethodSet =
+        Stream.of(
+                UniConstraintStream.class,
+                BiConstraintStream.class,
+                TriConstraintStream.class,
+                QuadConstraintStream.class)
+            .flatMap(clazz -> Arrays.stream(clazz.getMethods()))
+            .map(Method::getName)
+            .collect(Collectors.toUnmodifiableSet());
+  }
 
   protected final BavetConstraintFactory<Solution_> constraintFactory;
   protected final BavetAbstractConstraintStream<Solution_> parent;
@@ -56,8 +59,7 @@ public abstract class BavetAbstractConstraintStream<Solution_>
     super(parent.getRetrievalSemantics());
     this.constraintFactory = constraintFactory;
     this.parent = parent;
-    this.streamLocationSet = new TreeSet<>();
-    streamLocationSet.add(determineStreamLocation());
+    this.streamLocationSet = newLocationSet(constraintFactory.isProfilingEnabled());
   }
 
   protected BavetAbstractConstraintStream(
@@ -65,8 +67,16 @@ public abstract class BavetAbstractConstraintStream<Solution_>
     super(retrievalSemantics);
     this.constraintFactory = constraintFactory;
     this.parent = null;
-    this.streamLocationSet = new TreeSet<>();
-    streamLocationSet.add(determineStreamLocation());
+    this.streamLocationSet = newLocationSet(constraintFactory.isProfilingEnabled());
+  }
+
+  private static SortedSet<ConstraintNodeLocation> newLocationSet(boolean profilingEnabled) {
+    if (!profilingEnabled) {
+      return Collections.emptySortedSet();
+    }
+    var locations = new TreeSet<ConstraintNodeLocation>();
+    locations.add(determineStreamLocation());
+    return locations;
   }
 
   private static ConstraintNodeLocation determineStreamLocation() {
@@ -79,7 +89,7 @@ public abstract class BavetAbstractConstraintStream<Solution_>
                     .dropWhile(
                         stackFrame ->
                             !ConstraintStream.class.isAssignableFrom(stackFrame.getDeclaringClass())
-                                && !constraintStreamApiMethodSet.contains(
+                                && !SourceLocationSupport.constraintStreamApiMethodSet.contains(
                                     stackFrame.getMethodName()))
                     .dropWhile(
                         stackFrame ->
@@ -118,7 +128,9 @@ public abstract class BavetAbstractConstraintStream<Solution_>
   }
 
   public void addLocationSet(Set<ConstraintNodeLocation> locationSet) {
-    streamLocationSet.addAll(locationSet);
+    if (!locationSet.isEmpty()) {
+      streamLocationSet.addAll(locationSet);
+    }
   }
 
   /**

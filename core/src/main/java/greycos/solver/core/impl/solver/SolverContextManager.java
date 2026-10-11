@@ -207,12 +207,15 @@ public class SolverContextManager<Solution_, Score_ extends Score<Score_>>
   }
 
   void prepareForSolving(SolverScope<Solution_> solverScope, EnvironmentMode globalMode) {
-    if (solverScope.getScoreDirector() == lastClosedDirector) {
+    var previousDirector = solverScope.getScoreDirector();
+    if (previousDirector == lastClosedDirector
+        || previousDirector.getConstraintProfiler() != solverScope.getConstraintProfiler()) {
       var context = createContext(solverScope, globalMode);
       solverScope.setScoreDirector(context.scoreDirector());
       solverScope.setProblemChangeDirector(context.problemChangeDirector());
       currentContext = context;
       bestSolutionRecaller.enableAssertions(globalMode);
+      release(previousDirector);
     }
   }
 
@@ -221,6 +224,7 @@ public class SolverContextManager<Solution_, Score_ extends Score<Score_>>
     var director =
         scoreDirectorFactory
             .createScoreDirectorBuilder(mode)
+            .withConstraintProfiler(scope.getConstraintProfiler())
             .withLookUpEnabled(true)
             .withConstraintMatchPolicy(
                 ScoreDirectorFactoryFactory.decideConstraintMatchPolicy(scope, mode))
@@ -254,6 +258,7 @@ public class SolverContextManager<Solution_, Score_ extends Score<Score_>>
     var newScoreDirector =
         scoreDirectorFactory
             .createScoreDirectorBuilder(phase.getEnvironmentMode())
+            .withConstraintProfiler(solverScope.getConstraintProfiler())
             .withLookUpEnabled(true)
             .withConstraintMatchPolicy(
                 ScoreDirectorFactoryFactory.decideConstraintMatchPolicy(

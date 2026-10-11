@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import greycos.solver.core.api.score.SimpleScore;
+import greycos.solver.core.api.score.profile.ConstraintProfile;
 import greycos.solver.core.api.solver.SolverFactory;
 import greycos.solver.core.api.solver.alns.AlnsContext;
 import greycos.solver.core.api.solver.alns.AlnsRepairOperator;
@@ -33,6 +34,43 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 @Timeout(120)
 class AlnsRepairAttemptsTest {
+
+  @ParameterizedTest
+  @ValueSource(strings = {"basic", "list", "mixed"})
+  void profilingIncludesSynchronousRepairDirectorAndExcludesScratchAssertions(String shape) {
+    assertSynchronousProfile(AlnsMoveThreadingWorkload.named(shape));
+  }
+
+  private static <S> void assertSynchronousProfile(Workload<S> workload) {
+    for (var environment : List.of(EnvironmentMode.NO_ASSERT, EnvironmentMode.FULL_ASSERT)) {
+      var config =
+          AlnsMoveThreadingWorkload.config(
+              workload,
+              "NONE",
+              19L,
+              2,
+              AlnsRepairOperatorType.RANDOMIZED_GREEDY,
+              new TerminationConfig().withStepCountLimit(2),
+              environment);
+      config.getScoreDirectorFactoryConfig().withConstraintStreamProfilingEnabled(true);
+      ((AlnsPhaseConfig) config.getPhaseConfigList().getFirst())
+          .withMoveThreadingMode(AlnsMoveThreadingMode.REPAIR_ATTEMPTS)
+          .withRepairAttemptCount(3);
+      var solver = SolverFactory.<S>create(config).buildSolver();
+      var solution = solver.solve(workload.createProblem(12));
+      assertThat(workload.score(solution)).isEqualTo(workload.recompute(solution));
+      var profile = solver.getConstraintProfile().orElseThrow();
+      assertThat(profile.outcome()).isEqualTo(ConstraintProfile.Outcome.COMPLETED);
+      // Initial load, solvingStarted load, and the retained synchronous repair helper.
+      assertThat(profile.generations()).hasSize(3);
+      assertThat(profile.generations())
+          .allMatch(generation -> generation.initializationCompleted());
+      assertThat(profile.units())
+          .anyMatch(unit -> unit.generationId() == profile.generations().getLast().generationId());
+      assertThat(profile.search().eventCount()).isPositive();
+    }
+  }
+
   @ParameterizedTest
   @ValueSource(strings = {"phase", "repair"})
   @Timeout(10)

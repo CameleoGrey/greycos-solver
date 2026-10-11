@@ -2,13 +2,16 @@ package greycos.solver.core.impl.score.stream.bavet;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import greycos.solver.core.impl.bavet.AbstractBavetNodeNetwork;
 import greycos.solver.core.impl.bavet.common.AbstractNode;
 import greycos.solver.core.impl.bavet.common.AbstractRootNode;
-import greycos.solver.core.impl.bavet.common.InnerConstraintProfiler;
+import greycos.solver.core.impl.bavet.common.BavetSessionProfile;
+import greycos.solver.core.impl.bavet.common.DefaultConstraintProfiler;
+import greycos.solver.core.impl.bavet.common.DeferredSettleAware;
 import greycos.solver.core.impl.bavet.common.Propagator;
 import greycos.solver.core.impl.bavet.uni.ForEachFilteredUniNode;
 import greycos.solver.core.impl.bavet.uni.ForEachUnfilteredUniNode;
@@ -35,7 +38,8 @@ public final class ConstraintStreamsBavetNodeNetwork extends AbstractBavetNodeNe
       Map<Class<?>, List<AbstractRootNode<?>>> declaredClassToNodeMap,
       Map<BavetConstraint<?>, Scorer<?>> constraintToScorerMap,
       Function<AbstractNode, Propagator> propagatorFunction,
-      @Nullable InnerConstraintProfiler constraintProfiler,
+      @Nullable BavetSessionProfile sessionProfile,
+      Map<AbstractNode, DeferredSettleAware> preparations,
       boolean scoreDirectorDerived) {
     var layeredNodes = AbstractBavetNodeNetwork.buildLayeredNodes(nodeList);
     return new ConstraintStreamsBavetNodeNetwork(
@@ -43,16 +47,24 @@ public final class ConstraintStreamsBavetNodeNetwork extends AbstractBavetNodeNe
         constraintToScorerMap,
         layeredNodes,
         propagatorFunction,
-        constraintProfiler,
+        sessionProfile,
+        preparations,
         scoreDirectorDerived);
   }
 
   public static final ConstraintStreamsBavetNodeNetwork EMPTY =
       new ConstraintStreamsBavetNodeNetwork(
-          Map.of(), Map.of(), new AbstractNode[0][0], AbstractNode::getPropagator, null, true);
+          Map.of(),
+          Map.of(),
+          new AbstractNode[0][0],
+          AbstractNode::getPropagator,
+          null,
+          Map.of(),
+          true);
 
   private final Map<BavetConstraint<?>, Scorer<?>> constraintToScorerMap;
-  private final @Nullable InnerConstraintProfiler constraintProfiler;
+  private final @Nullable BavetSessionProfile sessionProfile;
+  private final Map<AbstractNode, DeferredSettleAware> preparations;
   private final boolean scoreDirectorDerived;
   private final boolean ordinaryRootsOnly;
   private boolean printedInactiveConstraints = false;
@@ -69,11 +81,13 @@ public final class ConstraintStreamsBavetNodeNetwork extends AbstractBavetNodeNe
       Map<BavetConstraint<?>, Scorer<?>> constraintToScorerMap,
       AbstractNode[][] layeredNodes,
       Function<AbstractNode, Propagator> propagatorFunction,
-      @Nullable InnerConstraintProfiler constraintProfiler,
+      @Nullable BavetSessionProfile sessionProfile,
+      Map<AbstractNode, DeferredSettleAware> preparations,
       boolean scoreDirectorDerived) {
     super(declaredClassToNodeMap, layeredNodes, propagatorFunction);
     this.constraintToScorerMap = constraintToScorerMap;
-    this.constraintProfiler = constraintProfiler;
+    this.sessionProfile = sessionProfile;
+    this.preparations = preparations;
     this.scoreDirectorDerived = scoreDirectorDerived;
     this.ordinaryRootsOnly =
         declaredClassToNodeMap.values().stream()
@@ -98,37 +112,60 @@ public final class ConstraintStreamsBavetNodeNetwork extends AbstractBavetNodeNe
     }
     if (!scoreDirectorDerived && !printedInactiveConstraints && isActivationCheckComplete()) {
       printedInactiveConstraints = true;
-      var substring =
-          constraintToScorerMap.entrySet().stream()
-              .filter(entry -> !entry.getValue().isActive())
-              .map(
-                  entry ->
-                      "  Constraint (%s) with weight set to (%s)."
-                          .formatted(
-                              entry.getKey().getConstraintRef(), entry.getValue().getWeight()))
-              .collect(Collectors.joining(System.lineSeparator()));
-      if (substring.isEmpty()) {
+      if (sessionProfile == null) {
+        logInactiveConstraints(loggingLevel);
         return;
       }
-      LOGGER
-          .atLevel(loggingLevel)
-          .log(
-              """
+      var profiler = sessionProfile.profiler();
+      profiler.enterExcluded();
+      Throwable failure = null;
+      try {
+        logInactiveConstraints(loggingLevel);
+      } catch (RuntimeException | Error e) {
+        failure = e;
+        throw e;
+      } finally {
+        profiler.exitExcluded(failure);
+      }
+    }
+  }
+
+  private void logInactiveConstraints(Level loggingLevel) {
+    var substring =
+        constraintToScorerMap.entrySet().stream()
+            .filter(entry -> !entry.getValue().isActive())
+            .map(
+                entry ->
+                    "  Constraint (%s) with weight set to (%s)."
+                        .formatted(entry.getKey().getConstraintRef(), entry.getValue().getWeight()))
+            .collect(Collectors.joining(System.lineSeparator()));
+    if (substring.isEmpty()) {
+      return;
+    }
+    LOGGER
+        .atLevel(loggingLevel)
+        .log(
+            """
               Constraints deactivated due to being useless in the given working solution:
               %s\
               """
-                  .formatted(substring));
+                .formatted(substring));
+  }
+
+  @Override
+  protected void activationCompleted(Set<AbstractNode> activeNodes) {
+    if (sessionProfile != null) {
+      sessionProfile.activationCompleted(activeNodes);
     }
   }
 
-  public @Nullable InnerConstraintProfiler getConstraintProfiler() {
-    return constraintProfiler;
+  @Override
+  protected DeferredSettleAware getDeferredSettleAware(AbstractNode node) {
+    return preparations.getOrDefault(node, (DeferredSettleAware) node);
   }
 
-  public void summarizeProfileIfPresent() {
-    if (constraintProfiler != null) {
-      constraintProfiler.summarize();
-    }
+  public @Nullable DefaultConstraintProfiler getConstraintProfiler() {
+    return sessionProfile == null ? null : sessionProfile.profiler();
   }
 
   @Override

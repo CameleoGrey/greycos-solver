@@ -23,6 +23,7 @@ import greycos.solver.core.api.score.stream.ConstraintRef;
 import greycos.solver.core.api.solver.ScoreAnalysisFetchPolicy;
 import greycos.solver.core.api.solver.SolutionManager;
 import greycos.solver.core.config.solver.EnvironmentMode;
+import greycos.solver.core.impl.bavet.common.DefaultConstraintProfiler;
 import greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 import greycos.solver.core.impl.cotwin.variable.BasicVariableState;
@@ -56,6 +57,11 @@ import org.jspecify.annotations.Nullable;
 @NullMarked
 public interface InnerScoreDirector<Solution_, Score_ extends Score<Score_>>
     extends VariableDescriptorAwareScoreDirector<Solution_>, AutoCloseable {
+
+  /** The explicitly injected solve collector; standalone and scratch directors have none. */
+  default @Nullable DefaultConstraintProfiler getConstraintProfiler() {
+    return null;
+  }
 
   static <Score_ extends Score<Score_>> ConstraintAnalysis<Score_> getConstraintAnalysis(
       ConstraintMatchTotal<Score_> constraintMatchTotal, ScoreAnalysisFetchPolicy fetchPolicy) {

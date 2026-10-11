@@ -26,7 +26,8 @@ public final class DefaultAlnsPhaseFactory<Solution_>
         resolveMoveThreadCount(phaseConfig.getMoveThreadCount(), policy.getMoveThreadCount(), true);
     if (moveThreadCount != null && policy.isConstraintStreamProfilingEnabled()) {
       throw new UnsupportedOperationException(
-          "ALNS move workers are not supported together with constraintStreamProfilingEnabled (true).");
+          "ALNS move workers (moveThreadCount=%s) are not supported together with constraintStreamProfilingEnabled (true)."
+              .formatted(moveThreadCount));
     }
     var builder =
         new DefaultAlnsPhase.Builder<>(
