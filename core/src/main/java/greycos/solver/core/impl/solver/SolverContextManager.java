@@ -276,6 +276,10 @@ public class SolverContextManager<Solution_, Score_ extends Score<Score_>>
       @Nullable SolverContext<Solution_, Score_> oldSolverContext,
       SolverContext<Solution_, Score_> newSolverContext) {
     if (oldSolverContext != null) {
+      newSolverContext
+          .scoreDirector()
+          .setResumableSearchWorkCounter(
+              oldSolverContext.scoreDirector().getResumableSearchWorkCounter());
       // We will use the same working solution set from the previous phase, as it has already been
       // cloned
       newSolverContext

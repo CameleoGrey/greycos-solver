@@ -97,6 +97,13 @@ public class BestSolutionRecaller<Solution_> extends PhaseLifecycleListenerAdapt
 
   public <Score_ extends Score<Score_>> void processWorkingSolutionDuringStep(
       AbstractStepScope<Solution_> stepScope) {
+    this.<Score_>processWorkingSolutionDuringStep(
+        stepScope, stepScope.getPhaseScope().getPhaseId());
+  }
+
+  /** Publishes a completed step with its logical producer while retaining ordinary best checks. */
+  public <Score_ extends Score<Score_>> void processWorkingSolutionDuringStep(
+      AbstractStepScope<Solution_> stepScope, EventProducerId eventProducerId) {
     var phaseScope = stepScope.getPhaseScope();
     var score = stepScope.<Score_>getScore();
     var solverScope = phaseScope.getSolverScope();
@@ -110,7 +117,7 @@ public class BestSolutionRecaller<Solution_> extends PhaseLifecycleListenerAdapt
               solverScope.getSolutionDescriptor().<Score_>getScore(newBestSolution),
               stepScope.getScoreDirector().getWorkingInitScore(),
               true);
-      updateBestSolutionAndFire(solverScope, phaseScope, innerScore, newBestSolution);
+      updateBestSolutionAndFire(solverScope, eventProducerId, innerScore, newBestSolution);
     } else if (assertBestScoreIsUnmodified) {
       solverScope.assertScoreFromScratch(solverScope.getBestSolution());
     }
@@ -137,7 +144,7 @@ public class BestSolutionRecaller<Solution_> extends PhaseLifecycleListenerAdapt
                   .getScoreDirector()
                   .getSolutionDescriptor()
                   .hasBothBasicAndListVariables());
-      updateBestSolutionAndFire(solverScope, phaseScope, innerScore, newBestSolution);
+      updateBestSolutionAndFire(solverScope, phaseScope.getPhaseId(), innerScore, newBestSolution);
     } else if (assertBestScoreIsUnmodified) {
       solverScope.assertScoreFromScratch(solverScope.getBestSolution());
     }
@@ -161,11 +168,11 @@ public class BestSolutionRecaller<Solution_> extends PhaseLifecycleListenerAdapt
 
   private void updateBestSolutionAndFire(
       SolverScope<Solution_> solverScope,
-      AbstractPhaseScope<Solution_> phaseScope,
+      EventProducerId eventProducerId,
       InnerScore<?> bestScore,
       Solution_ bestSolution) {
     updateBestSolutionWithoutFiring(solverScope, bestScore, bestSolution);
-    solverEventSupport.fireBestSolutionChanged(solverScope, phaseScope.getPhaseId(), bestSolution);
+    solverEventSupport.fireBestSolutionChanged(solverScope, eventProducerId, bestSolution);
   }
 
   @SuppressWarnings({"unchecked", "rawtypes"})

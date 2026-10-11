@@ -18,15 +18,18 @@ final class PartitionTermination<Solution_> extends AbstractUniversalTermination
   private final List<SolverTermination<Solution_>> solverLeaves;
   private final List<PhaseTermination<Solution_>> phaseLeaves;
   private final boolean supportsRepairAttempts;
+  private final boolean timeGradientEnabled;
   private @Nullable AbstractPhaseScope<Solution_> activePhaseScope;
 
   @SuppressWarnings("unchecked")
   PartitionTermination(
       PartitionTerminationBudget<Solution_> budget,
       PartitionTerminationBudget.Node<Solution_> root,
-      List<Termination<Solution_>> leaves) {
+      List<Termination<Solution_>> leaves,
+      boolean timeGradientEnabled) {
     this.budget = budget;
     this.root = root;
+    this.timeGradientEnabled = timeGradientEnabled;
     solverLeaves =
         leaves.stream()
             .filter(SolverTermination.class::isInstance)
@@ -47,6 +50,9 @@ final class PartitionTermination<Solution_> extends AbstractUniversalTermination
 
   @Override
   public double calculateSolverTimeGradient(SolverScope<Solution_> scope) {
+    if (!timeGradientEnabled) {
+      return -1.0;
+    }
     // Child phase bridges request the solver gradient, including local phase-only work leaves.
     return root.evaluate(budget.progress(), scope, activePhaseScope, true).gradient();
   }
@@ -58,6 +64,9 @@ final class PartitionTermination<Solution_> extends AbstractUniversalTermination
 
   @Override
   public double calculatePhaseTimeGradient(AbstractPhaseScope<Solution_> scope) {
+    if (!timeGradientEnabled) {
+      return -1.0;
+    }
     return root.evaluate(budget.progress(), scope.getSolverScope(), scope, true).gradient();
   }
 

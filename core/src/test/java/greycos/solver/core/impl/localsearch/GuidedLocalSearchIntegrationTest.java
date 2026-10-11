@@ -77,6 +77,54 @@ import org.junit.jupiter.params.provider.ValueSource;
 @Timeout(20)
 class GuidedLocalSearchIntegrationTest {
 
+  @Test
+  void resumedExecutionPreservesGuidanceAndScoringState() {
+    for (var backend : Backend.values()) {
+      var uninterrupted = solver(config(backend, "NONE", 1, 6));
+      var expectedSteps = recordSteps(uninterrupted);
+      var expected = uninterrupted.solve(problem(false));
+
+      var resumed = solver(config(backend, "NONE", 1, 6));
+      var actualSteps = recordSteps(resumed);
+      var scope = resumed.getSolverScope();
+      scope.setBestSolution(problem(false));
+      resumed.outerSolvingStarted(scope);
+      resumed.solvingStarted(scope);
+      try {
+        var phase = (DefaultLocalSearchPhase<LandscapeSolution>) resumed.getPhaseList().getFirst();
+        var director = scope.getScoreDirector();
+        var working = scope.getWorkingSolution();
+        var execution = phase.startExecution(scope);
+        int quantum = 0;
+        while (!execution.isComplete()) {
+          execution.advance(++quantum % 2 == 0 ? 2L : 1L);
+          assertThat(scope.getScoreDirector()).isSameAs(director);
+          assertThat(scope.getWorkingSolution()).isSameAs(working);
+          assertThat(quantum).isLessThan(20);
+        }
+        execution.finish();
+        assertThat(actualSteps).containsExactlyElementsOf(expectedSteps);
+        assertThat(scope.getBestSolution().score).isEqualTo(expected.score);
+        assertThat(statistics(resumed)).isEqualTo(statistics(uninterrupted));
+        assertThat(scope.getMoveEvaluationCount())
+            .isEqualTo(uninterrupted.getSolverScope().getMoveEvaluationCount());
+        assertThat(scope.getScoreCalculationCount())
+            .isEqualTo(uninterrupted.getSolverScope().getScoreCalculationCount());
+        assertThat(scope.getWorkingRandom().moveIteratorUsage().nextLong())
+            .isEqualTo(
+                uninterrupted.getSolverScope().getWorkingRandom().moveIteratorUsage().nextLong());
+      } catch (RuntimeException | Error failure) {
+        resumed.solvingError(scope, failure);
+        throw failure;
+      } finally {
+        if (scope.getScoreDirector().getWorkingSolution() != null) {
+          resumed.solvingEnded(scope);
+          resumed.outerSolvingEnded(scope);
+        }
+      }
+    }
+  }
+
   static Stream<Arguments> calculatorsAndWorkers() {
     return Stream.of(Backend.values())
         .flatMap(

@@ -822,6 +822,10 @@ and the <<partitionedSearch,Partition Search threads>> with it:
 [#islandModel]
 === Island model
 
+For persistent search sessions with logical width independent of physical workers, see
+xref:optimization-algorithms/resumable-search.adoc#resumableSearch[Resumable parallel search].
+That execution mode is explicitly enabled through `resumableSearch`; the behavior described below remains the default.
+
 The island model runs several searches concurrently, each with its own working solution and random stream.
 Each island runs the same configured phase sequence and can adopt better solutions from other islands.
 Compare solution quality and resource use on representative problems before choosing the island count and migration settings.

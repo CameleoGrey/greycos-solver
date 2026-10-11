@@ -26,6 +26,23 @@ class IslandWorkAccountingTest {
   }
 
   @Test
+  void retiringEpisodesConservesTotalsAndRejectsLatePublication() {
+    var accounting = new IslandWorkAccounting();
+    for (int episode = 0; episode < 100; episode++) {
+      var source = "session/episode-" + episode;
+      accounting.register(source);
+      accounting.publish(source, new SolverWorkSnapshot(3, 2, Map.of("change", 2L)));
+      accounting.retire(source);
+      accounting.retire(source);
+    }
+    assertThat(accounting.snapshot())
+        .isEqualTo(new SolverWorkSnapshot(300, 200, Map.of("change", 200L)));
+    assertThatThrownBy(() -> accounting.publish("session/episode-99", SolverWorkSnapshot.ZERO))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("not registered");
+  }
+
+  @Test
   void sealingFreezesAcceptedWorkAndFreshRunStartsEmpty() {
     var accounting = new IslandWorkAccounting();
     accounting.register("island");

@@ -17,9 +17,11 @@ import greycos.solver.benchmark.impl.statistic.StatisticPoint;
 import greycos.solver.benchmark.impl.statistic.SubSingleStatistic;
 import greycos.solver.benchmark.impl.statistic.bestscore.BestScoreStatisticPoint;
 import greycos.solver.benchmark.impl.statistic.common.LongStatisticPoint;
+import greycos.solver.benchmark.impl.statistic.movecountpertype.MoveCountPerTypeStatisticPoint;
 import greycos.solver.core.api.score.SimpleScore;
 import greycos.solver.core.api.score.calculator.EasyScoreCalculator;
 import greycos.solver.core.config.islandmodel.IslandModelPhaseConfig;
+import greycos.solver.core.config.islandmodel.ResumableSearchConfig;
 import greycos.solver.core.config.localsearch.LocalSearchPhaseConfig;
 import greycos.solver.core.config.solver.SolverConfig;
 import greycos.solver.core.config.solver.termination.TerminationConfig;
@@ -74,6 +76,51 @@ class IslandBenchmarkTest extends AbstractMeterTest {
                     .get(SingleStatisticType.PICKED_MOVE_TYPE_STEP_SCORE_DIFF)))
         .extracting(StatisticPoint::getSource)
         .contains("phase-0/island-0", "phase-0/island-1");
+  }
+
+  @Test
+  @Timeout(30)
+  void resumableBenchmarkIncludesRoundWorkWithoutInventingPrimitiveSteps() {
+    var solverConfig = config();
+    solverConfig.withPhases(
+        new IslandModelPhaseConfig()
+            .withIslandCount(2)
+            .withResumableSearchConfig(
+                new ResumableSearchConfig().withWorkerCount(2).withStepQuantum(2))
+            .withTerminationConfig(new TerminationConfig().withStepCountLimit(12)));
+    var benchmark = benchmark(solverConfig);
+
+    benchmark.benchmark();
+
+    var result = result(benchmark);
+    assertThat(result.getScoreCalculationCount()).isGreaterThan(1);
+    assertThat(result.getMoveEvaluationCount()).isPositive();
+    var moveTypes =
+        points(
+                result
+                    .getEffectiveSubSingleStatisticMap()
+                    .get(ProblemStatisticType.MOVE_COUNT_PER_TYPE))
+            .stream()
+            .map(MoveCountPerTypeStatisticPoint.class::cast)
+            .toList();
+    assertThat(moveTypes).isNotEmpty();
+    assertThat(moveTypes).allSatisfy(point -> assertThat(point.getCount()).isPositive());
+    assertThat(moveTypes.stream().mapToLong(MoveCountPerTypeStatisticPoint::getCount).sum())
+        .isEqualTo(result.getMoveEvaluationCount());
+    assertThat(
+            points(result.getEffectiveSubSingleStatisticMap().get(ProblemStatisticType.STEP_SCORE)))
+        .isEmpty();
+    for (var type :
+        List.of(
+            ProblemStatisticType.SCORE_CALCULATION_SPEED,
+            ProblemStatisticType.MOVE_EVALUATION_SPEED)) {
+      assertThat(points(result.getEffectiveSubSingleStatisticMap().get(type)))
+          .anySatisfy(point -> assertThat(((LongStatisticPoint) point).getValue()).isPositive());
+    }
+    var best =
+        points(result.getEffectiveSubSingleStatisticMap().get(ProblemStatisticType.BEST_SCORE));
+    assertThat(best).isNotEmpty();
+    assertThat(((BestScoreStatisticPoint) best.getLast()).getScore()).isEqualTo(result.getScore());
   }
 
   @Test

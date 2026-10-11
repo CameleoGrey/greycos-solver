@@ -42,6 +42,7 @@ import greycos.solver.core.impl.score.constraint.ConstraintMatch;
 import greycos.solver.core.impl.score.constraint.ConstraintMatchPolicy;
 import greycos.solver.core.impl.score.constraint.ConstraintMatchTotal;
 import greycos.solver.core.impl.score.definition.ScoreDefinition;
+import greycos.solver.core.impl.solver.monitoring.ResumableSearchWorkCounter;
 import greycos.solver.core.impl.solver.thread.ChildThreadType;
 import greycos.solver.core.preview.api.move.Move;
 import greycos.solver.core.preview.api.move.SolutionView;
@@ -314,6 +315,11 @@ public interface InnerScoreDirector<Solution_, Score_ extends Score<Score_>>
   }
 
   void incrementCalculationCount(long count);
+
+  /** Attaches optional session-local physical work accounting, independent of logical counts. */
+  void setResumableSearchWorkCounter(@Nullable ResumableSearchWorkCounter workCounter);
+
+  @Nullable ResumableSearchWorkCounter getResumableSearchWorkCounter();
 
   /**
    * @return never null

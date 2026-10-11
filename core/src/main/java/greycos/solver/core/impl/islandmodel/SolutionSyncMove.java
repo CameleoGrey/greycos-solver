@@ -13,7 +13,7 @@ import org.jspecify.annotations.NullMarked;
 
 /** Applies an island snapshot without replacing working entities. */
 @NullMarked
-final class SolutionSyncMove<Solution_> extends AbstractMove<Solution_> {
+public final class SolutionSyncMove<Solution_> extends AbstractMove<Solution_> {
 
   private final SolutionAssignments<Solution_> assignments;
 
@@ -21,7 +21,7 @@ final class SolutionSyncMove<Solution_> extends AbstractMove<Solution_> {
     this.assignments = assignments;
   }
 
-  static <Solution_> SolutionSyncMove<Solution_> createMove(
+  public static <Solution_> SolutionSyncMove<Solution_> createMove(
       InnerScoreDirector<Solution_, ?> scoreDirector, Solution_ sourceSolution) {
     return new SolutionSyncMove<>(
         SolutionAssignments.capture(scoreDirector.getSolutionDescriptor(), sourceSolution)

@@ -18,6 +18,7 @@ import greycos.solver.core.impl.localsearch.scope.LocalSearchPhaseScope;
 import greycos.solver.core.impl.localsearch.scope.LocalSearchStepScope;
 import greycos.solver.core.impl.phase.AbstractPhase;
 import greycos.solver.core.impl.phase.PhaseType;
+import greycos.solver.core.impl.phase.ResumablePhaseExecution;
 import greycos.solver.core.impl.score.constraint.ConstraintMatchTotal;
 import greycos.solver.core.impl.score.definition.ScoreDefinition;
 import greycos.solver.core.impl.score.director.InnerScore;
@@ -39,6 +40,7 @@ public class DefaultLocalSearchPhase<Solution_> extends AbstractPhase<Solution_>
     implements LocalSearchPhase<Solution_>, LocalSearchPhaseLifecycleListener<Solution_> {
   protected final LocalSearchPhaseDecider<Solution_> decider;
   private final LocalSearchStepLoggingMode stepLoggingMode;
+  private LocalSearchExecution activeExecution;
   protected final AtomicLong acceptedMoveCountPerStep = new AtomicLong(0);
   protected final AtomicLong selectedMoveCountPerStep = new AtomicLong(0);
   protected final Map<String, ConstraintMatchMetricHandle> constraintIdToMetricHandleMap =
@@ -74,85 +76,181 @@ public class DefaultLocalSearchPhase<Solution_> extends AbstractPhase<Solution_>
 
   @Override
   public void solve(SolverScope<Solution_> solverScope) {
-    var hasAnythingToImprove =
-        solverScope.getProblemSizeStatistics().approximateProblemSizeLog() != 0.0;
-    if (!hasAnythingToImprove) {
-      // Reaching local search means that the solution is already fully initialized.
-      // Yet the problem size indicates there is only 1 possible solution.
-      // Therefore, this solution must be it and there is nothing to improve.
-      logger.info(
-          "{}Local Search phase ({}) has no entities or values to move.",
-          logIndentation,
-          phaseIndex);
-      return;
+    var execution = startExecution(solverScope);
+    while (!execution.isComplete()) {
+      execution.advance(Long.MAX_VALUE);
+    }
+  }
+
+  /** Starts one resident execution without taking ownership of the enclosing solver lifecycle. */
+  public ResumablePhaseExecution<Solution_> startExecution(SolverScope<Solution_> solverScope) {
+    if (activeExecution != null) {
+      throw new IllegalStateException("The local search phase already has an active execution.");
+    }
+    var execution = new LocalSearchExecution(solverScope);
+    activeExecution = execution;
+    try {
+      execution.start();
+      return execution;
+    } catch (RuntimeException | Error failure) {
+      execution.fail();
+      throw failure;
+    }
+  }
+
+  private final class LocalSearchExecution implements ResumablePhaseExecution<Solution_> {
+    private final Thread ownerThread = Thread.currentThread();
+    private final LocalSearchPhaseScope<Solution_> phaseScope;
+    private boolean complete;
+    private boolean failed;
+
+    private LocalSearchExecution(SolverScope<Solution_> solverScope) {
+      phaseScope = new LocalSearchPhaseScope<>(solverScope, phaseIndex);
     }
 
-    var phaseScope = new LocalSearchPhaseScope<>(solverScope, phaseIndex);
-    phaseStarted(phaseScope);
-
-    solverScope
-        .getMetricRun()
-        .publish(
-            () -> {
-              if (solverScope.isMetricEnabled(SolverMetric.MOVE_COUNT_PER_STEP)) {
-                acceptedMoveCountPerStep.set(0L);
-                selectedMoveCountPerStep.set(0L);
-                SolverMetricUtil.rebindGauge(
-                    SolverMetric.MOVE_COUNT_PER_STEP.getMeterId() + ".accepted",
-                    solverScope.getMonitoringTags(),
-                    acceptedMoveCountPerStep);
-                SolverMetricUtil.rebindGauge(
-                    SolverMetric.MOVE_COUNT_PER_STEP.getMeterId() + ".selected",
-                    solverScope.getMonitoringTags(),
-                    selectedMoveCountPerStep);
-              }
-            });
-
-    while (!phaseTermination.isPhaseTerminated(phaseScope)) {
-      var stepScope = new LocalSearchStepScope<>(phaseScope);
-      stepScope.setTimeGradient(phaseTermination.calculatePhaseTimeGradient(phaseScope));
-      stepStarted(stepScope);
-      decider.decideNextStep(stepScope);
-      if (stepScope.getStep() == null) {
-        if (stepScope.getNoStepReason() != null) {
-          logger.debug(
-              "{}    Local Search decision at step index ({}) ended without a move: {}.",
-              logIndentation,
-              stepScope.getStepIndex(),
-              stepScope.getNoStepReason());
-        } else if (phaseTermination.isPhaseTerminated(phaseScope)) {
-          logger.trace(
-              "{}    Step index ({}), time spent ({}) terminated without picking a nextStep.",
-              logIndentation,
-              stepScope.getStepIndex(),
-              stepScope.getPhaseScope().calculateSolverTimeMillisSpentUpToNow());
-        } else if (stepScope.getSelectedMoveCount() == 0L) {
-          logger.warn(
-              "{}    No doable selected move at step index ({}), time spent ({})."
-                  + " Terminating phase early.",
-              logIndentation,
-              stepScope.getStepIndex(),
-              stepScope.getPhaseScope().calculateSolverTimeMillisSpentUpToNow());
-        } else {
-          throw new IllegalStateException(
-              "The step index ("
-                  + stepScope.getStepIndex()
-                  + ") has accepted/selected move count ("
-                  + stepScope.getAcceptedMoveCount()
-                  + "/"
-                  + stepScope.getSelectedMoveCount()
-                  + ") but failed to pick a nextStep ("
-                  + stepScope.getStep()
-                  + ").");
-        }
-        // Although stepStarted has been called, stepEnded is not called for this step
-        break;
+    private void start() {
+      var solverScope = phaseScope.getSolverScope();
+      if (solverScope.getProblemSizeStatistics().approximateProblemSizeLog() == 0.0) {
+        logger.info(
+            "{}Local Search phase ({}) has no entities or values to move.",
+            logIndentation,
+            phaseIndex);
+        complete = true;
+        activeExecution = null;
+        return;
       }
-      doStep(stepScope);
-      stepEnded(stepScope);
-      phaseScope.setLastCompletedStepScope(stepScope);
+      phaseStarted(phaseScope);
+      solverScope
+          .getMetricRun()
+          .publish(
+              () -> {
+                if (solverScope.isMetricEnabled(SolverMetric.MOVE_COUNT_PER_STEP)) {
+                  acceptedMoveCountPerStep.set(0L);
+                  selectedMoveCountPerStep.set(0L);
+                  SolverMetricUtil.rebindGauge(
+                      SolverMetric.MOVE_COUNT_PER_STEP.getMeterId() + ".accepted",
+                      solverScope.getMonitoringTags(),
+                      acceptedMoveCountPerStep);
+                  SolverMetricUtil.rebindGauge(
+                      SolverMetric.MOVE_COUNT_PER_STEP.getMeterId() + ".selected",
+                      solverScope.getMonitoringTags(),
+                      selectedMoveCountPerStep);
+                }
+              });
     }
-    phaseEnded(phaseScope);
+
+    @Override
+    public long advance(long completedStepGrant) {
+      checkActiveOwner();
+      if (completedStepGrant <= 0L) {
+        throw new IllegalArgumentException(
+            "The completedStepGrant (%d) must be positive.".formatted(completedStepGrant));
+      }
+      long completedSteps = 0L;
+      try {
+        while (!complete && completedSteps < completedStepGrant) {
+          if (phaseTermination.isPhaseTerminated(phaseScope)) {
+            finish();
+            break;
+          }
+          var stepScope = new LocalSearchStepScope<>(phaseScope);
+          stepScope.setTimeGradient(phaseTermination.calculatePhaseTimeGradient(phaseScope));
+          stepStarted(stepScope);
+          decider.decideNextStep(stepScope);
+          if (stepScope.getStep() == null) {
+            if (stepScope.getNoStepReason() != null) {
+              logger.debug(
+                  "{}    Local Search decision at step index ({}) ended without a move: {}.",
+                  logIndentation,
+                  stepScope.getStepIndex(),
+                  stepScope.getNoStepReason());
+            } else if (phaseTermination.isPhaseTerminated(phaseScope)) {
+              logger.trace(
+                  "{}    Step index ({}), time spent ({}) terminated without picking a nextStep.",
+                  logIndentation,
+                  stepScope.getStepIndex(),
+                  stepScope.getPhaseScope().calculateSolverTimeMillisSpentUpToNow());
+            } else if (stepScope.getSelectedMoveCount() == 0L) {
+              logger.warn(
+                  "{}    No doable selected move at step index ({}), time spent ({})."
+                      + " Terminating phase early.",
+                  logIndentation,
+                  stepScope.getStepIndex(),
+                  stepScope.getPhaseScope().calculateSolverTimeMillisSpentUpToNow());
+            } else {
+              throw new IllegalStateException(
+                  "The step index ("
+                      + stepScope.getStepIndex()
+                      + ") has accepted/selected move count ("
+                      + stepScope.getAcceptedMoveCount()
+                      + "/"
+                      + stepScope.getSelectedMoveCount()
+                      + ") but failed to pick a nextStep ("
+                      + stepScope.getStep()
+                      + ").");
+            }
+            // A terminal decision is not an executed step and receives no stepEnded callback.
+            finish();
+            break;
+          }
+          doStep(stepScope);
+          stepEnded(stepScope);
+          phaseScope.setLastCompletedStepScope(stepScope);
+          completedSteps++;
+        }
+        return completedSteps;
+      } catch (RuntimeException | Error failure) {
+        fail();
+        throw failure;
+      }
+    }
+
+    @Override
+    public boolean isComplete() {
+      checkOwner();
+      return complete;
+    }
+
+    @Override
+    public void finish() {
+      checkActiveOwner();
+      if (complete) return;
+      complete = true;
+      try {
+        phaseEnded(phaseScope);
+      } catch (RuntimeException | Error failure) {
+        fail();
+        throw failure;
+      } finally {
+        activeExecution = null;
+      }
+    }
+
+    @Override
+    public LocalSearchPhaseScope<Solution_> getPhaseScope() {
+      checkOwner();
+      return phaseScope;
+    }
+
+    private void checkActiveOwner() {
+      checkOwner();
+      if (failed) {
+        throw new IllegalStateException("The local search execution has failed and cannot resume.");
+      }
+    }
+
+    private void checkOwner() {
+      if (Thread.currentThread() != ownerThread) {
+        throw new IllegalStateException(
+            "The local search execution belongs to thread (%s), not thread (%s)."
+                .formatted(ownerThread, Thread.currentThread()));
+      }
+    }
+
+    private void fail() {
+      failed = true;
+      activeExecution = null;
+    }
   }
 
   protected void doStep(LocalSearchStepScope<Solution_> stepScope) {
@@ -368,6 +466,7 @@ public class DefaultLocalSearchPhase<Solution_> extends AbstractPhase<Solution_>
 
   @Override
   public void solvingError(SolverScope<Solution_> solverScope, Throwable exception) {
+    if (activeExecution != null) activeExecution.fail();
     super.solvingError(solverScope, exception);
     decider.solvingError(solverScope, exception);
   }

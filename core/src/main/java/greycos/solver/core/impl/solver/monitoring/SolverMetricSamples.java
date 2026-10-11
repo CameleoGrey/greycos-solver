@@ -52,6 +52,11 @@ public final class SolverMetricSamples {
     return capture(scope, SolverMetricSample.Kind.FINAL, source, null, false, null);
   }
 
+  /** Aggregate work at a committed search round; this is not a primitive search step. */
+  public static SolverMetricSample captureResumableRound(SolverScope<?> scope) {
+    return capture(scope, SolverMetricSample.Kind.ROUND, "root", null, false, null);
+  }
+
   private static SolverMetricSample capture(
       SolverScope<?> scope,
       SolverMetricSample.Kind kind,
@@ -84,7 +89,7 @@ public final class SolverMetricSamples {
 
   public static void publishIslandStep(
       SolverScope<?> scope, AbstractStepScope<?> step, long uncreditedCalculations) {
-    if ("root".equals(scope.getMetricSource())) {
+    if ("root".equals(scope.getMetricSource()) || !scope.isStepMetricPublicationEnabled()) {
       return;
     }
     var holder = new SolverMetricSample[1];

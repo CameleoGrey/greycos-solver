@@ -6,6 +6,7 @@ import java.util.Map;
 /** Retains the last accepted cumulative work snapshot of each island occurrence. */
 public final class IslandWorkAccounting {
   private final Map<String, SolverWorkSnapshot> snapshots = new LinkedHashMap<>();
+  private SolverWorkSnapshot retired = SolverWorkSnapshot.ZERO;
   private boolean sealed;
 
   public synchronized void register(String source) {
@@ -35,11 +36,17 @@ public final class IslandWorkAccounting {
   }
 
   public synchronized SolverWorkSnapshot snapshot() {
-    var total = SolverWorkSnapshot.ZERO;
+    var total = retired;
     for (var snapshot : snapshots.values()) {
       total = total.plus(snapshot);
     }
     return total;
+  }
+
+  /** Retains completed work without retaining one source entry per restart episode. */
+  public synchronized void retire(String source) {
+    var snapshot = snapshots.remove(source);
+    if (snapshot != null) retired = retired.plus(snapshot);
   }
 
   public synchronized void seal() {

@@ -18,15 +18,16 @@ import greycos.solver.core.impl.phase.Phase;
 import greycos.solver.core.impl.score.director.InnerScore;
 import greycos.solver.core.impl.score.director.InnerScoreDirector;
 import greycos.solver.core.impl.score.director.ScoreDirectorFactory;
-import greycos.solver.core.impl.solver.monitoring.IslandWorkAccounting;
 import greycos.solver.core.impl.solver.monitoring.SolverMetricRun;
 import greycos.solver.core.impl.solver.monitoring.SolverMetricSamples;
 import greycos.solver.core.impl.solver.monitoring.SolverMetricScopeProvider;
 import greycos.solver.core.impl.solver.monitoring.SolverTags;
+import greycos.solver.core.impl.solver.monitoring.SolverWorkSnapshot;
 import greycos.solver.core.impl.solver.random.RandomSource;
 import greycos.solver.core.impl.solver.recaller.BestSolutionRecaller;
 import greycos.solver.core.impl.solver.scope.SolverScope;
 import greycos.solver.core.impl.solver.termination.BasicPlumbingTermination;
+import greycos.solver.core.impl.solver.termination.ResumableSearchBudget;
 import greycos.solver.core.impl.solver.termination.UniversalTermination;
 
 import io.micrometer.core.instrument.Metrics;
@@ -217,15 +218,23 @@ public class DefaultSolver<Solution_> extends AbstractSolver<Solution_>
     solving.set(true);
     basicPlumbingTermination.resetTerminateEarly();
     solverScope.setStartingSolverCount(0);
+    solverScope.setRetainedReportedWork(SolverWorkSnapshot.ZERO);
+    solverScope.setResumableSearchState(new ResumableSearchBudget.PersistentState());
+    solverScope.setResumableSearchModelRevision(0L);
     solverScope.setWorkingRandom(randomFactory.get());
   }
 
   @Override
   public void solvingStarted(SolverScope<Solution_> solverScope) {
     assertCorrectSolutionState(solverScope.getBestSolution());
+    boolean retainWork =
+        solverScope.isResumableSearchEnabled() && solverScope.getStartingSolverCount() > 0;
+    var retainedWork =
+        retainWork ? SolverMetricSamples.reportedWork(solverScope) : SolverWorkSnapshot.ZERO;
     solverScope.setMetricRun(new SolverMetricRun());
-    solverScope.setIslandWorkAccounting(new IslandWorkAccounting());
-    solverScope.startingNow();
+    // Include problem-change preparation and rescoring before resetting their director count.
+    solverScope.startReportedWorkInterval(retainedWork);
+    solverScope.startingNow(retainWork);
     solverScope.getScoreDirector().resetCalculationCount();
     super.solvingStarted(solverScope);
     var startingSolverCount = solverScope.getStartingSolverCount() + 1;
@@ -385,12 +394,26 @@ public class DefaultSolver<Solution_> extends AbstractSolver<Solution_>
     if (!restartSolver) {
       return false;
     } else {
+      var completedRevisionWork =
+          solverScope.isResumableSearchEnabled()
+              ? SolverMetricSamples.reportedWork(solverScope)
+              : SolverWorkSnapshot.ZERO;
+      if (solverScope.isResumableSearchEnabled()) {
+        // A change may arrive in an ordinary phase before the first resident hierarchy starts.
+        // Capture its work before replacing the director and resetting the next run's counters.
+        solverScope.getResumableSearchState().captureOrdinaryWork(solverScope);
+      }
       // The score director is created and closed during the phase events.
       // This check occurs after all phases have been completed,
       // which means the score director is already closed.
       // As a result,
       // we need to recreate the score director to apply any real-time changes to the problem.
       prepareForProblemChanges(solverScope);
+      if (solverScope.isResumableSearchEnabled()) {
+        // Old root and descendant counters now live in the retained snapshot. The replacement
+        // director's preparation and problem-change scores remain current until solving restarts.
+        solverScope.startReportedWorkInterval(completedRevisionWork);
+      }
       var problemChangeQueue = basicPlumbingTermination.startProblemChangesProcessing();
       var stepIndex = 0;
       InnerScore<?> score;
@@ -419,8 +442,17 @@ public class DefaultSolver<Solution_> extends AbstractSolver<Solution_>
       } finally {
         basicPlumbingTermination.endProblemChangesProcessing();
       }
+      var revision = Math.addExact(solverScope.getResumableSearchModelRevision(), 1L);
+      solverScope.setResumableSearchModelRevision(revision);
+      solverScope.getResumableSearchState().modelChanged(revision);
       bestSolutionRecaller.updateBestSolutionAndFireIfInitialized(
           solverScope, EventProducerId.problemChange());
+      if (solverScope.isResumableSearchEnabled()) {
+        solverScope
+            .getResumableSearchState()
+            .recordProblemChangeScoreCalculations(
+                solverScope.getScoreDirector().getCalculationCount());
+      }
       logger.info(
           "Real-time problem fact changes done: step total ({}), new best score ({}).",
           stepIndex,

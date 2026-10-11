@@ -35,6 +35,7 @@ import greycos.solver.core.impl.solver.monitoring.SolverWorkSnapshot;
 import greycos.solver.core.impl.solver.random.DefaultRandomSource;
 import greycos.solver.core.impl.solver.random.RandomSource;
 import greycos.solver.core.impl.solver.termination.PhaseTermination;
+import greycos.solver.core.impl.solver.termination.ResumableSearchBudget;
 import greycos.solver.core.impl.solver.thread.ChildThreadType;
 import greycos.solver.core.impl.solver.thread.SolverWorkerRegistry;
 import greycos.solver.core.preview.api.move.Move;
@@ -50,6 +51,11 @@ public class SolverScope<Solution_> {
   private SolverWorkerRegistry workerRegistry = new SolverWorkerRegistry();
   private SolverMetricRun metricRun = new SolverMetricRun();
   private IslandWorkAccounting islandWorkAccounting = new IslandWorkAccounting();
+  private SolverWorkSnapshot retainedReportedWork = SolverWorkSnapshot.ZERO;
+  private ResumableSearchBudget.PersistentState resumableSearchState =
+      new ResumableSearchBudget.PersistentState();
+  private long resumableSearchModelRevision;
+  private boolean resumableSearchEnabled;
   private String metricSource = "root";
   private String workerPath = "";
   private int childScopeCount;
@@ -57,6 +63,7 @@ public class SolverScope<Solution_> {
   private CopyOnWriteArrayList<Consumer<SolverMetricSample>> metricSampleListeners =
       new CopyOnWriteArrayList<>();
   private Consumer<SolverMetricSample> metricSamplePublisher;
+  private boolean stepMetricPublicationEnabled = true;
 
   // Solution-derived fields have the potential for race conditions.
   private final AtomicReference<ProblemSizeStatistics> problemSizeStatistics =
@@ -131,6 +138,50 @@ public class SolverScope<Solution_> {
     islandWorkAccounting = Objects.requireNonNull(accounting);
   }
 
+  public void setRetainedReportedWork(SolverWorkSnapshot retainedWork) {
+    retainedReportedWork = Objects.requireNonNull(retainedWork);
+  }
+
+  /**
+   * Begins an ordinary work interval after its predecessor has reached quiescence. The retained
+   * snapshot already includes earlier intervals, so it replaces rather than increments the
+   * carry-over. A newly installed director keeps any preparation scores it has already calculated.
+   */
+  public void startReportedWorkInterval(SolverWorkSnapshot retainedWork) {
+    setRetainedReportedWork(retainedWork);
+    islandWorkAccounting = new IslandWorkAccounting();
+    resetLocalWorkCounters();
+  }
+
+  /** Solve-lifetime budgets, retained when problem changes restart the phase sequence. */
+  public ResumableSearchBudget.PersistentState getResumableSearchState() {
+    return resumableSearchState;
+  }
+
+  public void setResumableSearchState(ResumableSearchBudget.PersistentState state) {
+    resumableSearchState = Objects.requireNonNull(state);
+  }
+
+  public long getResumableSearchModelRevision() {
+    return resumableSearchModelRevision;
+  }
+
+  public boolean isResumableSearchEnabled() {
+    return resumableSearchEnabled;
+  }
+
+  public void setResumableSearchEnabled(boolean enabled) {
+    resumableSearchEnabled = enabled;
+  }
+
+  public void setResumableSearchModelRevision(long revision) {
+    if (revision < 0) {
+      throw new IllegalArgumentException(
+          "The model revision (" + revision + ") must not be negative.");
+    }
+    resumableSearchModelRevision = revision;
+  }
+
   public String getMetricSource() {
     return metricSource;
   }
@@ -145,6 +196,15 @@ public class SolverScope<Solution_> {
 
   public boolean hasMetricSamplePublisher() {
     return metricSamplePublisher != null;
+  }
+
+  public boolean isStepMetricPublicationEnabled() {
+    return stepMetricPublicationEnabled;
+  }
+
+  /** Resident sessions publish immutable summaries at round boundaries instead of every step. */
+  public void setStepMetricPublicationEnabled(boolean enabled) {
+    stepMetricPublicationEnabled = enabled;
   }
 
   public void setMetricSource(String source) {
@@ -182,17 +242,25 @@ public class SolverScope<Solution_> {
 
   public long getReportedScoreCalculationCount() {
     return getScoreCalculationCount()
-        + (reportIslandWork ? islandWorkAccounting.snapshot().scoreCalculationCount() : 0L);
+        + (reportIslandWork
+            ? retainedReportedWork.scoreCalculationCount()
+                + islandWorkAccounting.snapshot().scoreCalculationCount()
+            : 0L);
   }
 
   public long getReportedMoveEvaluationCount() {
     return getMoveEvaluationCount()
-        + (reportIslandWork ? islandWorkAccounting.snapshot().moveEvaluationCount() : 0L);
+        + (reportIslandWork
+            ? retainedReportedWork.moveEvaluationCount()
+                + islandWorkAccounting.snapshot().moveEvaluationCount()
+            : 0L);
   }
 
   public Map<String, Long> getReportedMoveCountsByType() {
     var local = new SolverWorkSnapshot(0L, 0L, getMoveEvaluationCountPerType());
-    return (reportIslandWork ? local.plus(islandWorkAccounting.snapshot()) : local)
+    return (reportIslandWork
+            ? retainedReportedWork.plus(local).plus(islandWorkAccounting.snapshot())
+            : local)
         .moveCountsByType();
   }
 
@@ -442,8 +510,19 @@ public class SolverScope<Solution_> {
   }
 
   public void startingNow() {
-    startingSystemTimeMillis.set(getClock().millis());
+    startingNow(false);
+  }
+
+  /** Preserves the solve clock when an opted-in hierarchy is rebuilt after problem changes. */
+  public void startingNow(boolean retainStartingTime) {
+    if (!retainStartingTime) {
+      startingSystemTimeMillis.set(getClock().millis());
+    }
     resetAtomicLongTimeMillis(endingSystemTimeMillis);
+    resetLocalWorkCounters();
+  }
+
+  private void resetLocalWorkCounters() {
     this.moveEvaluationCount = 0L;
     this.childScopeCount = 0;
     this.childThreadsScoreCalculationCount = 0L;
@@ -520,11 +599,24 @@ public class SolverScope<Solution_> {
   }
 
   public SolverScope<Solution_> createChildThreadSolverScope(ChildThreadType childThreadType) {
+    return createChildThreadSolverScope(childThreadType, true);
+  }
+
+  /**
+   * Creates child metadata on the parent owner. A resident session may defer director construction
+   * until its fixed owner starts, so mutable scoring components are created on their using thread.
+   */
+  public SolverScope<Solution_> createChildThreadSolverScope(
+      ChildThreadType childThreadType, boolean initializeScoreDirector) {
     SolverScope<Solution_> childThreadSolverScope = new SolverScope<>(clock);
     childThreadSolverScope.workerRegistry = workerRegistry;
     childThreadSolverScope.workerPath = workerPath + "child-" + childScopeCount++ + "/";
     childThreadSolverScope.metricRun = metricRun;
     childThreadSolverScope.islandWorkAccounting = islandWorkAccounting;
+    childThreadSolverScope.resumableSearchState = resumableSearchState;
+    childThreadSolverScope.resumableSearchModelRevision = resumableSearchModelRevision;
+    // The enclosing solver binds cumulative limits. Child episode termination remains local.
+    // In particular, do not copy resumableSearchEnabled into a child scope.
     childThreadSolverScope.metricSampleListeners = metricSampleListeners;
     childThreadSolverScope.metricSource = metricSource;
     childThreadSolverScope.reportIslandWork = false;
@@ -543,8 +635,10 @@ public class SolverScope<Solution_> {
               .formatted(workingRandom));
     }
     childThreadSolverScope.workingRandom = delegatingRandom.splitForChildThread();
-    childThreadSolverScope.scoreDirector =
-        scoreDirector.createChildThreadScoreDirector(childThreadType);
+    if (initializeScoreDirector) {
+      childThreadSolverScope.scoreDirector =
+          scoreDirector.createChildThreadScoreDirector(childThreadType);
+    }
     childThreadSolverScope.startingSystemTimeMillis.set(startingSystemTimeMillis.get());
     resetAtomicLongTimeMillis(childThreadSolverScope.endingSystemTimeMillis);
     childThreadSolverScope.startingInitializedScore = null;

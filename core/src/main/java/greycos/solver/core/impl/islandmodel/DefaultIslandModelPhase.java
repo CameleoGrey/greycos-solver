@@ -23,6 +23,7 @@ import greycos.solver.core.config.solver.EnvironmentMode;
 import greycos.solver.core.config.solver.SolverConfig;
 import greycos.solver.core.config.solver.termination.TerminationConfig;
 import greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
+import greycos.solver.core.impl.islandmodel.resumable.ResumableSearchRuntime;
 import greycos.solver.core.impl.phase.AbstractPhase;
 import greycos.solver.core.impl.phase.Phase;
 import greycos.solver.core.impl.phase.PhaseFactory;
@@ -79,13 +80,15 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
     this.bestSolutionRecaller = builder.bestSolutionRecaller;
     this.solverTermination = builder.solverTermination;
 
-    LOGGER.info(
-        "DefaultIslandModelPhase created with {} islands, migration frequency: {}, compare to global: {} (receive frequency: {}, migration timeout: {}ms)",
-        islandCount,
-        migrationFrequency,
-        compareGlobalEnabled,
-        receiveGlobalUpdateFrequency,
-        migrationTimeout);
+    if (!ResumableSearchRuntime.containsResumableSearch(List.of(islandModelConfig))) {
+      LOGGER.info(
+          "DefaultIslandModelPhase created with {} islands, migration frequency: {}, compare to global: {} (receive frequency: {}, migration timeout: {}ms)",
+          islandCount,
+          migrationFrequency,
+          compareGlobalEnabled,
+          receiveGlobalUpdateFrequency,
+          migrationTimeout);
+    }
   }
 
   @Override
@@ -100,6 +103,16 @@ public class DefaultIslandModelPhase<Solution_> extends AbstractPhase<Solution_>
 
   @Override
   public void solve(SolverScope<Solution_> solverScope) {
+    if (ResumableSearchRuntime.containsResumableSearch(List.of(islandModelConfig))) {
+      ResumableSearchRuntime.solve(
+          phaseIndex,
+          islandModelConfig,
+          configPolicy,
+          bestSolutionRecaller,
+          solverTermination,
+          solverScope);
+      return;
+    }
     var phaseScope = new IslandModelPhaseScope<>(solverScope, phaseIndex);
     boolean phaseLifecycleStarted = false;
     var runState = new SharedGlobalState<Solution_>();

@@ -34,6 +34,7 @@ import greycos.solver.core.config.localsearch.LocalSearchPhaseConfig;
 import greycos.solver.core.config.localsearch.LocalSearchType;
 import greycos.solver.core.config.localsearch.decider.acceptor.LocalSearchAcceptorConfig;
 import greycos.solver.core.config.localsearch.decider.forager.LocalSearchForagerConfig;
+import greycos.solver.core.config.partitionedsearch.PartitionedSearchPhaseConfig;
 import greycos.solver.core.config.phase.PhaseConfig;
 import greycos.solver.core.config.phase.custom.CustomPhaseConfig;
 import greycos.solver.core.config.util.ConfigUtils;
@@ -65,12 +66,18 @@ import org.jspecify.annotations.Nullable;
  * enclosing island's remaining quota; each nested island additionally observes its own phase
  * limits. Logical score calculations consume quotas, while additional speculative worker work is
  * reported separately. Nested improvements propagate to enclosing populations without requiring
- * migration or a later search step. The XML configuration does not expose nested island phases.
+ * migration or a later search step. Java and XML configuration permit nested island and partition
+ * phases.
+ *
+ * <p>Setting {@link #getResumableSearchConfig() resumableSearch} selects resident search sessions
+ * with a shared bounded worker pool and deterministic rounds. Its global budgets and cooperation
+ * semantics are configured independently of the legacy migration options described above.
  */
 @XmlType(
     propOrder = {
       "islandCount",
       "moveThreadCount",
+      "resumableSearchConfig",
       "migrationFrequency",
       "compareGlobalEnabled",
       "receiveGlobalUpdateFrequency",
@@ -153,6 +160,9 @@ public class IslandModelPhaseConfig extends PhaseConfig<IslandModelPhaseConfig> 
   @XmlElement(name = "moveThreadCount")
   protected String moveThreadCount = null;
 
+  @XmlElement(name = "resumableSearch")
+  private ResumableSearchConfig resumableSearchConfig = null;
+
   @XmlElements({
     @XmlElement(
         name = ConstructionHeuristicPhaseConfig.XML_ELEMENT_NAME,
@@ -165,6 +175,12 @@ public class IslandModelPhaseConfig extends PhaseConfig<IslandModelPhaseConfig> 
     @XmlElement(
         name = LocalSearchPhaseConfig.XML_ELEMENT_NAME,
         type = LocalSearchPhaseConfig.class),
+    @XmlElement(
+        name = IslandModelPhaseConfig.XML_ELEMENT_NAME,
+        type = IslandModelPhaseConfig.class),
+    @XmlElement(
+        name = PartitionedSearchPhaseConfig.XML_ELEMENT_NAME,
+        type = PartitionedSearchPhaseConfig.class),
   })
   private List<PhaseConfig<?>> phaseConfigList = null;
 
@@ -292,6 +308,15 @@ public class IslandModelPhaseConfig extends PhaseConfig<IslandModelPhaseConfig> 
     this.moveThreadCount = moveThreadCount;
   }
 
+  /** Null preserves legacy island execution; a non-null value enables resident sessions. */
+  public @Nullable ResumableSearchConfig getResumableSearchConfig() {
+    return resumableSearchConfig;
+  }
+
+  public void setResumableSearchConfig(@Nullable ResumableSearchConfig resumableSearchConfig) {
+    this.resumableSearchConfig = resumableSearchConfig;
+  }
+
   public @Nullable List<PhaseConfig<?>> getPhaseConfigList() {
     return phaseConfigList;
   }
@@ -367,6 +392,12 @@ public class IslandModelPhaseConfig extends PhaseConfig<IslandModelPhaseConfig> 
     return this;
   }
 
+  public @NonNull IslandModelPhaseConfig withResumableSearchConfig(
+      @NonNull ResumableSearchConfig resumableSearchConfig) {
+    setResumableSearchConfig(resumableSearchConfig);
+    return this;
+  }
+
   public @NonNull IslandModelPhaseConfig withPhaseConfigList(
       @NonNull List<PhaseConfig<?>> phaseConfigList) {
     this.phaseConfigList = phaseConfigList;
@@ -390,6 +421,8 @@ public class IslandModelPhaseConfig extends PhaseConfig<IslandModelPhaseConfig> 
     moveThreadCount =
         ConfigUtils.inheritOverwritableProperty(
             moveThreadCount, inheritedConfig.getMoveThreadCount());
+    resumableSearchConfig =
+        ConfigUtils.inheritConfig(resumableSearchConfig, inheritedConfig.resumableSearchConfig);
 
     islandCount =
         ConfigUtils.inheritOverwritableProperty(islandCount, inheritedConfig.getIslandCount());
@@ -446,6 +479,9 @@ public class IslandModelPhaseConfig extends PhaseConfig<IslandModelPhaseConfig> 
     }
     if (foragerConfig != null) {
       foragerConfig.visitReferencedClasses(classVisitor);
+    }
+    if (resumableSearchConfig != null) {
+      resumableSearchConfig.visitReferencedClasses(classVisitor);
     }
 
     if (phaseConfigList != null) {

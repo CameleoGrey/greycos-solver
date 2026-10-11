@@ -16,11 +16,13 @@ import greycos.solver.core.impl.heuristic.selector.move.generic.ChangeMove;
 import greycos.solver.core.impl.neighborhood.PlacerBasedMoveRepository;
 import greycos.solver.core.impl.phase.AbstractPossiblyInitializingPhase;
 import greycos.solver.core.impl.phase.PhaseType;
+import greycos.solver.core.impl.phase.ResumablePhaseExecution;
 import greycos.solver.core.impl.solver.scope.SolverScope;
 import greycos.solver.core.impl.solver.termination.PhaseTermination;
 import greycos.solver.core.preview.api.move.Move;
 
 import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.event.Level;
 
 /**
@@ -35,6 +37,7 @@ public class DefaultConstructionHeuristicPhase<Solution_>
   protected final ConstructionHeuristicDecider<Solution_> decider;
   protected final PlacerBasedMoveRepository<Solution_> moveRepository;
   private TerminationStatus terminationStatus = TerminationStatus.NOT_TERMINATED;
+  private @Nullable ConstructionExecution activeExecution;
 
   protected DefaultConstructionHeuristicPhase(
       DefaultConstructionHeuristicPhaseBuilder<Solution_> builder) {
@@ -67,99 +70,213 @@ public class DefaultConstructionHeuristicPhase<Solution_>
   // ************************************************************************
   @Override
   public void solve(SolverScope<Solution_> solverScope) {
-    var phaseScope = buildPhaseScope(solverScope, phaseIndex);
-    phaseStarted(phaseScope);
+    var execution = startExecution(solverScope);
+    while (!execution.isComplete()) {
+      execution.advance(Long.MAX_VALUE);
+    }
+  }
 
-    var hasListVariable = moveRepository.hasListVariable();
-    var maxStepCount = -1;
-    if (hasListVariable) {
-      // In case of list variable with support for unassigned values, the placer will iterate
-      // indefinitely.
-      // (When it exhausts all values, it will start over from the beginning.)
-      // To prevent that, we need to limit the number of steps to the number of unassigned values.
-      // The use of ValueRangeManager is safe
-      // because it comes from the same score director as the working solution,
-      // and therefore is guaranteed to match.
-      // We compute fresh initialization statistics as opposed to possibly relying on a cached one,
-      // as otherwise Ruin&Recreate doesn't work correctly with its nested CH phase.
-      var scoreDirector = phaseScope.getScoreDirector();
-      var valueRangeManager = scoreDirector.getValueRangeManager();
-      maxStepCount =
-          valueRangeManager
-              .computeInitializationStatistics(scoreDirector.getWorkingSolution(), null)
-              .notInAnyListValueCount();
+  /**
+   * Starts one resident execution, retaining its placement iterator until real phase completion.
+   */
+  public ResumablePhaseExecution<Solution_> startExecution(SolverScope<Solution_> solverScope) {
+    if (activeExecution != null) {
+      throw new IllegalStateException(
+          "The construction heuristic phase already has an active execution.");
+    }
+    var execution = new ConstructionExecution(solverScope);
+    activeExecution = execution;
+    try {
+      execution.start();
+      return execution;
+    } catch (RuntimeException | Error failure) {
+      execution.fail();
+      throw failure;
+    }
+  }
+
+  private final class ConstructionExecution implements ResumablePhaseExecution<Solution_> {
+    private final Thread ownerThread = Thread.currentThread();
+    private final ConstructionHeuristicPhaseScope<Solution_> phaseScope;
+    private boolean hasListVariable;
+    private int maxStepCount = -1;
+    private @Nullable TerminationStatus earlyTerminationStatus;
+    private boolean complete;
+    private boolean failed;
+
+    private ConstructionExecution(SolverScope<Solution_> solverScope) {
+      phaseScope = buildPhaseScope(solverScope, phaseIndex);
     }
 
-    TerminationStatus earlyTerminationStatus =
-        maxStepCount == 0 ? TerminationStatus.regular(phaseScope.getNextStepIndex()) : null;
-    while (maxStepCount != 0 && moveRepository.hasNext()) {
-      var stepScope = new ConstructionHeuristicStepScope<>(phaseScope);
-      stepStarted(stepScope);
-      decider.decideNextStep(stepScope, moveRepository.iterator());
-      if (stepScope.getStep() == null) {
-        if (phaseTermination.isPhaseTerminated(phaseScope)) {
-          var logLevel = Level.TRACE;
-          if (decider.isLoggingEnabled() && logger.isEnabledForLevel(logLevel)) {
-            logger
-                .atLevel(logLevel)
-                .log(
-                    "{}    Step index ({}), time spent ({}) terminated without picking a nextStep.",
-                    logIndentation,
-                    stepScope.getStepIndex(),
-                    stepScope.getPhaseScope().calculateSolverTimeMillisSpentUpToNow());
+    private void start() {
+      phaseStarted(phaseScope);
+      hasListVariable = moveRepository.hasListVariable();
+      if (hasListVariable) {
+        // In case of list variable with support for unassigned values, the placer will iterate
+        // indefinitely.
+        // (When it exhausts all values, it will start over from the beginning.)
+        // To prevent that, we need to limit the number of steps to the number of unassigned values.
+        // The use of ValueRangeManager is safe
+        // because it comes from the same score director as the working solution,
+        // and therefore is guaranteed to match.
+        // We compute fresh initialization statistics as opposed to possibly relying on a cached
+        // one,
+        // as otherwise Ruin&Recreate doesn't work correctly with its nested CH phase.
+        var scoreDirector = phaseScope.getScoreDirector();
+        var valueRangeManager = scoreDirector.getValueRangeManager();
+        maxStepCount =
+            valueRangeManager
+                .computeInitializationStatistics(scoreDirector.getWorkingSolution(), null)
+                .notInAnyListValueCount();
+      }
+      if (maxStepCount == 0) {
+        earlyTerminationStatus = TerminationStatus.regular(phaseScope.getNextStepIndex());
+        completePhase();
+      }
+    }
+
+    @Override
+    public long advance(long completedStepGrant) {
+      checkActiveOwner();
+      if (completedStepGrant <= 0L) {
+        throw new IllegalArgumentException(
+            "The completedStepGrant (%d) must be positive.".formatted(completedStepGrant));
+      }
+      long completedSteps = 0L;
+      try {
+        while (!complete && completedSteps < completedStepGrant) {
+          if (!moveRepository.hasNext()) {
+            completePhase();
+            break;
           }
-        } else if (stepScope.getSelectedMoveCount() == 0L) {
-          var logLevel = Level.WARN;
-          if (decider.isLoggingEnabled() && logger.isEnabledForLevel(logLevel)) {
-            logger
-                .atLevel(logLevel)
-                .log(
-                    "{}    No doable selected move at step index ({}), time spent ({}). Terminating"
-                        + " phase early.",
-                    logIndentation,
-                    stepScope.getStepIndex(),
-                    stepScope.getPhaseScope().calculateSolverTimeMillisSpentUpToNow());
+          var stepScope = new ConstructionHeuristicStepScope<>(phaseScope);
+          stepStarted(stepScope);
+          decider.decideNextStep(stepScope, moveRepository.iterator());
+          if (stepScope.getStep() == null) {
+            if (phaseTermination.isPhaseTerminated(phaseScope)) {
+              var logLevel = Level.TRACE;
+              if (decider.isLoggingEnabled() && logger.isEnabledForLevel(logLevel)) {
+                logger
+                    .atLevel(logLevel)
+                    .log(
+                        "{}    Step index ({}), time spent ({}) terminated without picking a nextStep.",
+                        logIndentation,
+                        stepScope.getStepIndex(),
+                        stepScope.getPhaseScope().calculateSolverTimeMillisSpentUpToNow());
+              }
+            } else if (stepScope.getSelectedMoveCount() == 0L) {
+              var logLevel = Level.WARN;
+              if (decider.isLoggingEnabled() && logger.isEnabledForLevel(logLevel)) {
+                logger
+                    .atLevel(logLevel)
+                    .log(
+                        "{}    No doable selected move at step index ({}), time spent ({}). Terminating"
+                            + " phase early.",
+                        logIndentation,
+                        stepScope.getStepIndex(),
+                        stepScope.getPhaseScope().calculateSolverTimeMillisSpentUpToNow());
+              }
+            } else {
+              throw new IllegalStateException(
+                  "The step index (%d) has selected move count (%d) but failed to pick a nextStep (%s)."
+                      .formatted(
+                          stepScope.getStepIndex(),
+                          stepScope.getSelectedMoveCount(),
+                          stepScope.getStep()));
+            }
+            // A terminal decision is not an executed step and receives no stepEnded callback.
+            earlyTerminationStatus = TerminationStatus.early(phaseScope.getNextStepIndex());
+            completePhase();
+            break;
           }
-        } else {
-          throw new IllegalStateException(
-              "The step index (%d) has selected move count (%d) but failed to pick a nextStep (%s)."
-                  .formatted(
-                      stepScope.getStepIndex(),
-                      stepScope.getSelectedMoveCount(),
-                      stepScope.getStep()));
+          doStep(stepScope);
+          stepEnded(stepScope);
+          phaseScope.setLastCompletedStepScope(stepScope);
+          completedSteps++;
+          if (moveRepository.getPlacer() instanceof PooledEntityPlacer<?>
+              && stepScope.getScore().isFullyAssigned()
+              && isOnlyUnassignment(stepScope.getStep())) {
+            // Nullable variables left null are still reinitializable. Rebuilding their pool after
+            // choosing no assignment would repeat the same decision indefinitely.
+            earlyTerminationStatus = TerminationStatus.regular(phaseScope.getNextStepIndex());
+            completePhase();
+          } else if (hasListVariable && (long) stepScope.getStepIndex() + 1 >= maxStepCount) {
+            earlyTerminationStatus = TerminationStatus.regular(phaseScope.getNextStepIndex());
+            completePhase();
+          } else if (phaseTermination.isPhaseTerminated(phaseScope)) {
+            earlyTerminationStatus = TerminationStatus.early(phaseScope.getNextStepIndex());
+            completePhase();
+          }
         }
-        // Although stepStarted has been called, stepEnded is not called for this step.
-        earlyTerminationStatus = TerminationStatus.early(phaseScope.getNextStepIndex());
-        break;
-      }
-      doStep(stepScope);
-      stepEnded(stepScope);
-      phaseScope.setLastCompletedStepScope(stepScope);
-      if (moveRepository.getPlacer() instanceof PooledEntityPlacer<?>
-          && stepScope.getScore().isFullyAssigned()
-          && isOnlyUnassignment(stepScope.getStep())) {
-        // Nullable variables left null are still reinitializable. Rebuilding their pool after
-        // choosing no assignment would repeat the same decision indefinitely.
-        earlyTerminationStatus = TerminationStatus.regular(phaseScope.getNextStepIndex());
-        break;
-      } else if (hasListVariable && (long) stepScope.getStepIndex() + 1 >= maxStepCount) {
-        earlyTerminationStatus = TerminationStatus.regular(phaseScope.getNextStepIndex());
-        break;
-      } else if (phaseTermination.isPhaseTerminated(phaseScope)) {
-        earlyTerminationStatus = TerminationStatus.early(phaseScope.getNextStepIndex());
-        break;
+        return completedSteps;
+      } catch (RuntimeException | Error failure) {
+        fail();
+        throw failure;
       }
     }
-    // We only store the termination status, which is exposed to the outside, when the phase has
-    // ended.
-    terminationStatus =
-        translateEarlyTermination(
-            phaseScope,
-            earlyTerminationStatus,
-            earlyTerminationStatus != null && !earlyTerminationStatus.early()
-                ? false
-                : moveRepository.hasNext());
-    phaseEnded(phaseScope);
+
+    @Override
+    public boolean isComplete() {
+      checkOwner();
+      return complete;
+    }
+
+    @Override
+    public void finish() {
+      checkActiveOwner();
+      if (complete) return;
+      earlyTerminationStatus = TerminationStatus.early(phaseScope.getNextStepIndex());
+      try {
+        completePhase();
+      } catch (RuntimeException | Error failure) {
+        fail();
+        throw failure;
+      }
+    }
+
+    private void completePhase() {
+      // Publish termination metadata only at real phase completion, never on a yield.
+      terminationStatus =
+          translateEarlyTermination(
+              phaseScope,
+              earlyTerminationStatus,
+              earlyTerminationStatus != null && !earlyTerminationStatus.early()
+                  ? false
+                  : moveRepository.hasNext());
+      complete = true;
+      try {
+        phaseEnded(phaseScope);
+      } finally {
+        activeExecution = null;
+      }
+    }
+
+    @Override
+    public ConstructionHeuristicPhaseScope<Solution_> getPhaseScope() {
+      checkOwner();
+      return phaseScope;
+    }
+
+    private void checkActiveOwner() {
+      checkOwner();
+      if (failed) {
+        throw new IllegalStateException(
+            "The construction heuristic execution has failed and cannot resume.");
+      }
+    }
+
+    private void checkOwner() {
+      if (Thread.currentThread() != ownerThread) {
+        throw new IllegalStateException(
+            "The construction heuristic execution belongs to thread (%s), not thread (%s)."
+                .formatted(ownerThread, Thread.currentThread()));
+      }
+    }
+
+    private void fail() {
+      failed = true;
+      activeExecution = null;
+    }
   }
 
   private static boolean isOnlyUnassignment(Move<?> move) {
@@ -287,6 +404,7 @@ public class DefaultConstructionHeuristicPhase<Solution_>
 
   @Override
   public void solvingError(SolverScope<Solution_> solverScope, Throwable exception) {
+    if (activeExecution != null) activeExecution.fail();
     super.solvingError(solverScope, exception);
     decider.solvingError(solverScope, exception);
   }

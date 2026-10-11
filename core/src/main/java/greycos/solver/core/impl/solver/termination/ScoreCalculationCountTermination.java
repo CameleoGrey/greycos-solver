@@ -29,6 +29,10 @@ final class ScoreCalculationCountTermination<Solution_>
 
   @Override
   public boolean isSolverTerminated(SolverScope<Solution_> solverScope) {
+    if (solverScope.isResumableSearchEnabled()) {
+      return solverScope.getResumableSearchState().solverScoreCalculationCount(solverScope)
+          >= scoreCalculationCountLimit;
+    }
     return isTerminated(solverScope.getScoreDirector());
   }
 
@@ -44,6 +48,11 @@ final class ScoreCalculationCountTermination<Solution_>
 
   @Override
   public double calculateSolverTimeGradient(SolverScope<Solution_> solverScope) {
+    if (solverScope.isResumableSearchEnabled()) {
+      return TerminationGradient.ratio(
+          solverScope.getResumableSearchState().solverScoreCalculationCount(solverScope),
+          scoreCalculationCountLimit);
+    }
     return calculateTimeGradient(solverScope.getScoreDirector());
   }
 

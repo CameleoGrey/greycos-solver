@@ -23,6 +23,10 @@ final class UnimprovedStepCountTermination<Solution_> extends AbstractPhaseTermi
     }
   }
 
+  int getUnimprovedStepCountLimit() {
+    return unimprovedStepCountLimit;
+  }
+
   @Override
   public boolean isPhaseTerminated(AbstractPhaseScope<Solution_> phaseScope) {
     var unimprovedStepCount = calculateUnimprovedStepCount(phaseScope);

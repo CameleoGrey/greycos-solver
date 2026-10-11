@@ -27,6 +27,7 @@ import greycos.solver.core.config.solver.SolverConfig;
 import greycos.solver.core.config.solver.monitoring.SolverMetric;
 import greycos.solver.core.config.solver.termination.TerminationConfig;
 import greycos.solver.core.config.util.ConfigUtils;
+import greycos.solver.core.config.util.ResumableSearchConfigResolver;
 import greycos.solver.core.impl.AbstractFromConfigFactory;
 import greycos.solver.core.impl.constructionheuristic.DefaultConstructionHeuristicPhaseFactory;
 import greycos.solver.core.impl.constructionheuristic.nearby.ConstructionHeuristicNearbyProfileResolver;
@@ -35,6 +36,7 @@ import greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 import greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
 import greycos.solver.core.impl.islandmodel.DefaultIslandModelPhaseFactory;
+import greycos.solver.core.impl.islandmodel.resumable.ResumableSearchRuntime;
 import greycos.solver.core.impl.phase.Phase;
 import greycos.solver.core.impl.phase.PhaseFactory;
 import greycos.solver.core.impl.score.director.ScoreDirectorFactory;
@@ -104,6 +106,11 @@ public final class DefaultSolverFactory<Solution_> implements SolverFactory<Solu
             solverConfig, "The solverConfig (%s) cannot be null.".formatted(solverConfig));
     EnvironmentModeUtil.validate(solverConfig);
     DefaultIslandModelPhaseFactory.validateConfigList(solverConfig.getPhaseConfigList(), "solver");
+    if (solverConfig.getPhaseConfigList() != null) {
+      for (var phaseConfig : solverConfig.getPhaseConfigList()) {
+        ResumableSearchConfigResolver.resolve(phaseConfig);
+      }
+    }
     this.globalEnvironmentMode = EnvironmentModeUtil.resolve(solverConfig);
     this.solutionDescriptor = buildSolutionDescriptor();
     // Built once and shared by every solver this factory builds, as building one is expensive.
@@ -133,6 +140,8 @@ public final class DefaultSolverFactory<Solution_> implements SolverFactory<Solu
     var isDaemon = Objects.requireNonNullElse(solverConfig.getDaemon(), false);
 
     var solverScope = new SolverScope<Solution_>(clock);
+    solverScope.setResumableSearchEnabled(
+        ResumableSearchRuntime.containsResumableSearch(solverConfig.getPhaseConfigList()));
     var monitoringConfig = solverConfig.determineMetricConfig();
     solverScope.setMonitoringTags(SolverTags.withoutProblemId(clock).asTags());
     solverScope.setConstraintMatchMetricSampleInterval(

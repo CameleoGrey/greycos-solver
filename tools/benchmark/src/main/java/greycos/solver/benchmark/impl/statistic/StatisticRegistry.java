@@ -258,7 +258,7 @@ public class StatisticRegistry<Solution_> extends SimpleMeterRegistry
           notifyMetric(SolverMetric.BEST_SCORE, sample.timeMillisSpent());
           notifyMetric(SolverMetric.BEST_SOLUTION_MUTATION, sample.timeMillisSpent());
         }
-        case FINAL -> {
+        case ROUND, FINAL -> {
           notifyMetric(SolverMetric.SCORE_CALCULATION_COUNT, sample.timeMillisSpent());
           notifyMetric(SolverMetric.MOVE_EVALUATION_COUNT, sample.timeMillisSpent());
           notifyMetric(SolverMetric.MEMORY_USE, sample.timeMillisSpent());

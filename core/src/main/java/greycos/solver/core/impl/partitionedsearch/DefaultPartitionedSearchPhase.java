@@ -20,8 +20,10 @@ import greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import greycos.solver.core.api.solver.event.EventProducerId;
 import greycos.solver.core.config.constructionheuristic.ConstructionHeuristicPhaseConfig;
 import greycos.solver.core.config.localsearch.LocalSearchPhaseConfig;
+import greycos.solver.core.config.partitionedsearch.PartitionedSearchPhaseConfig;
 import greycos.solver.core.config.phase.PhaseConfig;
 import greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
+import greycos.solver.core.impl.islandmodel.resumable.ResumableSearchRuntime;
 import greycos.solver.core.impl.partitionedsearch.event.PartitionedSearchPhaseLifecycleListener;
 import greycos.solver.core.impl.partitionedsearch.partitioner.SolutionPartitioner;
 import greycos.solver.core.impl.partitionedsearch.queue.PartitionQueue;
@@ -72,6 +74,7 @@ public class DefaultPartitionedSearchPhase<Solution_> extends AbstractPhase<Solu
   protected final List<PhaseConfig> phaseConfigList;
   protected final SolverTermination<Solution_> solverTermination;
   protected final HeuristicConfigPolicy<Solution_> configPolicy;
+  private final PartitionedSearchPhaseConfig resumableHierarchyConfig;
 
   private static final Logger logger = LoggerFactory.getLogger(DefaultPartitionedSearchPhase.class);
 
@@ -83,6 +86,7 @@ public class DefaultPartitionedSearchPhase<Solution_> extends AbstractPhase<Solu
     this.phaseConfigList = builder.phaseConfigList;
     this.solverTermination = builder.solverTermination;
     this.configPolicy = builder.configPolicy;
+    this.resumableHierarchyConfig = builder.resumableHierarchyConfig;
   }
 
   @Override
@@ -97,6 +101,17 @@ public class DefaultPartitionedSearchPhase<Solution_> extends AbstractPhase<Solu
 
   @Override
   public void solve(SolverScope<Solution_> solverScope) {
+    if (resumableHierarchyConfig != null
+        && ResumableSearchRuntime.containsResumableSearch(List.of(resumableHierarchyConfig))) {
+      ResumableSearchRuntime.solve(
+          phaseIndex,
+          resumableHierarchyConfig,
+          configPolicy,
+          solverScope.getSolver().getBestSolutionRecaller(),
+          solverTermination,
+          solverScope);
+      return;
+    }
     var phaseScope = new PartitionedSearchPhaseScope<>(solverScope, phaseIndex);
     // Partitioning uses the phase's director, while listeners receive the populated scope.
     solverScope.getSolver().prepareForPhase(phaseScope);
@@ -482,6 +497,7 @@ public class DefaultPartitionedSearchPhase<Solution_> extends AbstractPhase<Solu
     private final List<PhaseConfig> phaseConfigList;
     private final SolverTermination<Solution_> solverTermination;
     private final HeuristicConfigPolicy<Solution_> configPolicy;
+    private PartitionedSearchPhaseConfig resumableHierarchyConfig;
 
     public Builder(
         int phaseIndex,
@@ -500,6 +516,11 @@ public class DefaultPartitionedSearchPhase<Solution_> extends AbstractPhase<Solu
       this.runnablePartThreadLimit = runnablePartThreadLimit;
       this.phaseConfigList = phaseConfigList;
       this.solverTermination = solverTermination;
+    }
+
+    public Builder<Solution_> withPhaseConfig(PartitionedSearchPhaseConfig phaseConfig) {
+      resumableHierarchyConfig = phaseConfig;
+      return this;
     }
 
     @Override

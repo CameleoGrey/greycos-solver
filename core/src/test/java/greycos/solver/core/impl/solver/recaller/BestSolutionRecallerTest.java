@@ -1,12 +1,17 @@
 package greycos.solver.core.impl.solver.recaller;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 import greycos.solver.core.api.score.Score;
 import greycos.solver.core.api.score.SimpleScore;
+import greycos.solver.core.api.solver.event.EventProducerId;
 import greycos.solver.core.impl.constructionheuristic.scope.ConstructionHeuristicPhaseScope;
 import greycos.solver.core.impl.constructionheuristic.scope.ConstructionHeuristicStepScope;
 import greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
@@ -21,6 +26,88 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 class BestSolutionRecallerTest {
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void completedStepPublishesExactlyOnceWithTheSelectedProducer(boolean explicitProducer) {
+    SolverScope<TestdataSolution> scope = createSolverScope();
+    var original = mock(TestdataSolution.class);
+    var improved = mock(TestdataSolution.class);
+    scope.setBestSolution(original);
+    scope.setBestScore(InnerScore.withUnassignedCount(SimpleScore.ZERO, 1));
+    var step = setupConstructionHeuristics(scope);
+    when(step.getStepIndex()).thenReturn(7);
+    doReturn(InnerScore.fullyAssigned(SimpleScore.ONE)).when(step).getScore();
+    when(step.cloneWorkingSolution()).thenReturn(improved);
+    when(scope.getScoreDirector().getSolutionDescriptor().getScore(improved))
+        .thenReturn(SimpleScore.ONE);
+    var ordinaryId = mock(EventProducerId.class);
+    var suppliedId = mock(EventProducerId.class);
+    when(step.getPhaseScope().getPhaseId()).thenReturn(ordinaryId);
+    SolverEventSupport<TestdataSolution> events = mock(SolverEventSupport.class);
+    var recaller = new BestSolutionRecaller<TestdataSolution>();
+    recaller.setSolverEventSupport(events);
+
+    if (explicitProducer) recaller.processWorkingSolutionDuringStep(step, suppliedId);
+    else recaller.processWorkingSolutionDuringStep(step);
+
+    assertThat(scope.getBestSolution()).isSameAs(improved);
+    assertThat(scope.getBestScore()).isEqualTo(InnerScore.fullyAssigned(SimpleScore.ONE));
+    assertThat(scope.<SimpleScore>getStartingInitializedScore()).isEqualTo(SimpleScore.ONE);
+    assertThat(scope.getBestSolutionTimeMillis()).isNotNull();
+    verify(step).setBestScoreImproved(true);
+    verify(step.getPhaseScope()).setBestSolutionStepIndex(7);
+    verify(events)
+        .fireBestSolutionChanged(scope, explicitProducer ? suppliedId : ordinaryId, improved);
+    verifyNoMoreInteractions(events);
+  }
+
+  @ParameterizedTest
+  @ValueSource(ints = {-1, 0})
+  void explicitProducerRetainsTheUnimprovedBestAssertion(int stepScore) {
+    SolverScope<TestdataSolution> scope = createSolverScope();
+    var original = mock(TestdataSolution.class);
+    scope.setBestSolution(original);
+    scope.setBestScore(InnerScore.fullyAssigned(SimpleScore.ZERO));
+    var step = setupConstructionHeuristics(scope);
+    doReturn(InnerScore.fullyAssigned(SimpleScore.of(stepScore))).when(step).getScore();
+    SolverEventSupport<TestdataSolution> events = mock(SolverEventSupport.class);
+    var recaller = new BestSolutionRecaller<TestdataSolution>();
+    recaller.setSolverEventSupport(events);
+    recaller.assertBestScoreIsUnmodified = true;
+
+    recaller.processWorkingSolutionDuringStep(step, mock(EventProducerId.class));
+
+    assertThat(scope.getBestSolution()).isSameAs(original);
+    verify(scope.getScoreDirector()).assertScoreFromScratch(original);
+    verify(step).setBestScoreImproved(false);
+    verifyNoInteractions(events);
+  }
+
+  @Test
+  void explicitProducerCannotPublishAStructurallyFlawedImprovement() {
+    SolverScope<TestdataSolution> scope = createSolverScope();
+    var original = mock(TestdataSolution.class);
+    var flawed = mock(TestdataSolution.class);
+    scope.setBestSolution(original);
+    scope.setBestScore(InnerScore.fullyAssigned(new SimpleScore(-2, 0)));
+    var step = setupConstructionHeuristics(scope);
+    var flawedScore = new SimpleScore(-1, 0);
+    doReturn(InnerScore.fullyAssigned(flawedScore)).when(step).getScore();
+    when(step.cloneWorkingSolution()).thenReturn(flawed);
+    when(scope.getScoreDirector().getSolutionDescriptor().getScore(flawed)).thenReturn(flawedScore);
+    SolverEventSupport<TestdataSolution> events = mock(SolverEventSupport.class);
+    var recaller = new BestSolutionRecaller<TestdataSolution>();
+    recaller.setSolverEventSupport(events);
+
+    assertThatThrownBy(
+            () -> recaller.processWorkingSolutionDuringStep(step, mock(EventProducerId.class)))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("structurally flawed");
+
+    assertThat(scope.getBestSolution()).isSameAs(original);
+    verifyNoInteractions(events);
+  }
 
   @ParameterizedTest
   @ValueSource(ints = {0, 1})

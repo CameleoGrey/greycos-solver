@@ -82,6 +82,7 @@ public class DefaultPartitionedSearchPhaseFactory<Solution_>
             resolvedActiveThreadCount,
             phaseConfigList_,
             solverTermination)
+        .withPhaseConfig(phaseConfig.copyConfig())
         .enableAssertions()
         .build();
   }

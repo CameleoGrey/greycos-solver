@@ -25,6 +25,7 @@ public record SolverMetricSample(
 
   public enum Kind {
     STEP,
+    ROUND,
     BEST,
     FINAL
   }

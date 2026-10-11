@@ -1,5 +1,6 @@
 package greycos.solver.core.impl.solver.termination;
 
+import java.time.Clock;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -22,13 +23,39 @@ import org.jspecify.annotations.Nullable;
 public final class PartitionTerminationBudget<Solution_> {
 
   private final AbstractPhaseScope<Solution_> parentPhaseScope;
+  private final boolean resumableSearch;
   private final List<SharedLeaf<Solution_>> sharedLeaves = new ArrayList<>();
   private final Definition<Solution_> definition;
   private volatile List<Progress> progress = List.of();
 
   public PartitionTerminationBudget(
       PhaseTermination<Solution_> termination, AbstractPhaseScope<Solution_> parentPhaseScope) {
+    this(termination, parentPhaseScope, false);
+  }
+
+  /**
+   * Binds a partition declaration inside resumable search without contributing a cooling gradient.
+   *
+   * <p>Call {@link #refresh()} on the parent owner at quiescent publication boundaries. Shared
+   * score predicates remain frozen until that refresh. Elapsed-time predicates retain only the
+   * parent's clock, start time and limit, and therefore remain responsive while the parent owner
+   * executes another resident session. Child evaluation never reads the parent's mutable scopes.
+   *
+   * <p>Pass the partition's own declaration, not the enclosing solver's aggregate work budget. Bind
+   * each child with {@link #createChildTermination(SolverScope)}; native child-thread rebinding
+   * preserves this mode through nested islands and partitions.
+   */
+  public static <Solution_> PartitionTerminationBudget<Solution_> forResumableSearch(
+      PhaseTermination<Solution_> termination, AbstractPhaseScope<Solution_> parentPhaseScope) {
+    return new PartitionTerminationBudget<>(termination, parentPhaseScope, true);
+  }
+
+  private PartitionTerminationBudget(
+      PhaseTermination<Solution_> termination,
+      AbstractPhaseScope<Solution_> parentPhaseScope,
+      boolean resumableSearch) {
     this.parentPhaseScope = Objects.requireNonNull(parentPhaseScope);
+    this.resumableSearch = resumableSearch;
     definition = compile(Objects.requireNonNull(termination), false);
     refresh();
   }
@@ -57,7 +84,8 @@ public final class PartitionTerminationBudget<Solution_> {
 
   /** Publish only from the parent solver thread. */
   public void refresh() {
-    progress = sharedLeaves.stream().map(leaf -> leaf.capture(parentPhaseScope)).toList();
+    progress =
+        sharedLeaves.stream().map(leaf -> leaf.capture(parentPhaseScope, resumableSearch)).toList();
   }
 
   /** True only when shared leaves alone prove the complete expression true. */
@@ -69,7 +97,7 @@ public final class PartitionTerminationBudget<Solution_> {
       SolverScope<Solution_> childSolverScope) {
     var localLeaves = new ArrayList<Termination<Solution_>>();
     var root = definition.bind(childSolverScope, localLeaves);
-    return new PartitionTermination<>(this, root, List.copyOf(localLeaves));
+    return new PartitionTermination<>(this, root, List.copyOf(localLeaves), !resumableSearch);
   }
 
   List<Progress> progress() {
@@ -152,14 +180,47 @@ public final class PartitionTerminationBudget<Solution_> {
     };
   }
 
-  record Progress(boolean terminated, double gradient, boolean applicable) {
+  record Progress(
+      boolean terminated,
+      double gradient,
+      boolean applicable,
+      @Nullable ElapsedTimeDeadline elapsedTimeDeadline) {
     static final Progress UNKNOWN = new Progress(false, -1.0, true);
     static final Progress INAPPLICABLE = new Progress(false, -1.0, false);
+
+    Progress(boolean terminated, double gradient, boolean applicable) {
+      this(terminated, gradient, applicable, null);
+    }
+
+    @Override
+    public boolean terminated() {
+      return elapsedTimeDeadline == null ? terminated : elapsedTimeDeadline.isTerminated();
+    }
+  }
+
+  private record ElapsedTimeDeadline(Clock clock, long startMillis, long limitMillis) {
+    boolean isTerminated() {
+      return clock.millis() - startMillis >= limitMillis;
+    }
   }
 
   private record SharedLeaf<Solution_>(Termination<Solution_> termination, boolean solverOrigin) {
-    Progress capture(AbstractPhaseScope<Solution_> phaseScope) {
+    Progress capture(AbstractPhaseScope<Solution_> phaseScope, boolean resumableSearch) {
       var solverScope = phaseScope.getSolverScope();
+      if (resumableSearch && termination instanceof TimeMillisSpentTermination<?> spent) {
+        var startMillis =
+            Objects.requireNonNull(
+                solverOrigin
+                    ? solverScope.getStartingSystemTimeMillis()
+                    : phaseScope.getStartingSystemTimeMillis(),
+                "The partition time origin must be initialized before binding child termination.");
+        return new Progress(
+            false,
+            -1.0,
+            true,
+            new ElapsedTimeDeadline(
+                solverScope.getClock(), startMillis, spent.getTimeMillisSpentLimit()));
+      }
       boolean terminated =
           solverOrigin
               ? termination.isSolverTerminated(solverScope)

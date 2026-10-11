@@ -1,0 +1,149 @@
+[#resumableSearch]
+= Resumable parallel search
+
+Resumable search is an opt-in island execution strategy.
+It retains several complete search trajectories and advances them through deterministic rounds on a bounded number of workers.
+Each trajectory owns its working solution, score director, random streams, selectors, acceptor, forager, and search history.
+Pausing does not restart a phase or replace its working solution with its historical best.
+
+This changes the search algorithm from a single trajectory to multiple trajectories.
+It preserves exact ordinary scoring, including structural validity and lexicographic score ordering.
+It does not guarantee a speedup or better solutions than ordinary local search, move threading, or existing islands.
+
+== Configuration
+
+Add `resumableSearch` to an `islandModel` phase.
+The following phase runs four logical sessions on two execution workers, with eight completed steps per session per round:
+
+[source,xml]
+----
+<islandModel>
+  <termination>
+    <stepCountLimit>4096</stepCountLimit>
+  </termination>
+  <islandCount>4</islandCount>
+  <resumableSearch>
+    <workerCount>2</workerCount>
+    <stepQuantum>8</stepQuantum>
+    <cooperationPolicy>NONE</cooperationPolicy>
+  </resumableSearch>
+  <acceptor>
+    <lateAcceptanceSize>400</lateAcceptanceSize>
+  </acceptor>
+  <forager>
+    <acceptedCountLimit>1</acceptedCountLimit>
+  </forager>
+</islandModel>
+----
+
+The corresponding Java configuration is:
+
+[source,java]
+----
+new IslandModelPhaseConfig()
+    .withIslandCount(4)
+    .withResumableSearchConfig(new ResumableSearchConfig()
+        .withWorkerCount(2)
+        .withStepQuantum(8)
+        .withCooperationPolicy(ResumableSearchCooperationPolicy.NONE))
+    .withAcceptorConfig(new LocalSearchAcceptorConfig().withLateAcceptanceSize(400))
+    .withForagerConfig(new LocalSearchForagerConfig().withAcceptedCountLimit(1))
+    .withTerminationConfig(new TerminationConfig().withStepCountLimit(4096));
+----
+
+`islandCount` controls logical search width and retained memory.
+`workerCount` controls simultaneous execution; changing it does not implicitly change logical width.
+`stepQuantum` controls how many completed primitive steps a session may execute before coordination.
+It is not a time limit: one step may inspect many candidates or execute an expensive callback.
+Specify positive worker and quantum values. Cooperation defaults to `NONE`.
+
+All parallel containers in an enclosing hierarchy containing this option share one worker budget and quantum.
+Nested declarations may omit these values; explicit declarations must agree.
+New sessions are distributed across workers in deterministic creation order.
+For a flat group, session counts per worker differ by at most one, including when there are more sessions than workers.
+Sessions retain their worker across rounds, and a replacement episode retains its predecessor's worker.
+Worker assignment does not change session or episode seeds.
+Nested move-thread pools are disabled in this mode; explicitly conflicting settings are rejected.
+Without `resumableSearch`, existing island and partition execution remains unchanged.
+
+== Cooperation and publication
+
+With `NONE`, each session continues independently.
+The archive retains the best complete solution observed at committed round boundaries.
+It does not overwrite each session's current working solution.
+Equal scores keep the earlier publication in deterministic logical order.
+
+`RESTART_WEAKEST` additionally requires a positive `stagnationRounds`.
+Session zero is protected from automatic restart.
+Another session becomes eligible after the configured number of completed rounds without improving its episode best,
+and only when the archive is strictly better than that episode best.
+At most one eligible session restarts per group per round: the weakest episode best wins, with the lowest session ID breaking ties.
+The new episode starts from a private clone of the archive and fresh search components and random streams.
+Other live trajectories continue unchanged.
+
+External best-solution events describe committed session summaries and identify the hierarchy, episode, round, and model revision.
+They do not expose every intermediate local improvement.
+GLS publishes the ordinary planning score, never its augmented guidance score.
+Partition results are merged, validated, and scored in their parent before entering a full-model archive.
+A strict improvement in a partition root publishes one event for the merged full-model solution.
+Its session path and episode identify the latest contributing summary; its phase, round, and revision identify the enclosing publication.
+
+== Termination and reproducibility
+
+A cooperative island's step limit counts aggregate completed primitive work within its scope.
+The coordinator reserves step grants before dispatch in logical order, preserving the configured termination expression.
+Sessions return unused grants at commitment; these become available in the next round.
+AND and OR expressions retain their meaning.
+
+Partition termination retains its ordinary child phase and child solver boundaries.
+Phase-only limits, such as step counts, apply independently to each child phase; reaching one leaves later phases eligible to run.
+Child solver-wide predicates can end the entire sequence.
+Legacy island limits retain their cumulative per-session quotas.
+Shared enclosing resource budgets continue to count all descendant work across these boundaries.
+
+Global move-count and score-calculation limits are checked at committed round boundaries.
+Already admitted steps finish even if they cross a threshold.
+Reported counters include the excess work; a threshold is not an exact cap in these units.
+There is no fixed numeric overshoot bound for an arbitrarily expensive step.
+Internal multistage probes contribute scoring work but are not additional outer candidate evaluations.
+Initialization, assertions, verification, and physical scoring are reported separately from useful candidate work.
+
+Explicit inner local-search termination is episode-local.
+Work-based cooling uses its fixed episode horizon, independent of the next grant and other sessions' progress.
+Yielding does not reset cooling; a fresh restart does.
+Use an explicit fixed inner work horizon for simulated annealing.
+Its episode termination may combine positive step, move, and score-calculation limits with AND or OR;
+clock, idle, and score-target gradients must not be mixed into that cooling horizon.
+Aggregate diminished-returns and score-difference-threshold idle termination are not supported.
+They may be configured on a non-annealing inner episode instead.
+
+For deterministic components, fixed input, logical width, seeds, work limits, quantum, and cooperation policy
+define the same logical computation across worker counts.
+Wall-clock termination, asynchronous cancellation, externally timed problem changes, and legacy arrival-driven migration
+do not provide that guarantee.
+A cooperative subtree under a legacy controller is reproducible only for identical incoming state, budgets, and external signals.
+
+Cancellation returns the last committed archive after workers settle and clean up.
+Each clone, initializer, or callback that has already been admitted may complete; cancellation stops further admission.
+Cleanup does not restore a working solution for a following phase that will not run.
+Problem changes wait for all old readers to stop, then rebuild session state under a new model revision.
+Global resource consumption survives both fresh episodes and problem-change restarts; a new solve starts new budgets.
+Reported move-evaluation, score-calculation, and move-type totals also accumulate across model revisions for the lifetime of the solve.
+A new solve starts those reported totals from zero.
+Scores from different revisions are not compared.
+
+== Supported components and measurement
+
+The runtime supports construction initialization, ordinary local search, GLS, nested islands, and partitioned search.
+It supports basic, list, and mixed planning variables through their normal score-director contracts.
+Mutable custom calculators and search components must be independently constructed per session.
+Easy calculators retain their existing stateless contract.
+Custom callbacks must not base deterministic decisions on physical thread identity, wall time, or shared mutable external state.
+
+ALNS execution, candidate-level suspension, work stealing, and cloning opaque live continuations are outside this mode.
+Unsupported descendants and conflicting settings fail with their configuration path.
+
+Compare execution speed using identical logical workloads at different worker counts.
+Compare practical search quality separately under matched physical resources and deadlines.
+Include construction, initialization, restart, cloning, verification, coordination, and shutdown costs.
+Short benchmark runs validate operation and reporting; they do not establish general scalability or a production configuration.

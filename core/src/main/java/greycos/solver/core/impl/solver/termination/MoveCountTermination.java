@@ -35,7 +35,7 @@ final class MoveCountTermination<Solution_> extends AbstractUniversalTermination
   }
 
   private boolean isTerminated(SolverScope<Solution_> solverScope) {
-    long moveEvaluationCount = solverScope.getMoveEvaluationCount();
+    long moveEvaluationCount = solverMoveEvaluationCount(solverScope);
     return moveEvaluationCount >= moveCountLimit;
   }
 
@@ -50,8 +50,14 @@ final class MoveCountTermination<Solution_> extends AbstractUniversalTermination
   }
 
   private double calculateTimeGradient(SolverScope<Solution_> solverScope) {
-    var moveEvaluationCount = solverScope.getMoveEvaluationCount();
+    var moveEvaluationCount = solverMoveEvaluationCount(solverScope);
     return TerminationGradient.ratio(moveEvaluationCount, moveCountLimit);
+  }
+
+  private long solverMoveEvaluationCount(SolverScope<Solution_> solverScope) {
+    return solverScope.isResumableSearchEnabled()
+        ? solverScope.getResumableSearchState().solverMoveEvaluationCount(solverScope)
+        : solverScope.getMoveEvaluationCount();
   }
 
   @Override

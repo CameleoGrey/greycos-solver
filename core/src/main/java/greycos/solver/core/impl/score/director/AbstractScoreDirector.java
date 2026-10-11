@@ -43,6 +43,8 @@ import greycos.solver.core.impl.solver.exception.CloningCorruptionException;
 import greycos.solver.core.impl.solver.exception.ScoreCorruptionException;
 import greycos.solver.core.impl.solver.exception.UndoScoreCorruptionException;
 import greycos.solver.core.impl.solver.exception.VariableCorruptionException;
+import greycos.solver.core.impl.solver.monitoring.ResumableSearchWorkCategory;
+import greycos.solver.core.impl.solver.monitoring.ResumableSearchWorkCounter;
 import greycos.solver.core.impl.solver.thread.ChildThreadType;
 import greycos.solver.core.preview.api.move.Move;
 import greycos.solver.core.preview.api.move.SolutionView;
@@ -110,6 +112,7 @@ public abstract class AbstractScoreDirector<
   private int workingGenuineEntityCount = 0;
   private boolean allChangesWillBeUndoneBeforeStepEnds = false;
   private long calculationCount = 0L;
+  private @Nullable ResumableSearchWorkCounter resumableSearchWorkCounter;
   protected @Nullable Solution_ workingSolution;
   private int workingInitScore = 0;
   private boolean lastVariableUpdateSuccessful = true;
@@ -292,6 +295,16 @@ public abstract class AbstractScoreDirector<
   }
 
   @Override
+  public void setResumableSearchWorkCounter(@Nullable ResumableSearchWorkCounter workCounter) {
+    this.resumableSearchWorkCounter = workCounter;
+  }
+
+  @Override
+  public @Nullable ResumableSearchWorkCounter getResumableSearchWorkCounter() {
+    return resumableSearchWorkCounter;
+  }
+
+  @Override
   public SupplyManager getSupplyManager() {
     ensureWorkingSolutionStateFresh();
     return variableSupport;
@@ -348,6 +361,9 @@ public abstract class AbstractScoreDirector<
   public final InnerScore<Score_> calculateScore() {
     ensureWorkingSolutionStateFresh();
     if (lastVariableUpdateSuccessful) {
+      if (resumableSearchWorkCounter != null) {
+        resumableSearchWorkCounter.recordScoreCalculation();
+      }
       return innerCalculateScore();
     } else {
       // invalid scores are worse than any valid score, even those with unassigned values
@@ -355,6 +371,15 @@ public abstract class AbstractScoreDirector<
           InnerScore.fullyAssigned(getScoreDefinition().getStructurallyFlawedScore());
       getSolutionDescriptor().setScore(workingSolution, invalidScore.raw());
       return invalidScore;
+    }
+  }
+
+  private InnerScore<Score_> calculateAssertionScore() {
+    if (resumableSearchWorkCounter == null) {
+      return calculateScore();
+    }
+    try (var ignored = resumableSearchWorkCounter.scope(ResumableSearchWorkCategory.ASSERTION)) {
+      return calculateScore();
     }
   }
 
@@ -830,6 +855,7 @@ public abstract class AbstractScoreDirector<
         // ScoreCalculationCountTermination takes into account previous phases
         // but the calculationCount of partitions is maxed, not summed.
         childThreadScoreDirector.calculationCount = calculationCount;
+        childThreadScoreDirector.setResumableSearchWorkCounter(resumableSearchWorkCounter);
         return childThreadScoreDirector;
       }
       case MOVE_THREAD -> {
@@ -840,6 +866,7 @@ public abstract class AbstractScoreDirector<
                 .withConstraintMatchPolicy(constraintMatchPolicy)
                 .withForceAllowInconsistentSolutions(!ignoreInconsistentSolutions)
                 .buildDerived();
+        childThreadScoreDirector.setResumableSearchWorkCounter(resumableSearchWorkCounter);
         childThreadScoreDirector.setWorkingSolution(cloneWorkingSolution());
         return childThreadScoreDirector;
       }
@@ -1179,8 +1206,9 @@ public abstract class AbstractScoreDirector<
             .createScoreDirectorBuilder(environmentMode)
             .withConstraintMatchPolicy(ConstraintMatchPolicy.ENABLED)
             .buildDerived()) {
+      uncorruptedScoreDirector.setResumableSearchWorkCounter(resumableSearchWorkCounter);
       uncorruptedScoreDirector.setWorkingSolution(solution);
-      var uncorruptedScore = uncorruptedScoreDirector.calculateScore().raw();
+      var uncorruptedScore = uncorruptedScoreDirector.calculateAssertionScore().raw();
       if (!score.equals(uncorruptedScore)) {
         throw new IllegalStateException(
             "Score corruption (%s): the solution's score (%s) is not the uncorruptedScore (%s)."
@@ -1195,7 +1223,7 @@ public abstract class AbstractScoreDirector<
   @Override
   public void assertExpectedWorkingScore(
       InnerScore<Score_> expectedWorkingScore, Object completedAction) {
-    InnerScore<Score_> workingScore = calculateScore();
+    InnerScore<Score_> workingScore = calculateAssertionScore();
     if (!expectedWorkingScore.equals(workingScore)) {
       throw new ScoreCorruptionException(
           """
@@ -1223,7 +1251,7 @@ public abstract class AbstractScoreDirector<
               .formatted(ShadowVariable.class.getSimpleName(), completedAction, violationMessage));
     }
 
-    var workingScore = calculateScore();
+    var workingScore = calculateAssertionScore();
     if (!expectedWorkingScore.equals(workingScore)) {
       assertWorkingScoreFromScratch(
           workingScore,
@@ -1387,8 +1415,9 @@ public abstract class AbstractScoreDirector<
             .withConstraintMatchPolicy(ConstraintMatchPolicy.ENABLED)
             .withForceAllowInconsistentSolutions(!ignoreInconsistentSolutions)
             .buildDerived()) {
+      uncorruptedScoreDirector.setResumableSearchWorkCounter(resumableSearchWorkCounter);
       uncorruptedScoreDirector.setWorkingSolution(Objects.requireNonNull(workingSolution));
-      var uncorruptedInnerScore = uncorruptedScoreDirector.calculateScore();
+      var uncorruptedInnerScore = uncorruptedScoreDirector.calculateAssertionScore();
       if (!innerScore.equals(uncorruptedInnerScore)) {
         String scoreCorruptionAnalysis =
             buildScoreCorruptionAnalysis(uncorruptedScoreDirector, predicted);
@@ -1416,7 +1445,7 @@ public abstract class AbstractScoreDirector<
       Move<Solution_> move,
       InnerScore<Score_> beforeMoveInnerScore,
       SolverLifecyclePoint executionPoint) {
-    var undoInnerScore = calculateScore();
+    var undoInnerScore = calculateAssertionScore();
     if (Objects.equals(undoInnerScore, beforeMoveInnerScore)) {
       return;
     }
