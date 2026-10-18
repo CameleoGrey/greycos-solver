@@ -6,6 +6,7 @@ import java.util.SequencedCollection;
 
 import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import greycos.solver.core.impl.heuristic.move.AbstractMove;
+import greycos.solver.core.impl.move.VariableDescriptorRebaser;
 import greycos.solver.core.impl.score.director.ScoreDirector;
 import greycos.solver.core.impl.score.director.VariableDescriptorAwareScoreDirector;
 
@@ -78,7 +79,7 @@ public class ListAssignMove<Solution_> extends AbstractMove<Solution_> {
   @Override
   public ListAssignMove<Solution_> rebase(ScoreDirector<Solution_> destinationScoreDirector) {
     return new ListAssignMove<>(
-        variableDescriptor,
+        VariableDescriptorRebaser.rebase(variableDescriptor, destinationScoreDirector),
         destinationScoreDirector.lookUpWorkingObject(planningValue),
         destinationScoreDirector.lookUpWorkingObject(destinationEntity),
         destinationIndex);

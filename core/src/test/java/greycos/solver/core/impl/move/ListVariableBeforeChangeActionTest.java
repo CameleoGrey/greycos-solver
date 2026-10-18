@@ -16,6 +16,8 @@ import greycos.solver.core.testcotwin.list.TestdataListSolution;
 import greycos.solver.core.testcotwin.list.TestdataListValue;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class ListVariableBeforeChangeActionTest {
 
@@ -23,6 +25,49 @@ class ListVariableBeforeChangeActionTest {
       mock(VariableDescriptorAwareScoreDirector.class);
   private final ListVariableDescriptor<TestdataListSolution> variableDescriptor =
       TestdataListEntity.buildVariableDescriptorForValueList();
+
+  @ParameterizedTest
+  @ValueSource(ints = {0, 1, 3})
+  @SuppressWarnings("unchecked")
+  void rebaseCapturedValuesToIndependentDirectorModel(int oldValueCount) {
+    var oldValues =
+        List.of(new TestdataListValue("0"), new TestdataListValue("1"), new TestdataListValue("2"));
+    var destinationValues =
+        List.of(new TestdataListValue("0"), new TestdataListValue("1"), new TestdataListValue("2"));
+    var sourceNewValue = new TestdataListValue("new");
+    var sourceEntity = new TestdataListEntity("owner", sourceNewValue);
+    var destinationEntity = new TestdataListEntity("owner", new TestdataListValue("new"));
+    var action =
+        new ListVariableBeforeChangeAction<>(
+            sourceEntity,
+            oldValues.subList(0, oldValueCount),
+            0,
+            oldValueCount,
+            oldValueCount,
+            variableDescriptor);
+    action.updateToIndex(1);
+    var destinationModel = TestdataListSolution.buildSolutionDescriptor();
+    var destinationVariable = destinationModel.getListVariableDescriptor();
+    assertThat(destinationVariable).isNotSameAs(variableDescriptor);
+    VariableDescriptorAwareScoreDirector<TestdataListSolution> destinationDirector =
+        mock(VariableDescriptorAwareScoreDirector.class);
+    when(destinationDirector.getSolutionDescriptor()).thenReturn(destinationModel);
+    when(destinationDirector.lookUpWorkingObject(sourceEntity)).thenReturn(destinationEntity);
+    for (int i = 0; i < oldValueCount; i++) {
+      when(destinationDirector.lookUpWorkingObject(oldValues.get(i)))
+          .thenReturn(destinationValues.get(i));
+    }
+
+    action.rebase(destinationDirector).undo(destinationDirector);
+
+    assertThat(destinationEntity.getValueList())
+        .containsExactlyElementsOf(destinationValues.subList(0, oldValueCount));
+    assertThat(sourceEntity.getValueList()).containsExactly(sourceNewValue);
+    verify(destinationDirector)
+        .beforeListVariableChanged(destinationVariable, destinationEntity, 0, 1);
+    verify(destinationDirector)
+        .afterListVariableChanged(destinationVariable, destinationEntity, 0, oldValueCount);
+  }
 
   @Test
   void undoRestoresTheCapturedRangeAndNotifiesOnce() {

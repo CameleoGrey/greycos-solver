@@ -207,7 +207,7 @@ public final class ShadowVariableUpdateHelper<Solution_> {
     }
 
     public void processCascadingVariables() {
-      if (solutionDescriptor.getListVariableDescriptor() == null) {
+      if (solutionDescriptor.getListVariableDescriptorList().isEmpty()) {
         return;
       }
       var descriptors =

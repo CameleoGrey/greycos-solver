@@ -982,6 +982,13 @@ This in-memory collection is kept up-to-date incrementally as the working soluti
 The entry point for enumeration is the `MoveStreamFactory.forEach` method,
 which operates much like the xref:constraints-and-score/score-calculation.adoc#constraintStreamsForEach[`forEach()` method of Constraint Streams].
 By default, `forEach` will exclude pinned items, as generating moves for pinned items is typically undesirable.
+For entities with genuine planning variables, it checks the entity's own pinning.
+An element in a pinned list position may therefore still be enumerated to change its independent basic variables.
+For shadow-only list elements, it checks pinning in the applicable list variable.
+Use `forEachAssignedValue(listVariable)` and `forEachDestination(listVariable)` when building list moves;
+these also exclude positions pinned in that specific list variable.
+When a custom list move enumerates both assigned and unassigned elements with `forEach`,
+add a filter using `!solutionView.isPinned(listVariable, value)`.
 Additionally, it allows to specify whether it should include `null` in the resulting dataset or not;
 this is useful when generating moves for nullable planning variables.
 
@@ -1381,6 +1388,9 @@ Indexed pairs without an additional filter are sampled uniformly.
 Additional filters and overlapping `containingAnyOf` keys may retain selection bias;
 filtered sampling also uses bounded retries and therefore cannot prove exhaustive coverage.
 
+Solver integration supports several genuine entity classes, basic variables, and independent planning lists.
+List move providers bind a specific variable meta-model; assigned-value and pin filters use that declaration.
+
 [#neighborhoodsRuntimeLimitations]
 === Runtime limitations
 
@@ -1388,7 +1398,6 @@ As the Neighborhoods API is still in an early stage of development,
 it has some limitations which we will address in future releases,
 such as:
 
-- Solver integration currently supports one genuine entity class with one genuine variable.
 - The Neighborhoods API is not compatible with `LocalSearchType.VARIABLE_NEIGHBORHOOD_DESCENT`;
 configuring both together throws an exception at solver build time.
 - The Neighborhoods API does not yet support move probability weighting.

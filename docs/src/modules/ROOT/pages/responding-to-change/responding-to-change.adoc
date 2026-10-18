@@ -281,6 +281,28 @@ public class Vehicle {
 ----
 ====
 
+If an entity has several planning list variables, identify the target of each pin reader with `variableName`:
+
+[source,java,options="nowrap"]
+----
+@PlanningListVariable(valueRangeProviderRefs = "visitRange")
+private List<Visit> visits = new ArrayList<>();
+
+@PlanningListVariable(valueRangeProviderRefs = "cargoRange")
+private List<Cargo> loadingOrder = new ArrayList<>();
+
+@PlanningPinToIndex(variableName = "visits")
+private int firstUnpinnedVisitIndex = 1;
+
+@PlanningPinToIndex(variableName = "loadingOrder")
+private int firstUnpinnedCargoIndex = 2;
+----
+
+Each list may have at most one pin reader; a list without one has no pinned prefix.
+Unknown variable names, duplicate readers, and unnamed readers on an entity with several lists are rejected.
+The existing unnamed annotation remains valid when the declaring entity has exactly one list.
+An inherited reader keeps its original target when a subclass adds another list.
+
 When `@PlanningPinToIndex` is used, the list is split in two parts.
 
 - The first part, with indexes less than `firstUnpinnedIndex`, is pinned.
@@ -297,7 +319,8 @@ but the list can still be extended by adding to the end of the list.
 
 To pin the entire list, preventing any modifications to the list whatsoever,
 <<pinDownPlanningEntities, `@PlanningPin`>> needs to be used on the entity itself.
-In that case, the value of `@PlanningPinToIndex` must be zero (`0`).
+This pins every list and basic variable on that entity.
+In that case, every `@PlanningPinToIndex` value must be zero (`0`).
 
 NOTE: Value of the index must never change during planning.
 To change how far the list is pinned,

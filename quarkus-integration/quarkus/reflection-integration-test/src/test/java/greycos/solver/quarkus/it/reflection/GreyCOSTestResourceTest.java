@@ -14,6 +14,17 @@ class GreyCOSTestResourceTest {
 
   @Test
   @Timeout(600)
+  void solveMultipleLists() {
+    RestAssured.given()
+        .when()
+        .post("/greycos/test/multiple-lists")
+        .then()
+        .statusCode(200)
+        .body(is("0hard/6soft;lists=3/4;pins=1/2;shadows=valid;clone=independent"));
+  }
+
+  @Test
+  @Timeout(600)
   void solveWithSolverFactory() throws Exception {
     RestAssured.given()
         .header("Content-Type", "application/json")

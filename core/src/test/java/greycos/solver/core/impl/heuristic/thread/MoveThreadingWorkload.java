@@ -75,6 +75,8 @@ public final class MoveThreadingWorkload {
     return switch (name) {
       case "basic" -> new BasicWorkload();
       case "list" -> new ListWorkload();
+      case "mixed-list" -> new MixedListBenchmarkWorkload();
+      case "multiple-list" -> new MultipleListBenchmarkWorkload();
       default -> throw new IllegalArgumentException("Unknown workload: " + name);
     };
   }

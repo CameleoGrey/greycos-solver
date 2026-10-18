@@ -161,6 +161,12 @@ public class QueuedEntityPlacerFactory<Solution_>
           deduceEntityDescriptor(configPolicy, entitySelectorConfig.getEntityClass());
       entitySelectorConfig =
           deduceEntitySortManner(configPolicy, entityDescriptor, entitySelectorConfig);
+      if (entitySelectorConfig.getId() == null
+          && ConfigUtils.isEmptyCollection(config.getMoveSelectorConfigList())) {
+        // Generated change moves must replay this entity queue instead of inferring every owner.
+        entitySelectorConfig =
+            entitySelectorConfig.copyConfig().withId(entityDescriptor.getEntityClass().getName());
+      }
     }
     var cacheType = entitySelectorConfig.getCacheType();
     if (cacheType != null && cacheType.compareTo(SelectionCacheType.PHASE) < 0) {

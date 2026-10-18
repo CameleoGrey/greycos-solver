@@ -1,7 +1,5 @@
 package greycos.solver.core.impl.cotwin.variable.cascade;
 
-import static java.util.stream.Collectors.joining;
-
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -16,6 +14,7 @@ import greycos.solver.core.impl.cotwin.common.accessor.MemberAccessor;
 import greycos.solver.core.impl.cotwin.common.accessor.MemberAccessorType;
 import greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import greycos.solver.core.impl.cotwin.policy.DescriptorPolicy;
+import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import greycos.solver.core.impl.cotwin.variable.descriptor.ShadowVariableDescriptor;
 import greycos.solver.core.impl.cotwin.variable.descriptor.VariableDescriptor;
 import greycos.solver.core.impl.score.director.ScoreDirector;
@@ -28,6 +27,7 @@ public final class CascadingUpdateShadowVariableDescriptor<Solution_>
       new ArrayList<>();
   private VariableDescriptor<Solution_> firstTargetVariableDescriptor;
   private MemberAccessor targetMethod;
+  private ListVariableDescriptor<Solution_> sourceVariableDescriptor;
 
   public CascadingUpdateShadowVariableDescriptor(
       int ordinal,
@@ -111,26 +111,33 @@ public final class CascadingUpdateShadowVariableDescriptor<Solution_>
                   shadowVariableTarget.variableMemberAccessor().getName()));
     }
 
-    // Currently, only one list variable is supported per design.
-    // So, we assume that only one list variable can be found in the available entities, or we fail
-    // fast otherwise.
-    var listVariableDescriptorList =
-        entityDescriptor.getSolutionDescriptor().getEntityDescriptors().stream()
-            .flatMap(e -> e.getGenuineVariableDescriptorList().stream())
-            .filter(VariableDescriptor::isListVariable)
+    var candidates =
+        entityDescriptor.getSolutionDescriptor().getListVariableDescriptorList().stream()
+            .filter(
+                descriptor ->
+                    descriptor.acceptsValueType(entityDescriptor.getEntityClass())
+                        || entityDescriptor
+                            .getEntityClass()
+                            .isAssignableFrom(descriptor.getElementType()))
             .toList();
-    if (listVariableDescriptorList.size() > 1) {
+    if (candidates.size() > 1) {
       throw new IllegalArgumentException(
-          "The shadow variable @%s does not support models with multiple planning list variables [%s]."
+          "The entityClass (%s) has an @%s-annotated property (%s), but matches multiple planning list variables (%s). Declare the cascading shadow on the specific element class."
               .formatted(
+                  entityDescriptor.getEntityClass(),
                   CascadingUpdateShadowVariable.class.getSimpleName(),
-                  listVariableDescriptorList.stream()
-                      .map(
-                          v ->
-                              v.getEntityDescriptor().getEntityClass().getSimpleName()
-                                  + "::"
-                                  + v.getVariableName())
-                      .collect(joining(", "))));
+                  variableMemberAccessor.getName(),
+                  candidates));
+    }
+    sourceVariableDescriptor = candidates.isEmpty() ? null : candidates.getFirst();
+    if (sourceVariableDescriptor == null
+        && entityDescriptor.getSolutionDescriptor().getListVariableDescriptorList().size() > 1) {
+      throw new IllegalArgumentException(
+          "The entityClass (%s) has an @%s-annotated property (%s), but is not an element type of a planning list variable."
+              .formatted(
+                  entityDescriptor.getEntityClass(),
+                  CascadingUpdateShadowVariable.class.getSimpleName(),
+                  variableMemberAccessor.getName()));
     }
 
     var targetMethodName = getTargetMethodName();
@@ -160,6 +167,11 @@ public final class CascadingUpdateShadowVariableDescriptor<Solution_>
                 null,
                 descriptorPolicy.getCotwinAccessType());
     firstTargetVariableDescriptor = targetVariableDescriptorList.get(0);
+  }
+
+  @Override
+  public ListVariableDescriptor<Solution_> getSourceVariableDescriptor() {
+    return sourceVariableDescriptor;
   }
 
   @Override

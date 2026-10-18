@@ -27,6 +27,7 @@ public abstract sealed class AbstractExhaustiveSearchDecider<
         Solution_, Score_ extends Score<Score_>>
     implements ExhaustiveSearchPhaseLifecycleListener<Solution_>
     permits BasicVariableExhaustiveSearchDecider,
+        JointVariableExhaustiveSearchDecider,
         ListVariableExhaustiveSearchDecider,
         MixedVariableExhaustiveSearchDecider {
 
@@ -79,6 +80,10 @@ public abstract sealed class AbstractExhaustiveSearchDecider<
 
   protected void enableAcceptUninitializedSolutions() {
     acceptUninitializedSolutions = true;
+  }
+
+  protected void requireCompleteSolutionsForPessimisticBound() {
+    requireCompleteSolutionForPessimisticBound = true;
   }
 
   // ************************************************************************
@@ -154,6 +159,9 @@ public abstract sealed class AbstractExhaustiveSearchDecider<
       ExhaustiveSearchNode<Solution_> moveNode,
       boolean isSolutionComplete,
       InnerScore<Score_> score) {
+    if (isSolutionComplete && !canPublishCompleteSolution(score)) {
+      return;
+    }
     if (score.isStructurallyFlawed()) {
       moveNode.setScore(score);
       // A later assignment may remove a dependency loop, for example by inserting a list value
@@ -170,6 +178,10 @@ public abstract sealed class AbstractExhaustiveSearchDecider<
     } else {
       processMoverWithBounder(stepScope, moveNode, score, isSolutionComplete);
     }
+  }
+
+  protected boolean canPublishCompleteSolution(InnerScore<Score_> score) {
+    return true;
   }
 
   private void processMoverWithoutBounder(

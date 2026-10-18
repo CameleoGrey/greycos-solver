@@ -22,7 +22,7 @@ public class SelectorBasedListChangeMove<Solution_> extends ListChangeMove<Solut
       ScoreDirector<Solution_> destinationScoreDirector) {
     var rebased = super.rebase(destinationScoreDirector);
     return new SelectorBasedListChangeMove<>(
-        getVariableDescriptor(),
+        rebased.getVariableDescriptor(),
         rebased.getSourceEntity(),
         rebased.getSourceIndex(),
         rebased.getDestinationEntity(),

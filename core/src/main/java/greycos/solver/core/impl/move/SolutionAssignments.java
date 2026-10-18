@@ -96,8 +96,9 @@ public final class SolutionAssignments<Solution_> {
         basicChangeMap.entrySet()) {
       GenuineVariableDescriptor<Solution_> variableDescriptor = entry.getKey();
       for (BasicChangeRecord<?> changeRecord : entry.getValue()) {
-        if (!variableDescriptor
-            .getEntityDescriptor()
+        if (!scoreDirector
+            .getSolutionDescriptor()
+            .findEntityDescriptorOrFail(changeRecord.entity().getClass())
             .isMovable(workingSolution, changeRecord.entity())) {
           continue;
         }
@@ -121,7 +122,10 @@ public final class SolutionAssignments<Solution_> {
       var targetValueSet = Collections.newSetFromMap(new IdentityHashMap<Object, Boolean>());
       for (ListChangeRecord<?> changeRecord : entry.getValue()) {
         Object entity = changeRecord.entity();
-        if (!variableDescriptor.getEntityDescriptor().isMovable(workingSolution, entity)) {
+        if (!scoreDirector
+            .getSolutionDescriptor()
+            .findEntityDescriptorOrFail(entity.getClass())
+            .isMovable(workingSolution, entity)) {
           continue;
         }
         List<Object> targetList = changeRecord.values();
@@ -245,12 +249,16 @@ public final class SolutionAssignments<Solution_> {
                 : destinationScoreDirector.lookUpWorkingObject(record.value());
         destinationChangeRecords.add(new BasicChangeRecord<>(destinationEntity, destinationValue));
       }
-      destinationBasicChangeMap.put(entry.getKey(), destinationChangeRecords);
+      destinationBasicChangeMap.put(
+          VariableDescriptorRebaser.rebase(entry.getKey(), destinationScoreDirector),
+          destinationChangeRecords);
     }
 
     for (Map.Entry<ListVariableDescriptor<Solution_>, List<ListChangeRecord<?>>> entry :
         listChangeMap.entrySet()) {
       List<ListChangeRecord<?>> destinationChangeRecords = new ArrayList<>();
+      var destinationDescriptor =
+          VariableDescriptorRebaser.rebase(entry.getKey(), destinationScoreDirector);
       var immutableValues = new HashMap<Object, Object>();
       boolean hasImmutableValues =
           entry.getValue().stream()
@@ -260,7 +268,7 @@ public final class SolutionAssignments<Solution_> {
         var range =
             ((VariableDescriptorAwareScoreDirector<Solution_>) destinationScoreDirector)
                 .getValueRangeManager()
-                .getFromSolution(entry.getKey().getValueRangeDescriptor());
+                .getFromSolution(destinationDescriptor.getValueRangeDescriptor());
         range
             .createOriginalIterator()
             .forEachRemaining(
@@ -281,7 +289,7 @@ public final class SolutionAssignments<Solution_> {
                 .toList();
         destinationChangeRecords.add(new ListChangeRecord<>(destinationEntity, destinationValues));
       }
-      destinationListChangeMap.put(entry.getKey(), destinationChangeRecords);
+      destinationListChangeMap.put(destinationDescriptor, destinationChangeRecords);
     }
 
     return new SolutionAssignments<>(destinationBasicChangeMap, destinationListChangeMap);

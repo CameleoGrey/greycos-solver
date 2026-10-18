@@ -286,13 +286,13 @@ public abstract class AbstractPhase<Solution_> implements Phase<Solution_> {
         throw new IllegalStateException(
             """
             %s phase (%d) needs to start from an initialized solution, \
-            but planning list variable (%s) has (%d) unexpected unassigned values.
+            but planning list variables (%s) have (%d) unexpected unassigned values.
             Maybe there is no Construction Heuristic configured before this phase to initialize the solution.\
             """
                 .formatted(
                     getPhaseType(),
                     phaseIndex,
-                    solutionDescriptor.getListVariableDescriptor(),
+                    solutionDescriptor.getListVariableDescriptorList(),
                     unassignedValueCount));
       }
     }

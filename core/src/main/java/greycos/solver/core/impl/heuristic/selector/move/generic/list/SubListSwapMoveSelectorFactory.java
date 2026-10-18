@@ -7,8 +7,10 @@ import greycos.solver.core.config.heuristic.selector.common.SelectionOrder;
 import greycos.solver.core.config.heuristic.selector.entity.EntitySelectorConfig;
 import greycos.solver.core.config.heuristic.selector.list.SubListSelectorConfig;
 import greycos.solver.core.config.heuristic.selector.move.generic.list.SubListSwapMoveSelectorConfig;
+import greycos.solver.core.config.heuristic.selector.value.ValueSelectorConfig;
 import greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
 import greycos.solver.core.impl.heuristic.selector.entity.EntitySelectorFactory;
+import greycos.solver.core.impl.heuristic.selector.list.ListVariableSelectorSupport;
 import greycos.solver.core.impl.heuristic.selector.list.SubListSelectorFactory;
 import greycos.solver.core.impl.heuristic.selector.move.AbstractMoveSelectorFactory;
 import greycos.solver.core.impl.heuristic.selector.move.MoveSelector;
@@ -32,21 +34,36 @@ public class SubListSwapMoveSelectorFactory<Solution_>
 
     var selectionOrder = SelectionOrder.fromRandomSelectionBoolean(randomSelection);
 
-    var onlyEntityDescriptor =
-        getTheOnlyEntityDescriptorWithListVariable(configPolicy.getSolutionDescriptor());
-    // We defined the entity class since there is a single entity descriptor that includes a list
-    // variable
-    var entitySelector =
-        EntitySelectorFactory.<Solution_>create(
-                new EntitySelectorConfig().withEntityClass(onlyEntityDescriptor.getEntityClass()))
-            .buildEntitySelector(configPolicy, minimumCacheType, selectionOrder);
-
     var subListSelectorConfig =
-        Objects.requireNonNullElseGet(
-            config.getSubListSelectorConfig(), SubListSelectorConfig::new);
+        Objects.requireNonNullElseGet(config.getSubListSelectorConfig(), SubListSelectorConfig::new)
+            .copyConfig();
     var secondarySubListSelectorConfig =
         Objects.requireNonNullElse(
-            config.getSecondarySubListSelectorConfig(), subListSelectorConfig);
+                config.getSecondarySubListSelectorConfig(), subListSelectorConfig)
+            .copyConfig();
+    var descriptor =
+        ListVariableSelectorSupport.resolve(
+            configPolicy,
+            config.getEntityClass(),
+            subListSelectorConfig,
+            secondarySubListSelectorConfig);
+    var entitySelector =
+        EntitySelectorFactory.<Solution_>create(
+                new EntitySelectorConfig()
+                    .withEntityClass(descriptor.getEntityDescriptor().getEntityClass()))
+            .buildEntitySelector(configPolicy, minimumCacheType, selectionOrder);
+    for (var subListConfig :
+        new SubListSelectorConfig[] {subListSelectorConfig, secondarySubListSelectorConfig}) {
+      if (subListConfig.getMimicSelectorRef() == null) {
+        var valueConfig =
+            Objects.requireNonNullElseGet(
+                subListConfig.getValueSelectorConfig(), ValueSelectorConfig::new);
+        if (valueConfig.getMimicSelectorRef() == null) {
+          valueConfig.setVariableName(descriptor.getVariableName());
+        }
+        subListConfig.setValueSelectorConfig(valueConfig);
+      }
+    }
 
     var leftSubListSelector =
         SubListSelectorFactory.<Solution_>create(subListSelectorConfig)

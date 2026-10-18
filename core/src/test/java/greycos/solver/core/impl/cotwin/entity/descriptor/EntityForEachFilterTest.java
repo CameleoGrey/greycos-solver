@@ -1,7 +1,6 @@
 package greycos.solver.core.impl.cotwin.entity.descriptor;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatCode;
 
 import java.time.Duration;
 import java.util.List;
@@ -17,6 +16,9 @@ import greycos.solver.core.testcotwin.list.TestdataListValue;
 import greycos.solver.core.testcotwin.list.pinned.noshadows.TestdataPinnedNoShadowsListEntity;
 import greycos.solver.core.testcotwin.list.pinned.noshadows.TestdataPinnedNoShadowsListSolution;
 import greycos.solver.core.testcotwin.list.pinned.noshadows.TestdataPinnedNoShadowsListValue;
+import greycos.solver.core.testcotwin.multiplelist.TestdataMultipleListFirstValue;
+import greycos.solver.core.testcotwin.multiplelist.TestdataMultipleListSecondValue;
+import greycos.solver.core.testcotwin.multiplelist.TestdataMultipleListSolution;
 import greycos.solver.core.testcotwin.shadow.basic.TestdataBasicVarEntity;
 import greycos.solver.core.testcotwin.shadow.basic.TestdataBasicVarSolution;
 import greycos.solver.core.testcotwin.shadow.basic.TestdataBasicVarValue;
@@ -166,8 +168,38 @@ class EntityForEachFilterTest {
 
     entity.setValueList(List.of());
 
-    assertThatCode(() -> assignedAndConsistentPredicate.test(value))
-        .isInstanceOf(IllegalStateException.class)
-        .hasMessageContaining("Impossible state");
+    // Membership is checked by the stream's reactive owner ifExists instead of this predicate.
+    assertThat(assignedAndConsistentPredicate).accepts(value);
+  }
+
+  @Test
+  void filtersEachListFamilyAndBasicVariablesTogether() {
+    var solutionDescriptor = TestdataMultipleListSolution.buildSolutionDescriptor();
+    var solution = TestdataMultipleListSolution.generateInitializedSolution(1, 1, 1);
+    var tracker = new ConsistencyTracker<TestdataMultipleListSolution>();
+    var firstPredicate =
+        solutionDescriptor
+            .getEntityDescriptorStrict(TestdataMultipleListFirstValue.class)
+            .getEntityForEachFilter()
+            .getAssignedAndConsistentPredicate(tracker);
+    var secondPredicate =
+        solutionDescriptor
+            .getEntityDescriptorStrict(TestdataMultipleListSecondValue.class)
+            .getEntityForEachFilter()
+            .getAssignedAndConsistentPredicate(tracker);
+    var first = solution.getFirstValueList().getFirst();
+    var second = solution.getSecondValueList().getFirst();
+    assertThat(firstPredicate).accepts(first);
+    assertThat(secondPredicate).accepts(second);
+
+    first.setEntity(null);
+    assertThat(firstPredicate).rejects(first);
+    assertThat(secondPredicate).accepts(second);
+
+    second.setQuantity(null);
+    assertThat(secondPredicate).rejects(second);
+    second.setQuantity(1);
+    second.setEntity(null);
+    assertThat(secondPredicate).rejects(second);
   }
 }

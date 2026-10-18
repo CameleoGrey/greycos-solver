@@ -42,7 +42,7 @@ public class SelectorBasedSubListSwapMove<Solution_> extends SubListSwapMove<Sol
       ScoreDirector<Solution_> destinationScoreDirector) {
     var rebased = super.rebase(destinationScoreDirector);
     return new SelectorBasedSubListSwapMove<>(
-        getVariableDescriptor(),
+        rebased.getVariableDescriptor(),
         rebased.getLeftSubList(),
         rebased.getRightSubList(),
         rebased.isReversing());

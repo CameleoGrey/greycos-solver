@@ -33,9 +33,10 @@ public final class ListRuinRecreateMoveSelectorFactory<Solution_>
     CountSupplier minimumSelectedSupplier = ruinMoveSelectorConfig::determineMinimumRuinedCount;
     CountSupplier maximumSelectedSupplier = ruinMoveSelectorConfig::determineMaximumRuinedCount;
 
-    this.getTheOnlyEntityDescriptorWithListVariable(configPolicy.getSolutionDescriptor());
-
-    var listVariableDescriptor = configPolicy.getSolutionDescriptor().getListVariableDescriptor();
+    var listVariableDescriptor =
+        configPolicy
+            .getSolutionDescriptor()
+            .resolveListVariableDescriptor(config.getEntityClass(), config.getVariableName());
     var entityDescriptor = listVariableDescriptor.getEntityDescriptor();
     var valueSelector =
         (IterableValueSelector<Solution_>)
@@ -59,7 +60,7 @@ public final class ListRuinRecreateMoveSelectorFactory<Solution_>
         config.getNearbySelectionAutoConfigurationEnabled());
     var constructionHeuristicPhaseBuilder =
         RuinRecreateConstructionHeuristicPhaseBuilder.create(
-            configPolicy, constructionHeuristicPhaseConfig);
+            configPolicy, constructionHeuristicPhaseConfig, listVariableDescriptor);
     return new ListRuinRecreateMoveSelector<>(
         valueSelector,
         listVariableDescriptor,

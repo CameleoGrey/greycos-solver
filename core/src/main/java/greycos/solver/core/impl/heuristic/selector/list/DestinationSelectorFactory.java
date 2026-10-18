@@ -158,10 +158,6 @@ public final class DestinationSelectorFactory<Solution_>
     }
     var mimicValueSelectorConfig =
         new ValueSelectorConfig().withMimicSelectorRef(entityValueRangeRecorderId);
-    if (entityDescriptor.hasBothListAndBasicVariables()) {
-      mimicValueSelectorConfig.setVariableName(
-          entityDescriptor.getListVariableDescriptor().getVariableName());
-    }
     return (IterableValueSelector<Solution_>)
         ValueSelectorFactory.<Solution_>create(mimicValueSelectorConfig)
             .buildValueSelector(configPolicy, entityDescriptor, minimumCacheType, selectionOrder);

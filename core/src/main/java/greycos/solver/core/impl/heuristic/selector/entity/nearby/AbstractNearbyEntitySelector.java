@@ -396,7 +396,8 @@ public abstract class AbstractNearbyEntitySelector<Solution_>
     }
     var manager = Objects.requireNonNull(valueRangeManager);
     if (valueRangeEntityOriginSelector == null) {
-      var descriptor = getEntityDescriptor().getListVariableDescriptor();
+      var descriptor =
+          Objects.requireNonNull(valueRangeValueOriginSelector).getVariableDescriptor();
       return manager
           .getFromEntity(descriptor.getValueRangeDescriptor(), candidate)
           .contains(source);

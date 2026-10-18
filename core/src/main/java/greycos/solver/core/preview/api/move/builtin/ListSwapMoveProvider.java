@@ -2,6 +2,7 @@ package greycos.solver.core.preview.api.move.builtin;
 
 import java.util.Objects;
 
+import greycos.solver.core.impl.neighborhood.stream.DefaultMoveStreamFactory;
 import greycos.solver.core.preview.api.cotwin.metamodel.ElementPosition;
 import greycos.solver.core.preview.api.cotwin.metamodel.PlanningListVariableMetaModel;
 import greycos.solver.core.preview.api.cotwin.metamodel.PositionInList;
@@ -27,12 +28,17 @@ public final class ListSwapMoveProvider<Solution_, Entity_, Value_>
 
   @Override
   public MoveStream<Solution_> build(MoveStreamFactory<Solution_> moveStreamFactory) {
+    var nodeSharingSupportFunctions =
+        ((DefaultMoveStreamFactory<Solution_>) moveStreamFactory)
+            .getNodeSharingSupportFunctions(variableMetaModel);
     // Unassigned values are admitted only when the variable allows them:
     // the one-side-unassigned case below composes unassign+assign, which would otherwise
     // leave a value unassigned on a variable that forbids it.
     var valueStream =
         (variableMetaModel.allowsUnassignedValues()
-                ? moveStreamFactory.forEach(variableMetaModel.type(), false)
+                ? moveStreamFactory
+                    .forEach(variableMetaModel.type(), false)
+                    .filter(nodeSharingSupportFunctions.movableValueFilter())
                 : moveStreamFactory.forEachAssignedValue(variableMetaModel))
             .map(
                 (solutionView, value) ->

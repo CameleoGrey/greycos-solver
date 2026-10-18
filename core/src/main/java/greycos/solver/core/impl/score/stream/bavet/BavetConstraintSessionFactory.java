@@ -54,7 +54,7 @@ public final class BavetConstraintSessionFactory<Solution_, Score_ extends Score
       ((BavetConstraint<Solution_>) constraint).collectActiveConstraintStreams(allStreams);
     }
     this.entityPropertyRefreshSupported =
-        solutionDescriptor.getListVariableDescriptor() == null
+        solutionDescriptor.getListVariableDescriptorList().isEmpty()
             && solutionDescriptor.getConstraintWeightSupplier() == null
             && solutionDescriptor.getEntityDescriptors().stream()
                 .allMatch(entity -> entity.getShadowVariableDescriptors().isEmpty())

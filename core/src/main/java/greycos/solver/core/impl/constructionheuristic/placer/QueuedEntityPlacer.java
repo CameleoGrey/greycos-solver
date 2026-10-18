@@ -4,6 +4,7 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 
+import greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
 import greycos.solver.core.impl.heuristic.selector.common.decorator.SelectionFilter;
 import greycos.solver.core.impl.heuristic.selector.common.iterator.UpcomingSelectionIterator;
@@ -40,6 +41,10 @@ public class QueuedEntityPlacer<Solution_> extends AbstractEntityPlacer<Solution
   @Override
   public List<MoveSelector<Solution_>> getCandidateMoveSelectors() {
     return moveSelectorList;
+  }
+
+  public EntityDescriptor<Solution_> getEntityDescriptor() {
+    return entitySelector.getEntityDescriptor();
   }
 
   @Override

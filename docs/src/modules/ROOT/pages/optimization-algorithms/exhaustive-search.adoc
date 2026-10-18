@@ -8,8 +8,34 @@
 [#exhaustiveSearchOverview]
 == Overview
 
-Exhaustive Search will always find the global optimum and recognize it too.
+Completing Exhaustive Search finds the optimum over its configured decision space.
+Early termination returns the best solution found; it does not establish optimality.
 That being said, it doesn't scale (not even beyond toy data sets) and is therefore mostly useless.
+
+[#exhaustiveSearchMultipleLists]
+=== Models with several planning lists
+
+With several independent planning list declarations, the default search enumerates their joint decisions
+alongside basic variables. It does not optimize one list and freeze that result before searching another.
+Each unassigned list element is considered in stable order, with every legal owner and insertion position
+after the pinned prefix. An optional list also has a decision to leave that element unassigned.
+Existing initialized values retain the usual warm-start semantics.
+
+Only complete, structurally consistent solutions become incumbents. Partial states with repairable shadow
+dependency loops remain searchable. Branch And Bound requires a correct initializing-score trend;
+an intermediate optimum for one list is not a bound for the joint problem.
+
+Omitting move selectors generates the full decision plan. Custom multi-list configurations may compose
+explicitly targeted change and list-change selectors in unions or Cartesian products. Each leaf must identify
+its entity and variable unambiguously, and the composition must cover every required variable.
+All selectors, including nested entity, value and destination selectors, must provide finite selection.
+Use `ORIGINAL`, `SORTED` or `SHUFFLED` order. `RANDOM` and `PROBABILISTIC` order are rejected even with
+`selectedCountLimit`, because a limit does not make the inner selection exhaustive or prevent it from
+looping while completed coordinates are filtered out.
+Cartesian products must leave `ignoreEmptyChildIterators` at its default `true` or set it explicitly to `true`:
+completed coordinates have empty selectors, and ignoring them lets the remaining coordinates complete.
+These restrictions apply recursively to nested compositions and are checked when building the solver.
+Ambiguous or incomplete configurations also fail before solving. Existing single-list configuration behavior remains unchanged.
 
 
 [#bruteForce]

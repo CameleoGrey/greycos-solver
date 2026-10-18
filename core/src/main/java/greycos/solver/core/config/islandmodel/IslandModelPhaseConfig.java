@@ -29,6 +29,7 @@ import greycos.solver.core.config.heuristic.selector.move.generic.list.ListRuinR
 import greycos.solver.core.config.heuristic.selector.move.generic.list.ListSwapMoveSelectorConfig;
 import greycos.solver.core.config.heuristic.selector.move.generic.list.SubListChangeMoveSelectorConfig;
 import greycos.solver.core.config.heuristic.selector.move.generic.list.SubListSwapMoveSelectorConfig;
+import greycos.solver.core.config.heuristic.selector.move.generic.list.kopt.KOptListMoveSelectorConfig;
 import greycos.solver.core.config.localsearch.GuidedLocalSearchConfig;
 import greycos.solver.core.config.localsearch.LocalSearchPhaseConfig;
 import greycos.solver.core.config.localsearch.LocalSearchType;
@@ -95,6 +96,9 @@ public class IslandModelPhaseConfig extends PhaseConfig<IslandModelPhaseConfig> 
     @XmlElement(
         name = ChangeMoveSelectorConfig.XML_ELEMENT_NAME,
         type = ChangeMoveSelectorConfig.class),
+    @XmlElement(
+        name = KOptListMoveSelectorConfig.XML_ELEMENT_NAME,
+        type = KOptListMoveSelectorConfig.class),
     @XmlElement(
         name = ListChangeMoveSelectorConfig.XML_ELEMENT_NAME,
         type = ListChangeMoveSelectorConfig.class),

@@ -16,6 +16,7 @@ record ListVariableAfterUnassignmentAction<Solution_>(
   @Override
   public ChangeAction<Solution_> rebase(Lookup lookup) {
     return new ListVariableAfterUnassignmentAction<>(
-        lookup.lookUpWorkingObject(element), variableDescriptor);
+        lookup.lookUpWorkingObject(element),
+        VariableDescriptorRebaser.rebase(variableDescriptor, lookup));
   }
 }

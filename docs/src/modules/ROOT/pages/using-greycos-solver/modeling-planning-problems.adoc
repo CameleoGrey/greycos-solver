@@ -701,15 +701,6 @@ it will add and remove elements to the ``Collection``s of those shadow variables
 Use the planning list variable to model problems where the goal is to distribute a number of workload elements among limited resources in a specific order.
 This includes, for example, vehicle routing, traveling salesman, task assigning, and similar problems.
 
-[NOTE]
-====
-Use a <<chainedPlanningVariable,chained planning variable>> instead of a planning list variable,
-if you need any of the following planning techniques:
-
-- xref:optimization-algorithms/exhaustive-search.adoc#exhaustiveSearch[exhaustive search],
-- coexistence with another list variable.
-====
-
 For example, the vehicle routing problem can be modeled as follows:
 
 image::quickstart/vehicle-routing/vehicleRoutingClassDiagramAnnotated.png[]
@@ -744,16 +735,56 @@ Planning list variable can be used if the domain meets the following criteria:
 
 . The order in which planning values are assigned to an entity's list variable is significant.
 
-. Each planning value is assigned to exactly one planning entity.
-No planning value may appear in multiple entities.
+. Each planning value is assigned to exactly one planning entity, unless that list variable allows unassigned values.
+No planning value may appear in multiple owners' lists for the same variable.
 
-NOTE: Only a single xref:using-greycos-solver/modeling-planning-problems.adoc#planningListVariable[@PlanningListVariable] is supported per solution.
+[#multiplePlanningListVariables]
+=== Multiple planning list variables
+
+A solution may contain several planning list variables, declared on the same entity class or on different entity classes.
+For example, a vehicle may independently optimize its visit order and its cargo loading order:
+
+[source,java,options="nowrap"]
+----
+@PlanningEntity
+public class Vehicle {
+    @PlanningListVariable(valueRangeProviderRefs = "visitRange")
+    private List<Visit> visits = new ArrayList<>();
+
+    @PlanningListVariable(valueRangeProviderRefs = "cargoRange")
+    private List<Cargo> loadingOrder = new ArrayList<>();
+}
+----
+
+Each declaration has its own value range, assignment policy, list shadows, and pinned prefix.
+Normal list moves transfer values between owners of the same variable; they do not transfer values between different fields.
+Basic planning variables may coexist with these lists on owners, list elements, or separate entities.
+Constraints and declarative shadow variables may depend on several lists and basic variables.
+
+The element types and value populations of different list declarations must be disjoint.
+The same element class, or a superclass and its subclass, cannot be used for two list declarations.
+Interface types are rejected when their possible implementations overlap; final and sealed types can establish disjointness.
+Do not share a planning element or a mutable list instance between list declarations.
+List elements cannot themselves own planning lists in a multiple-list model.
+Use separate allocation objects that refer to the same business fact when independent lists need to represent that fact.
+
+An inherited list declaration remains one variable, even when several configured entity types inherit it.
+Existing shadow annotations identify their source using `sourceVariableName` and the element type.
+Separate owners may therefore use the same variable name when their element types are distinct.
+Constraint Streams querying a common supertype apply assignment filtering according to each element's actual type.
+
+Automatic solver configuration initializes each list and the basic variables.
+When explicitly configuring a list operation whose target would otherwise be ambiguous,
+specify its entity class and variable name.
+Use `@PlanningPinToIndex(variableName = "visits")` to select a list's pinned prefix;
+see xref:responding-to-change/responding-to-change.adoc#partiallyPinnedPlanningListVariable[pinning a planning list variable].
 
 
 [#planningListVariableAllowingUnassigned]
 === Allowing unassigned values
 
-By default, all planning values have to be assigned to exactly one list variable across the entire planning model.
+By default, every value in a list variable's value range must be assigned to exactly one owner's list for that variable.
+With several list declarations, `allowsUnassignedValues` applies independently to each declaration.
 In an xref:responding-to-change/responding-to-change.adoc#overconstrainedPlanning[over-constrained use case],
 this can be counterproductive.
 For example: in task assignment with too many tasks for the workforce,
@@ -1925,7 +1956,9 @@ public class Delivery {
 
 [WARNING]
 ====
-Creating mixed models with chained and list variables is prohibited, and only one list variable can be defined.
+Creating mixed models with chained and list variables is prohibited.
+Multiple list variables may coexist with basic variables under the
+xref:#multiplePlanningListVariables[distinct element type and population rules].
 ====
 
 [#shadowVariable]

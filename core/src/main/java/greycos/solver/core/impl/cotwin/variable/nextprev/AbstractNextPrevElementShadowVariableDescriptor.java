@@ -1,9 +1,5 @@
 package greycos.solver.core.impl.cotwin.variable.nextprev;
 
-import java.util.List;
-import java.util.stream.Collectors;
-
-import greycos.solver.core.api.cotwin.variable.PlanningListVariable;
 import greycos.solver.core.impl.cotwin.common.accessor.MemberAccessor;
 import greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import greycos.solver.core.impl.cotwin.policy.DescriptorPolicy;
@@ -39,69 +35,27 @@ abstract class AbstractNextPrevElementShadowVariableDescriptor<Solution_>
 
   private void linkShadowSources(DescriptorPolicy descriptorPolicy) {
     String sourceVariableName = getSourceVariableName();
-    List<EntityDescriptor<Solution_>> entitiesWithSourceVariable =
-        entityDescriptor.getSolutionDescriptor().getEntityDescriptors().stream()
-            .filter(entityDescriptor -> entityDescriptor.hasVariableDescriptor(sourceVariableName))
-            .collect(Collectors.toList());
-    if (entitiesWithSourceVariable.isEmpty()) {
+    var candidates =
+        entityDescriptor.getSolutionDescriptor().getListVariableDescriptorList().stream()
+            .filter(descriptor -> descriptor.getVariableName().equals(sourceVariableName))
+            .filter(
+                descriptor ->
+                    descriptor.acceptsValueType(entityDescriptor.getEntityClass())
+                        || entityDescriptor
+                            .getEntityClass()
+                            .isAssignableFrom(descriptor.getElementType()))
+            .toList();
+    if (candidates.size() != 1) {
       throw new IllegalArgumentException(
-          "The entityClass ("
-              + entityDescriptor.getEntityClass()
-              + ") has a @"
-              + getAnnotationName()
-              + " annotated property ("
-              + variableMemberAccessor.getName()
-              + ") with sourceVariableName ("
-              + sourceVariableName
-              + ") which is not a valid planning variable on any of the entity classes ("
-              + entityDescriptor.getSolutionDescriptor().getEntityDescriptors()
-              + ").");
+          "The entityClass (%s) has an @%s-annotated property (%s) with sourceVariableName (%s), which does not identify a unique compatible planning list variable. Candidates: %s."
+              .formatted(
+                  entityDescriptor.getEntityClass(),
+                  getAnnotationName(),
+                  variableMemberAccessor.getName(),
+                  sourceVariableName,
+                  candidates));
     }
-    if (entitiesWithSourceVariable.size() > 1) {
-      throw new IllegalArgumentException(
-          "The entityClass ("
-              + entityDescriptor.getEntityClass()
-              + ") has a @"
-              + getAnnotationName()
-              + " annotated property ("
-              + variableMemberAccessor.getName()
-              + ") with sourceVariableName ("
-              + sourceVariableName
-              + ") which is not a unique planning variable."
-              + " A planning variable with the name ("
-              + sourceVariableName
-              + ") exists on multiple entity classes ("
-              + entitiesWithSourceVariable
-              + ").");
-    }
-    VariableDescriptor<Solution_> variableDescriptor =
-        entitiesWithSourceVariable.get(0).getVariableDescriptor(sourceVariableName);
-    if (variableDescriptor == null) {
-      throw new IllegalStateException(
-          "Impossible state: variableDescriptor ("
-              + variableDescriptor
-              + ") is null"
-              + " but previous checks indicate that the entityClass ("
-              + entitiesWithSourceVariable.get(0)
-              + ") has a planning variable with sourceVariableName ("
-              + sourceVariableName
-              + ").");
-    }
-    if (!(variableDescriptor instanceof ListVariableDescriptor)) {
-      throw new IllegalArgumentException(
-          "The entityClass ("
-              + entityDescriptor.getEntityClass()
-              + ") has a @"
-              + getAnnotationName()
-              + " annotated property ("
-              + variableMemberAccessor.getName()
-              + ") with sourceVariableName ("
-              + sourceVariableName
-              + ") which is not a @"
-              + PlanningListVariable.class.getSimpleName()
-              + ".");
-    }
-    sourceVariableDescriptor = (ListVariableDescriptor<Solution_>) variableDescriptor;
+    sourceVariableDescriptor = candidates.getFirst();
     if (!variableMemberAccessor.getType().equals(sourceVariableDescriptor.getElementType())) {
       throw new IllegalStateException(
           "The entityClass ("

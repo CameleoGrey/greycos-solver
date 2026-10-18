@@ -10,6 +10,7 @@ import greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import greycos.solver.core.api.cotwin.variable.PlanningListVariable;
 import greycos.solver.core.api.cotwin.variable.PlanningVariable;
 import greycos.solver.core.impl.move.AbstractMove;
+import greycos.solver.core.impl.move.VariableDescriptorRebaser;
 import greycos.solver.core.preview.api.cotwin.metamodel.PlanningListVariableMetaModel;
 import greycos.solver.core.preview.api.move.MutableSolutionView;
 import greycos.solver.core.preview.api.neighborhood.stream.dataset.sample.Range;
@@ -68,7 +69,8 @@ public final class SubListUnassignMove<Solution_, Entity_, Value_> extends Abstr
 
   @Override
   public SubListUnassignMove<Solution_, Entity_, Value_> rebase(Lookup lookup) {
-    return new SubListUnassignMove<>(variableMetaModel, range.rebase(lookup));
+    return new SubListUnassignMove<>(
+        VariableDescriptorRebaser.rebase(variableMetaModel, lookup), range.rebase(lookup));
   }
 
   @Override

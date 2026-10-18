@@ -95,7 +95,8 @@ public class EntityDescriptor<Solution_> {
   private final Class<?> entityClass;
   private final List<Class<?>> declaredInheritedEntityClassList = new ArrayList<>();
   private final Predicate<Object> isInitializedPredicate;
-  private final List<MemberAccessor> declaredPlanningPinIndexMemberAccessorList = new ArrayList<>();
+  private final Map<ListVariableDescriptor<Solution_>, PlanningPinIndexBinding>
+      declaredPlanningPinIndexBindingMap = new LinkedHashMap<>();
 
   @Nullable
   private ShadowVariablesInconsistentVariableDescriptor<Solution_>
@@ -119,7 +120,8 @@ public class EntityDescriptor<Solution_> {
   // Caches the inherited, declared and descending movable filters (including @PlanningPin filters)
   // as a composite filter
   private MovableFilter<Solution_> effectiveMovableEntityFilter;
-  private PlanningPinToIndexReader effectivePlanningPinToIndexReader;
+  private final Map<ListVariableDescriptor<Solution_>, PlanningPinIndexBinding>
+      effectivePlanningPinIndexBindingMap = new LinkedHashMap<>();
 
   // Caches the inherited and declared variable descriptors
   private SequencedMap<String, GenuineVariableDescriptor<Solution_>>
@@ -479,6 +481,33 @@ public class EntityDescriptor<Solution_> {
                     member,
                     PlanningListVariable.class.getSimpleName()));
       }
+      var targetName = annotatedMember.getAnnotation(PlanningPinToIndex.class).variableName();
+      ListVariableDescriptor<Solution_> target;
+      if (targetName.isEmpty()) {
+        if (effectiveListVariableDescriptorList.size() != 1) {
+          throw new IllegalStateException(
+              "The entityClass (%s) has a @%s annotated member (%s) without a variableName, but has multiple planning list variables (%s). Specify variableName."
+                  .formatted(
+                      entityClass,
+                      PlanningPinToIndex.class.getSimpleName(),
+                      member,
+                      effectiveListVariableDescriptorList));
+        }
+        target = effectiveListVariableDescriptorList.getFirst();
+      } else {
+        var variableDescriptor = getGenuineVariableDescriptor(targetName);
+        if (!(variableDescriptor instanceof ListVariableDescriptor<Solution_> listDescriptor)) {
+          throw new IllegalStateException(
+              "The entityClass (%s) has a @%s annotated member (%s) targeting variableName (%s), which is not a planning list variable. Available planning list variables: %s."
+                  .formatted(
+                      entityClass,
+                      PlanningPinToIndex.class.getSimpleName(),
+                      member,
+                      targetName,
+                      effectiveListVariableDescriptorList));
+        }
+        target = listDescriptor;
+      }
       var memberAccessor =
           descriptorPolicy
               .getMemberAccessorFactory()
@@ -493,7 +522,13 @@ public class EntityDescriptor<Solution_> {
             "The entityClass (%s) has a %s annotated member (%s) that is not a primitive int."
                 .formatted(entityClass, PlanningPinToIndex.class.getSimpleName(), member));
       }
-      declaredPlanningPinIndexMemberAccessorList.add(memberAccessor);
+      var binding =
+          new PlanningPinIndexBinding(
+              memberAccessor, entity -> (int) memberAccessor.executeGetter(entity));
+      var previous = declaredPlanningPinIndexBindingMap.putIfAbsent(target, binding);
+      if (previous != null) {
+        throw duplicatePlanningPinIndexReader(target, previous, binding);
+      }
     }
   }
 
@@ -629,34 +664,38 @@ public class EntityDescriptor<Solution_> {
   }
 
   private void createEffectivePlanningPinIndexReader() {
-    if (!hasAnyGenuineListVariables()) {
-      effectivePlanningPinToIndexReader = null;
-      return;
-    }
-    var planningPinIndexMemberAccessorList = new ArrayList<MemberAccessor>();
+    effectivePlanningPinIndexBindingMap.clear();
     for (var inheritedEntityDescriptor : effectiveInheritedEntityDescriptorList) {
-      if (inheritedEntityDescriptor.effectivePlanningPinToIndexReader != null) {
-        planningPinIndexMemberAccessorList.addAll(
-            inheritedEntityDescriptor.declaredPlanningPinIndexMemberAccessorList);
-      }
+      inheritedEntityDescriptor.effectivePlanningPinIndexBindingMap.forEach(
+          this::addEffectivePlanningPinIndexBinding);
     }
-    planningPinIndexMemberAccessorList.addAll(declaredPlanningPinIndexMemberAccessorList);
-    switch (planningPinIndexMemberAccessorList.size()) {
-      case 0 -> effectivePlanningPinToIndexReader = null;
-      case 1 -> {
-        var memberAccessor = planningPinIndexMemberAccessorList.get(0);
-        effectivePlanningPinToIndexReader = entity -> (int) memberAccessor.executeGetter(entity);
-      }
-      default ->
-          throw new IllegalStateException(
-              "The entityClass (%s) has (%d) @%s-annotated members (%s), where it should only have one."
-                  .formatted(
-                      entityClass,
-                      planningPinIndexMemberAccessorList.size(),
-                      PlanningPinToIndex.class.getSimpleName(),
-                      planningPinIndexMemberAccessorList));
+    declaredPlanningPinIndexBindingMap.forEach(this::addEffectivePlanningPinIndexBinding);
+  }
+
+  private void addEffectivePlanningPinIndexBinding(
+      ListVariableDescriptor<Solution_> descriptor, PlanningPinIndexBinding binding) {
+    var previous = effectivePlanningPinIndexBindingMap.putIfAbsent(descriptor, binding);
+    if (previous != null && previous != binding) {
+      throw duplicatePlanningPinIndexReader(descriptor, previous, binding);
     }
   }
+
+  private IllegalStateException duplicatePlanningPinIndexReader(
+      ListVariableDescriptor<Solution_> descriptor,
+      PlanningPinIndexBinding previous,
+      PlanningPinIndexBinding binding) {
+    return new IllegalStateException(
+        "The entityClass (%s) has multiple @%s-annotated members (%s, %s) targeting planning list variable (%s), where it should only have one."
+            .formatted(
+                entityClass,
+                PlanningPinToIndex.class.getSimpleName(),
+                previous.accessor(),
+                binding.accessor(),
+                descriptor));
+  }
+
+  private record PlanningPinIndexBinding(
+      MemberAccessor accessor, PlanningPinToIndexReader reader) {}
 
   public void linkVariableDescriptors(DescriptorPolicy descriptorPolicy) {
     for (var variableDescriptor : declaredGenuineVariableDescriptorMap.values()) {
@@ -701,7 +740,7 @@ public class EntityDescriptor<Solution_> {
   }
 
   public boolean supportsPinning() {
-    return hasEffectiveMovableEntityFilter() || effectivePlanningPinToIndexReader != null;
+    return hasEffectiveMovableEntityFilter() || !effectivePlanningPinIndexBindingMap.isEmpty();
   }
 
   public BiPredicate<Solution_, Object> getEffectiveMovableEntityFilter() {
@@ -756,7 +795,7 @@ public class EntityDescriptor<Solution_> {
     if (!isGenuine()) {
       return false;
     }
-    return getListVariableDescriptor() != null;
+    return !effectiveListVariableDescriptorList.isEmpty();
   }
 
   public boolean hasAnyGenuineListVariables() {
@@ -771,8 +810,16 @@ public class EntityDescriptor<Solution_> {
     if (effectiveListVariableDescriptorList.isEmpty()) {
       return null;
     }
-    // Earlier validation guarantees there will only ever be one.
-    return effectiveListVariableDescriptorList.get(0);
+    if (effectiveListVariableDescriptorList.size() > 1) {
+      throw new IllegalStateException(
+          "The entityClass (%s) has multiple planning list variables (%s). Select a specific list variable."
+              .formatted(entityClass.getName(), effectiveListVariableDescriptorList));
+    }
+    return effectiveListVariableDescriptorList.getFirst();
+  }
+
+  public List<ListVariableDescriptor<Solution_>> getListVariableDescriptorList() {
+    return effectiveListVariableDescriptorList;
   }
 
   public ListVariableDescriptor<Solution_> getGenuineListVariableDescriptor() {
@@ -941,7 +988,14 @@ public class EntityDescriptor<Solution_> {
   }
 
   public PlanningPinToIndexReader getEffectivePlanningPinToIndexReader() {
-    return effectivePlanningPinToIndexReader;
+    var descriptor = getListVariableDescriptor();
+    return descriptor == null ? null : getEffectivePlanningPinToIndexReader(descriptor);
+  }
+
+  public @Nullable PlanningPinToIndexReader getEffectivePlanningPinToIndexReader(
+      ListVariableDescriptor<Solution_> descriptor) {
+    var binding = effectivePlanningPinIndexBindingMap.get(descriptor);
+    return binding == null ? null : binding.reader();
   }
 
   public int countUninitializedVariables(Object entity) {

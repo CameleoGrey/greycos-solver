@@ -7,7 +7,6 @@ import greycos.solver.core.api.score.Score;
 import greycos.solver.core.config.solver.EnvironmentMode;
 import greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 import greycos.solver.core.impl.cotwin.variable.descriptor.BasicVariableDescriptor;
-import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import greycos.solver.core.impl.score.definition.ScoreDefinition;
 import greycos.solver.core.impl.score.trend.InitializingScoreTrend;
 
@@ -34,14 +33,12 @@ public abstract class AbstractScoreDirectorFactory<
 
   protected final SolutionDescriptor<Solution_> solutionDescriptor;
   protected final EnvironmentMode globalEnvironmentMode;
-  @Nullable protected final ListVariableDescriptor<Solution_> listVariableDescriptor;
   @Nullable protected InitializingScoreTrend initializingScoreTrend;
   @Nullable protected ScoreDirectorFactory<Solution_, Score_> assertionScoreDirectorFactory = null;
 
   protected AbstractScoreDirectorFactory(
       SolutionDescriptor<Solution_> solutionDescriptor, EnvironmentMode globalEnvironmentMode) {
     this.solutionDescriptor = Objects.requireNonNull(solutionDescriptor);
-    this.listVariableDescriptor = solutionDescriptor.getListVariableDescriptor();
     this.globalEnvironmentMode =
         Objects.requireNonNullElse(globalEnvironmentMode, EnvironmentMode.PHASE_ASSERT);
   }
@@ -89,7 +86,7 @@ public abstract class AbstractScoreDirectorFactory<
   }
 
   public void validateEntity(ScoreDirector<Solution_> scoreDirector, Object entity) {
-    if (listVariableDescriptor == null) { // Only basic variables.
+    if (!solutionDescriptor.hasListVariable()) { // Only basic variables.
       var entityDescriptor = solutionDescriptor.findEntityDescriptorOrFail(entity.getClass());
       if (entityDescriptor.isMovable(scoreDirector.getWorkingSolution(), entity)) {
         return;

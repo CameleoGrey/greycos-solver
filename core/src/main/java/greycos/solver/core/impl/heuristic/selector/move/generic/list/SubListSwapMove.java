@@ -9,6 +9,7 @@ import greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import greycos.solver.core.impl.heuristic.move.AbstractMove;
 import greycos.solver.core.impl.heuristic.selector.list.SubList;
+import greycos.solver.core.impl.move.VariableDescriptorRebaser;
 import greycos.solver.core.impl.score.director.ScoreDirector;
 import greycos.solver.core.impl.score.director.ValueRangeManager;
 import greycos.solver.core.impl.score.director.VariableDescriptorAwareScoreDirector;
@@ -154,7 +155,7 @@ public class SubListSwapMove<Solution_> extends AbstractMove<Solution_> {
   @Override
   public SubListSwapMove<Solution_> rebase(ScoreDirector<Solution_> destinationScoreDirector) {
     return new SubListSwapMove<>(
-        variableDescriptor,
+        VariableDescriptorRebaser.rebase(variableDescriptor, destinationScoreDirector),
         leftSubList.rebase(destinationScoreDirector),
         rightSubList.rebase(destinationScoreDirector),
         reversing);

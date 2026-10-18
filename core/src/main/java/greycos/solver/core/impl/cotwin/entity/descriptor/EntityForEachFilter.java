@@ -1,6 +1,7 @@
 package greycos.solver.core.impl.cotwin.entity.descriptor;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.function.Predicate;
 
 import greycos.solver.core.impl.cotwin.variable.declarative.ConsistencyTracker;
@@ -19,10 +20,9 @@ public class EntityForEachFilter<Solution_> {
 
   EntityForEachFilter(EntityDescriptor<Solution_> entityDescriptor) {
     var solutionDescriptor = entityDescriptor.getSolutionDescriptor();
-    var listVariableDescriptor = solutionDescriptor.getListVariableDescriptor();
-
     this.entityDescriptor = entityDescriptor;
-    this.assignedPredicate = getAssignedPredicate(entityDescriptor, listVariableDescriptor);
+    this.assignedPredicate =
+        getAssignedPredicate(entityDescriptor, solutionDescriptor.getListVariableDescriptorList());
     this.hasDeclarativeShadowVariables = !getDeclarativeShadowVariables(entityDescriptor).isEmpty();
   }
 
@@ -64,27 +64,41 @@ public class EntityForEachFilter<Solution_> {
   }
 
   private static Predicate<Object> getAssignedPredicate(
-      EntityDescriptor<?> entityDescriptor, ListVariableDescriptor<?> listVariableDescriptor) {
-    var isListVariableValue =
-        listVariableDescriptor != null
-            && listVariableDescriptor.acceptsValueType(entityDescriptor.getEntityClass());
-    if (isListVariableValue) {
-      var listInverseVariable = listVariableDescriptor.getInverseRelationShadowVariableDescriptor();
-      if (listInverseVariable != null) {
-        return entity ->
-            entityDescriptor.hasNoNullVariables(entity)
-                && listInverseVariable.getValue(entity) != null;
-      } else {
-        return ignored -> {
-          throw new IllegalStateException(
-              """
-                            Impossible state: assigned predicate for list variable value should not be used
-                            when there is no inverse relation shadow variable descriptor.
-                            """);
-        };
-      }
-    } else {
+      EntityDescriptor<?> entityDescriptor,
+      List<? extends ListVariableDescriptor<?>> listVariableDescriptors) {
+    var applicableDescriptors =
+        listVariableDescriptors.stream()
+            .filter(
+                descriptor ->
+                    descriptor.acceptsValueType(entityDescriptor.getEntityClass())
+                        || entityDescriptor
+                            .getEntityClass()
+                            .isAssignableFrom(descriptor.getElementType()))
+            .toList();
+    if (applicableDescriptors.isEmpty()) {
       return entityDescriptor::hasNoNullVariables;
     }
+    if (applicableDescriptors.size() == 1
+        && applicableDescriptors.getFirst().acceptsValueType(entityDescriptor.getEntityClass())) {
+      var inverse = applicableDescriptors.getFirst().getInverseRelationShadowVariableDescriptor();
+      if (inverse != null) {
+        return entity ->
+            entityDescriptor.hasNoNullVariables(entity) && inverse.getValue(entity) != null;
+      }
+      // The stream factory enforces membership reactively against the list owners.
+      return entityDescriptor::hasNoNullVariables;
+    }
+    return entity -> {
+      if (!entityDescriptor.hasNoNullVariables(entity)) {
+        return false;
+      }
+      for (var descriptor : applicableDescriptors) {
+        if (descriptor.acceptsValueType(entity.getClass())) {
+          var inverse = descriptor.getInverseRelationShadowVariableDescriptor();
+          return inverse == null || inverse.getValue(entity) != null;
+        }
+      }
+      return true;
+    };
   }
 }

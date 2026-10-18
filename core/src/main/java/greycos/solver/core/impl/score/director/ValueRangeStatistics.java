@@ -86,14 +86,16 @@ final class ValueRangeStatistics<Solution_> {
           new long[entityDescriptor.getGenuineVariableDescriptorList().size()];
     }
 
-    var listVariableDescriptor = solutionDescriptor.getListVariableDescriptor();
-    if (listVariableDescriptor != null) {
+    var listVariableDescriptors = solutionDescriptor.getListVariableDescriptorList();
+    for (var listVariableDescriptor : listVariableDescriptors) {
       var countOnSolution =
           (int)
               valueRangeManager.countOnSolution(
                   listVariableDescriptor.getValueRangeDescriptor(), solution);
       notInAnyListValueCount.add(countOnSolution);
-      maxValueRangeSize.setValue(countOnSolution);
+      if (maxValueRangeSize.longValue() < countOnSolution) {
+        maxValueRangeSize.setValue(countOnSolution);
+      }
       if (listVariableDescriptor.canExtractValueRangeFromSolution()) {
         approximateValueCount.add(countOnSolution);
       }
@@ -132,7 +134,7 @@ final class ValueRangeStatistics<Solution_> {
 
     var logBase = (maxValueRangeSize.longValue() < 2) ? 10 : maxValueRangeSize.longValue();
     var problemScaleTracker =
-        new ProblemScaleTracker<>(listVariableDescriptor, valueRangeManager, logBase);
+        new ProblemScaleTracker<>(listVariableDescriptors, valueRangeManager, logBase);
 
     solutionDescriptor.visitAllEntities(
         solution,
@@ -171,25 +173,21 @@ final class ValueRangeStatistics<Solution_> {
                   rangeValueCount;
             }
           }
-          if (!entityDescriptor.hasAnyListVariables()) {
-            return;
-          }
-          var listVariableEntityDescriptor =
-              Objects.requireNonNull(listVariableDescriptor).getEntityDescriptor();
-          var countOnEntity = listVariableDescriptor.getListSize(entity);
-          notInAnyListValueCount.subtract(countOnEntity);
-          if (!listVariableDescriptor.allowsUnassignedValues()
-              && listVariableEntityDescriptor.matchesEntity(entity)) {
-            unassignedValueCount.subtract(countOnEntity);
-          }
-          if (!listVariableDescriptor.canExtractValueRangeFromSolution()) {
-            var listValueCount =
-                valueRangeManager.countOnEntity(
-                    listVariableDescriptor.getValueRangeDescriptor(), entity);
-            approximateValueCount.add(listValueCount);
-            cachedValueCountByEntityAndEffectiveVariableIndex[entityDescriptor.getOrdinal()][
-                    genuineVariables.indexOf(listVariableDescriptor)] +=
-                listValueCount;
+          for (var listVariableDescriptor : entityDescriptor.getListVariableDescriptorList()) {
+            var countOnEntity = listVariableDescriptor.getListSize(entity);
+            notInAnyListValueCount.subtract(countOnEntity);
+            if (!listVariableDescriptor.allowsUnassignedValues()) {
+              unassignedValueCount.subtract(countOnEntity);
+            }
+            if (!listVariableDescriptor.canExtractValueRangeFromSolution()) {
+              var listValueCount =
+                  valueRangeManager.countOnEntity(
+                      listVariableDescriptor.getValueRangeDescriptor(), entity);
+              approximateValueCount.add(listValueCount);
+              cachedValueCountByEntityAndEffectiveVariableIndex[entityDescriptor.getOrdinal()][
+                      genuineVariables.indexOf(listVariableDescriptor)] +=
+                  listValueCount;
+            }
           }
           // TODO maybe detect duplicates and elements that are outside the value range
         });

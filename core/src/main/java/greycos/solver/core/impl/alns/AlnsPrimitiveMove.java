@@ -9,6 +9,7 @@ import greycos.solver.core.impl.cotwin.variable.descriptor.BasicVariableDescript
 import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import greycos.solver.core.impl.cotwin.variable.descriptor.VariableDescriptor;
 import greycos.solver.core.impl.move.InnerMutableSolutionView;
+import greycos.solver.core.impl.move.VariableDescriptorRebaser;
 import greycos.solver.core.impl.score.director.VariableDescriptorAwareScoreDirector;
 import greycos.solver.core.preview.api.move.Move;
 import greycos.solver.core.preview.api.move.MutableSolutionView;
@@ -137,7 +138,7 @@ final class AlnsPrimitiveMove<Solution_> implements Move<Solution_> {
   public Move<Solution_> rebase(Lookup lookup) {
     return new AlnsPrimitiveMove<>(
         kind,
-        descriptor,
+        VariableDescriptorRebaser.rebase(descriptor, lookup),
         Objects.requireNonNull(lookup.lookUpWorkingObject(entity)),
         index,
         value == null ? null : Objects.requireNonNull(lookup.lookUpWorkingObject(value)));

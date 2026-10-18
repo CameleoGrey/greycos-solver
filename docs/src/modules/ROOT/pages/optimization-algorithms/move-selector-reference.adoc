@@ -33,7 +33,7 @@ The following `MoveSelector` implementations are available out of the box:
 |Build a basic-variable candidate through ordered custom stages that score and select operations
 
 |<<crossVariableMultistageMoveSelector,Cross-variable multistage move>>
-|Build one candidate changing several declared basic variables and the model's planning list variable
+|Build one candidate changing several declared basic and list variables
 
 |<<listChangeMoveSelector,List change move>>
 |Move a list element to a different index or to another entity's list variable
@@ -479,8 +479,8 @@ the stable provider/evaluator API, rollback and frozen replay semantics, and pro
 [#crossVariableMultistageMoveSelector]
 === `CrossVariableMultistageMoveSelector`
 
-This opt-in selector builds one candidate across explicitly declared ordinary basic variables and the model's
-single planning list variable. One candidate can change several variables on the same entity, several entities,
+This opt-in selector builds one candidate across explicitly declared ordinary basic variables and independent
+planning list variables. One candidate can change several variables on the same entity, several entities,
 and list assignments or positions across list owners.
 Use `CrossVariableStageProvider` with `CrossVariableMultistageMoveSelectorConfig` and declare every variable
 with `withVariables(...)` in Java or repeated `<variable>` elements inside `<crossVariableMultistageMoveSelector>` in XML.
@@ -495,7 +495,7 @@ and scores their final state. Stage ordering alone does not search combinations 
 The defaults are 64 candidate requests per step and 10000 probes across all stages and views of one candidate.
 Views share one stage lifetime; they and their operations cannot be reused in a later callback.
 All declarations are validated at startup, and operations enforce the declared scope, pinning and value ranges.
-The selector does not add support for chained variables or multiple planning list variables.
+The selector does not support chained variables or overlapping list element domains.
 The Local Search, union, cache, worker and replay rules match <<multistageMoveSelector,the basic multistage selector>>.
 The existing single-variable selectors and providers remain available with their existing behavior.
 See xref:optimization-algorithms/multistage.adoc#crossVariableMultistageConfiguration[cross-variable configuration]
@@ -505,6 +505,30 @@ and xref:optimization-algorithms/multistage.adoc#crossVariableMultistageExample[
 == Move selectors for list variables
 
 These moves are applicable to xref:using-greycos-solver/modeling-planning-problems.adoc#planningListVariable[list planning variables].
+
+Each ordinary list move targets one declaration, such as `Vehicle.visits`, and may transfer elements between
+owners of that declaration. It cannot transfer values into another list field.
+In a model with several declarations, omitted targets must resolve uniquely.
+Automatic Local Search configuration creates the same change, swap, and K-opt families for every declaration.
+
+Use the existing destination entity selector and nested value selector names for list change and sublist change.
+List swap, sublist swap, and K-opt also accept `entityClass`; their existing nested value selectors identify
+`variableName`. List ruin/recreate accepts both `entityClass` and `variableName` directly.
+All references within one selector must identify the same declaration, including secondary and mimic selectors.
+For example:
+
+[source,xml]
+----
+<kOptListMoveSelector>
+  <entityClass>org.acme.Vehicle</entityClass>
+  <originSelector variableName="visits"/>
+  <valueSelector variableName="visits"/>
+</kOptListMoveSelector>
+----
+
+The named target also scopes nearby selection, entity-specific value ranges, pinning, and reconstruction.
+Compose independently targeted moves, or use a cross-variable multistage selector, to change several declarations
+within one candidate.
 
 [NOTE]
 ====

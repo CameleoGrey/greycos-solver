@@ -46,7 +46,7 @@ public final class MoveThreadingBenchmark {
   public static void main(String[] args) {
     if (args.length < 7 || args.length > 11) {
       throw new IllegalArgumentException(
-          "Usage: <basic|list> <NONE|threads> <seed> <size> <acceptedCount>"
+          "Usage: <basic|list|mixed-list|multiple-list> <NONE|threads> <seed> <size> <acceptedCount>"
               + " <warmupSeconds> <measureSeconds> [stepLimit] [trace] [bufferPerThread]"
               + " [internal|external]");
     }
@@ -109,13 +109,13 @@ public final class MoveThreadingBenchmark {
         "workload,threads,seed,size,accepted_count,buffer_per_thread,warmup_seconds,measure_seconds,"
             + "step_limit,termination_mode,processors,max_heap_bytes,setup_ms,solve_ms,useful_moves,moves_per_second,"
             + "steps,initial_score,best_score,state_sha256,trace_sha256,gc_count,gc_ms,"
-            + "used_heap_bytes,core_location,java_version,diagnostic_timing_enabled,"
+            + "used_heap_bytes,allocated_bytes,core_location,java_version,diagnostic_timing_enabled,"
             + Arrays.stream(DIAGNOSTIC_NAMES)
                 .map(namePart -> "pipeline_" + namePart)
                 .collect(Collectors.joining(",")));
     System.out.printf(
         Locale.ROOT,
-        "%s,%s,%d,%d,%d,%d,%d,%d,%d,%s,%d,%d,%.3f,%.3f,%d,%.3f,%d,%d,%d,%s,%s,%d,%d,%d,%s,%s,%s,%s%n",
+        "%s,%s,%d,%d,%d,%d,%d,%d,%d,%s,%d,%d,%.3f,%.3f,%d,%.3f,%d,%d,%d,%s,%s,%d,%d,%d,%d,%s,%s,%s,%s%n",
         name,
         threads,
         seed,
@@ -140,6 +140,7 @@ public final class MoveThreadingBenchmark {
         result.gcCount,
         result.gcMillis,
         result.usedHeapBytes,
+        result.allocatedBytes,
         csv(DefaultSolver.class.getProtectionDomain().getCodeSource().getLocation().toString()),
         csv(System.getProperty("java.version")),
         Boolean.getBoolean("greycos.solver.moveThreadDiagnostics"),
@@ -178,15 +179,25 @@ public final class MoveThreadingBenchmark {
     if (externalDeadline != null) {
       solver.addPhaseLifecycleListener(externalDeadline);
     }
+    var allocationBean = allocationBean();
     long setupNanos = System.nanoTime() - setupStart;
     long beforeGcCount = gcCount();
     long beforeGcMillis = gcMillis();
+    long beforeAllocatedBytes =
+        allocationBean == null ? -1L : allocationBean.getTotalThreadAllocatedBytes();
     long start = System.nanoTime();
     Solution_ solution;
     long solveNanos;
+    long allocatedBytes;
     try {
       solution = solver.solve(problem);
       solveNanos = System.nanoTime() - start;
+      long afterAllocatedBytes =
+          allocationBean == null ? -1L : allocationBean.getTotalThreadAllocatedBytes();
+      allocatedBytes =
+          beforeAllocatedBytes < 0 || afterAllocatedBytes < beforeAllocatedBytes
+              ? -1L
+              : afterAllocatedBytes - beforeAllocatedBytes;
     } finally {
       if (externalDeadline != null) {
         externalDeadline.close();
@@ -216,7 +227,23 @@ public final class MoveThreadingBenchmark {
         gcCount,
         gcMillis,
         usedHeapBytes,
+        allocatedBytes,
         diagnostics(solver));
+  }
+
+  private static com.sun.management.ThreadMXBean allocationBean() {
+    if (!(ManagementFactory.getThreadMXBean() instanceof com.sun.management.ThreadMXBean bean)
+        || !bean.isThreadAllocatedMemorySupported()) {
+      return null;
+    }
+    try {
+      if (!bean.isThreadAllocatedMemoryEnabled()) {
+        bean.setThreadAllocatedMemoryEnabled(true);
+      }
+      return bean.isThreadAllocatedMemoryEnabled() ? bean : null;
+    } catch (UnsupportedOperationException | SecurityException e) {
+      return null;
+    }
   }
 
   /**
@@ -357,5 +384,6 @@ public final class MoveThreadingBenchmark {
       long gcCount,
       long gcMillis,
       long usedHeapBytes,
+      long allocatedBytes,
       String diagnostics) {}
 }

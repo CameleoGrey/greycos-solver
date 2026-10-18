@@ -4,7 +4,6 @@ import static greycos.solver.core.impl.heuristic.selector.move.generic.list.kopt
 import static greycos.solver.core.impl.heuristic.selector.move.generic.list.kopt.KOptUtils.getMultiEntitySuccessorFunction;
 import static greycos.solver.core.testutil.PlannerTestUtils.mockRebasingScoreDirector;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -19,6 +18,9 @@ import greycos.solver.core.impl.score.director.ValueRangeManager;
 import greycos.solver.core.testcotwin.list.TestdataListEntity;
 import greycos.solver.core.testcotwin.list.TestdataListSolution;
 import greycos.solver.core.testcotwin.list.TestdataListValue;
+import greycos.solver.core.testcotwin.list.pinned.index.TestdataPinnedWithIndexListEntity;
+import greycos.solver.core.testcotwin.list.pinned.index.TestdataPinnedWithIndexListSolution;
+import greycos.solver.core.testcotwin.list.pinned.index.TestdataPinnedWithIndexListValue;
 import greycos.solver.core.testcotwin.list.valuerange.TestdataListEntityProvidingEntity;
 import greycos.solver.core.testcotwin.list.valuerange.TestdataListEntityProvidingSolution;
 import greycos.solver.core.testcotwin.list.valuerange.TestdataListEntityProvidingValue;
@@ -108,27 +110,27 @@ class KOptListMoveTest {
 
   @Test
   void test3OptPinned() {
-    var e1 = TestdataListEntity.createWithValues("e1", v1, v2, v3, v4, v5, v6, v7);
-    var solution = new TestdataListSolution();
+    var v1 = new TestdataPinnedWithIndexListValue("1");
+    var v2 = new TestdataPinnedWithIndexListValue("2");
+    var v3 = new TestdataPinnedWithIndexListValue("3");
+    var v4 = new TestdataPinnedWithIndexListValue("4");
+    var v5 = new TestdataPinnedWithIndexListValue("5");
+    var v6 = new TestdataPinnedWithIndexListValue("6");
+    var v7 = new TestdataPinnedWithIndexListValue("7");
+    var solutionDescriptor = TestdataPinnedWithIndexListSolution.buildSolutionDescriptor();
+    var variableDescriptor = solutionDescriptor.getListVariableDescriptor();
+    var scoreDirector = PlannerTestUtils.mockScoreDirector(solutionDescriptor);
+    var e1 = TestdataPinnedWithIndexListEntity.createWithValues("e1", v1, v2, v3, v4, v5, v6, v7);
+    var solution = new TestdataPinnedWithIndexListSolution();
     solution.setEntityList(List.of(e1));
     solution.setValueList(List.of(v1, v2, v3, v4, v5, v6, v7));
+    e1.setPinIndex(1);
     scoreDirector.setWorkingSolution(solution);
-
-    var variableDescriptorSpy = spy(variableDescriptor);
-    var entityDescriptor =
-        spy(
-            TestdataListSolution.buildSolutionDescriptor()
-                .findEntityDescriptorOrFail(TestdataListEntity.class));
-    when(variableDescriptorSpy.getEntityDescriptor()).thenReturn(entityDescriptor);
-    when(variableDescriptorSpy.getFirstUnpinnedIndex(e1)).thenReturn(1);
-    when(entityDescriptor.supportsPinning()).thenReturn(true);
-    when(entityDescriptor.isMovable(null, e1)).thenReturn(true);
 
     var kOptListMove =
         fromRemovedAndAddedEdges(
             scoreDirector,
             variableDescriptor,
-            variableDescriptorSpy,
             List.of(
                 v7, v2,
                 v3, v4,
@@ -141,8 +143,8 @@ class KOptListMoveTest {
     assertThat(kOptListMove.isMoveDoable(scoreDirector)).isTrue();
     kOptListMove.doMoveOnly(scoreDirector);
     assertThat(e1.getValueList()).containsExactly(v1, v2, v3, v6, v7, v5, v4);
-    verify(scoreDirector).beforeListVariableChanged(variableDescriptorSpy, e1, 1, 7);
-    verify(scoreDirector).afterListVariableChanged(variableDescriptorSpy, e1, 1, 7);
+    verify(scoreDirector).beforeListVariableChanged(variableDescriptor, e1, 1, 7);
+    verify(scoreDirector).afterListVariableChanged(variableDescriptor, e1, 1, 7);
   }
 
   @Test
@@ -341,29 +343,28 @@ class KOptListMoveTest {
 
   @Test
   void testMultiEntity3OptPinned() {
-    var e1 = TestdataListEntity.createWithValues("e1", v1, v2, v3, v6, v7);
-    var e2 = TestdataListEntity.createWithValues("e2", v4, v5);
-    var solution = new TestdataListSolution();
+    var v1 = new TestdataPinnedWithIndexListValue("1");
+    var v2 = new TestdataPinnedWithIndexListValue("2");
+    var v3 = new TestdataPinnedWithIndexListValue("3");
+    var v4 = new TestdataPinnedWithIndexListValue("4");
+    var v5 = new TestdataPinnedWithIndexListValue("5");
+    var v6 = new TestdataPinnedWithIndexListValue("6");
+    var v7 = new TestdataPinnedWithIndexListValue("7");
+    var solutionDescriptor = TestdataPinnedWithIndexListSolution.buildSolutionDescriptor();
+    var variableDescriptor = solutionDescriptor.getListVariableDescriptor();
+    var scoreDirector = PlannerTestUtils.mockScoreDirector(solutionDescriptor);
+    var e1 = TestdataPinnedWithIndexListEntity.createWithValues("e1", v1, v2, v3, v6, v7);
+    var e2 = TestdataPinnedWithIndexListEntity.createWithValues("e2", v4, v5);
+    var solution = new TestdataPinnedWithIndexListSolution();
     solution.setEntityList(List.of(e1, e2));
     solution.setValueList(List.of(v1, v2, v3, v4, v5, v6, v7));
+    e1.setPinIndex(1);
     scoreDirector.setWorkingSolution(solution);
-
-    var variableDescriptorSpy = spy(variableDescriptor);
-    var entityDescriptor =
-        spy(
-            TestdataListSolution.buildSolutionDescriptor()
-                .findEntityDescriptorOrFail(TestdataListEntity.class));
-    when(variableDescriptorSpy.getEntityDescriptor()).thenReturn(entityDescriptor);
-    when(variableDescriptorSpy.getFirstUnpinnedIndex(e1)).thenReturn(1);
-    when(entityDescriptor.supportsPinning()).thenReturn(true);
-    when(entityDescriptor.isMovable(null, e1)).thenReturn(true);
-    when(entityDescriptor.isMovable(null, e2)).thenReturn(true);
 
     var kOptListMove =
         fromRemovedAndAddedEdges(
             scoreDirector,
             variableDescriptor,
-            variableDescriptorSpy,
             List.of(
                 v7, v2,
                 v3, v6,
@@ -377,10 +378,10 @@ class KOptListMoveTest {
     kOptListMove.doMoveOnly(scoreDirector);
     assertThat(e1.getValueList()).containsExactly(v1, v2, v5);
     assertThat(e2.getValueList()).containsExactly(v3, v7, v4, v6);
-    verify(scoreDirector).beforeListVariableChanged(variableDescriptorSpy, e1, 1, 5);
-    verify(scoreDirector).beforeListVariableChanged(variableDescriptorSpy, e2, 0, 2);
-    verify(scoreDirector).afterListVariableChanged(variableDescriptorSpy, e1, 1, 3);
-    verify(scoreDirector).afterListVariableChanged(variableDescriptorSpy, e2, 0, 4);
+    verify(scoreDirector).beforeListVariableChanged(variableDescriptor, e1, 1, 5);
+    verify(scoreDirector).beforeListVariableChanged(variableDescriptor, e2, 0, 2);
+    verify(scoreDirector).afterListVariableChanged(variableDescriptor, e1, 1, 3);
+    verify(scoreDirector).afterListVariableChanged(variableDescriptor, e2, 0, 4);
   }
 
   @Test
@@ -741,21 +742,6 @@ class KOptListMoveTest {
       ListVariableDescriptor<Solution_> listVariableDescriptor,
       List<Value_> removedEdgeList,
       List<Value_> addedEdgeList) {
-    return fromRemovedAndAddedEdges(
-        scoreDirector,
-        listVariableDescriptor,
-        listVariableDescriptor,
-        removedEdgeList,
-        addedEdgeList);
-  }
-
-  private static <Solution_, Value_> KOptListMove<Solution_> fromRemovedAndAddedEdges(
-      InnerScoreDirector<Solution_, ?> scoreDirector,
-      ListVariableDescriptor<Solution_> listVariableDescriptor,
-      ListVariableDescriptor<Solution_> listVariableDescriptorSpy,
-      List<Value_> removedEdgeList,
-      List<Value_> addedEdgeList) {
-
     if (addedEdgeList.size() != removedEdgeList.size()) {
       throw new IllegalArgumentException(
           "addedEdgeList ("
@@ -783,12 +769,9 @@ class KOptListMoveTest {
     var pickedValues = removedEdgeList.toArray(Object[]::new);
 
     var listVariableDataSupply = scoreDirector.getListVariableState(listVariableDescriptor);
-    listVariableDataSupply = spy(listVariableDataSupply);
-    when(listVariableDataSupply.getSourceVariableDescriptor())
-        .thenReturn(listVariableDescriptorSpy);
 
     Function<Value_, Value_> successorFunction =
-        getSuccessorFunction(listVariableDescriptorSpy, listVariableDataSupply);
+        getSuccessorFunction(listVariableDescriptor, listVariableDataSupply);
 
     for (var i = 0; i < removedEdgeList.size(); i += 2) {
       if (successorFunction.apply(removedEdgeList.get(i)) != removedEdgeList.get(i + 1)

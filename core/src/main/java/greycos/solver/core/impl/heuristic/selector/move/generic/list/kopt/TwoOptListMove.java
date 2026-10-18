@@ -7,6 +7,7 @@ import java.util.SequencedCollection;
 
 import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import greycos.solver.core.impl.heuristic.move.AbstractMove;
+import greycos.solver.core.impl.move.VariableDescriptorRebaser;
 import greycos.solver.core.impl.score.director.ScoreDirector;
 import greycos.solver.core.impl.score.director.ValueRangeManager;
 import greycos.solver.core.impl.score.director.VariableDescriptorAwareScoreDirector;
@@ -248,7 +249,7 @@ public class TwoOptListMove<Solution_> extends AbstractMove<Solution_> {
   @Override
   public TwoOptListMove<Solution_> rebase(ScoreDirector<Solution_> destinationScoreDirector) {
     return new TwoOptListMove<>(
-        variableDescriptor,
+        VariableDescriptorRebaser.rebase(variableDescriptor, destinationScoreDirector),
         destinationScoreDirector.lookUpWorkingObject(firstEntity),
         destinationScoreDirector.lookUpWorkingObject(secondEntity),
         firstEdgeEndpoint,

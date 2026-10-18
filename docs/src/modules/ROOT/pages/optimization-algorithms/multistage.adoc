@@ -9,7 +9,7 @@ Local Search scores and accepts the completed candidate as one move.
 Use this when a later decision depends on an earlier change: remove several assignments, inspect the changed state,
 and choose their replacements one at a time. A basic-variable selector handles one ordinary planning variable;
 a list-variable selector handles one planning list variable. A cross-variable selector can change several declared
-basic variables and the model's one planning list variable in the same candidate.
+basic variables and several independent planning list variables in the same candidate.
 The feature is opt-in. Existing solver configurations retain their selectors and defaults.
 
 [#multistageConfiguration]
@@ -171,8 +171,9 @@ One `QUANTITY` declaration permits changing the quantities of several vehicles.
 If a model instead has distinct basic variables, such as `amountA` and `amountB`, declare both with separate
 `BasicVariableReference.of(entityClass, variableName, valueClass)` calls and include both in `withVariables(...)`.
 A candidate may change any subset of its declared variables.
-The cross-variable selector supports several ordinary basic variables and the model's single planning list variable
-across its owners; it does not add support for models with multiple planning list variables.
+The cross-variable selector supports several ordinary basic variables and several independent planning list variables
+across their owners. Declare each list separately with `ListVariableReference.of(ownerClass, variableName, elementClass)`.
+List views enforce their own assignment policy and pinned prefix; values cannot transfer between different declarations.
 All views retain the existing pinning, value-range and working-object identity checks.
 
 Obtain views inside each stage with `evaluator.basic(QUANTITY)` and `evaluator.list(CUSTOMERS)`.

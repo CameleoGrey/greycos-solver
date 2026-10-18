@@ -14,9 +14,9 @@ import greycos.solver.core.config.heuristic.selector.move.NearbyAutoConfiguratio
 import greycos.solver.core.config.heuristic.selector.move.composite.UnionMoveSelectorConfig;
 import greycos.solver.core.config.heuristic.selector.move.generic.ChangeMoveSelectorConfig;
 import greycos.solver.core.config.heuristic.selector.move.generic.SwapMoveSelectorConfig;
-import greycos.solver.core.config.heuristic.selector.move.generic.list.ListChangeMoveSelectorConfig;
 import greycos.solver.core.config.heuristic.selector.move.generic.list.ListSwapMoveSelectorConfig;
 import greycos.solver.core.config.heuristic.selector.move.generic.list.kopt.KOptListMoveSelectorConfig;
+import greycos.solver.core.config.heuristic.selector.value.ValueSelectorConfig;
 import greycos.solver.core.config.localsearch.GuidedLocalSearchConfig;
 import greycos.solver.core.config.localsearch.GuidedLocalSearchFeatureComposition;
 import greycos.solver.core.config.localsearch.GuidedLocalSearchGuidanceMode;
@@ -35,6 +35,7 @@ import greycos.solver.core.impl.heuristic.selector.move.AbstractMoveSelectorFact
 import greycos.solver.core.impl.heuristic.selector.move.MoveSelector;
 import greycos.solver.core.impl.heuristic.selector.move.MoveSelectorFactory;
 import greycos.solver.core.impl.heuristic.selector.move.composite.UnionMoveSelectorFactory;
+import greycos.solver.core.impl.heuristic.selector.move.generic.list.ListChangeMoveSelectorFactory;
 import greycos.solver.core.impl.localsearch.decider.LocalSearchDecider;
 import greycos.solver.core.impl.localsearch.decider.LocalSearchPhaseDecider;
 import greycos.solver.core.impl.localsearch.decider.MultiThreadedLocalSearchDecider;
@@ -165,18 +166,6 @@ public class DefaultLocalSearchPhaseFactory<Solution_>
     }
     var solutionDescriptor = configPolicy.getSolutionDescriptor();
     var solutionMetaModel = solutionDescriptor.getMetaModel();
-    if (solutionMetaModel.genuineEntities().size() > 1) {
-      throw new UnsupportedOperationException(
-          "Neighborhoods API currently only supports solutions with a single entity class, not"
-              + " multiple.");
-    }
-    var entityMetaModel = solutionMetaModel.genuineEntities().get(0);
-    if (entityMetaModel.genuineVariables().size() > 1) {
-      throw new UnsupportedOperationException(
-          "Neighborhoods API currently only supports solutions with a single variable class, not"
-              + " multiple.");
-    }
-
     if (!NeighborhoodProvider.class.isAssignableFrom(neighborhoodProviderClass)) {
       throw new IllegalArgumentException(
           "The neighborhoodProviderClass (%s) does not implement %s."
@@ -593,30 +582,26 @@ public class DefaultLocalSearchPhaseFactory<Solution_>
   private UnionMoveSelectorConfig determineDefaultMoveSelectorConfig(
       HeuristicConfigPolicy<Solution_> configPolicy) {
     var solutionDescriptor = configPolicy.getSolutionDescriptor();
-    if (solutionDescriptor.hasBothBasicAndListVariables()) {
-      var moveSelectorList = new ArrayList<MoveSelectorConfig>();
-      // Specific basic variable moves
-      moveSelectorList.addAll(
-          List.of(new ChangeMoveSelectorConfig(), new SwapMoveSelectorConfig()));
-      // Specific list variable moves
-      moveSelectorList.addAll(
-          List.of(
-              new ListChangeMoveSelectorConfig(),
-              new ListSwapMoveSelectorConfig(),
-              new KOptListMoveSelectorConfig()));
-      return new UnionMoveSelectorConfig().withMoveSelectorList(moveSelectorList);
-    } else if (solutionDescriptor.hasListVariable()) {
-      // We only have the one list variable.
-      return new UnionMoveSelectorConfig()
-          .withMoveSelectors(
-              new ListChangeMoveSelectorConfig(),
-              new ListSwapMoveSelectorConfig(),
-              new KOptListMoveSelectorConfig());
-    } else {
-      // We only have basic variables.
-      var basicVariableDescriptorList = solutionDescriptor.getBasicVariableDescriptorList();
-      return new UnionMoveSelectorConfig()
-          .withMoveSelectors(new ChangeMoveSelectorConfig(), new SwapMoveSelectorConfig());
+    var moveSelectorList = new ArrayList<MoveSelectorConfig>();
+    if (!solutionDescriptor.getBasicVariableDescriptorList().isEmpty()) {
+      moveSelectorList.add(new ChangeMoveSelectorConfig());
+      moveSelectorList.add(new SwapMoveSelectorConfig());
     }
+    for (var descriptor : solutionDescriptor.getListVariableDescriptorList()) {
+      var entityClass = descriptor.getEntityDescriptor().getEntityClass();
+      var variableName = descriptor.getVariableName();
+      moveSelectorList.add(
+          ListChangeMoveSelectorFactory.buildChildMoveSelectorConfig(descriptor, null, null));
+      moveSelectorList.add(
+          new ListSwapMoveSelectorConfig()
+              .withEntityClass(entityClass)
+              .withValueSelectorConfig(new ValueSelectorConfig(variableName)));
+      moveSelectorList.add(
+          new KOptListMoveSelectorConfig()
+              .withEntityClass(entityClass)
+              .withOriginSelectorConfig(new ValueSelectorConfig(variableName))
+              .withValueSelectorConfig(new ValueSelectorConfig(variableName)));
+    }
+    return new UnionMoveSelectorConfig().withMoveSelectorList(moveSelectorList);
   }
 }

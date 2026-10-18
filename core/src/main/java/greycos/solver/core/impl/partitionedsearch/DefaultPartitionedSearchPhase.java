@@ -1,7 +1,6 @@
 package greycos.solver.core.impl.partitionedsearch;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Objects;
@@ -18,8 +17,6 @@ import java.util.function.IntFunction;
 
 import greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import greycos.solver.core.api.solver.event.EventProducerId;
-import greycos.solver.core.config.constructionheuristic.ConstructionHeuristicPhaseConfig;
-import greycos.solver.core.config.localsearch.LocalSearchPhaseConfig;
 import greycos.solver.core.config.phase.PhaseConfig;
 import greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
 import greycos.solver.core.impl.partitionedsearch.event.PartitionedSearchPhaseLifecycleListener;
@@ -392,7 +389,7 @@ public class DefaultPartitionedSearchPhase<Solution_> extends AbstractPhase<Solu
     List<PhaseConfig> effectivePhaseConfigList = phaseConfigList;
     if (effectivePhaseConfigList == null || effectivePhaseConfigList.isEmpty()) {
       effectivePhaseConfigList =
-          Arrays.asList(new ConstructionHeuristicPhaseConfig(), new LocalSearchPhaseConfig());
+          DefaultPartitionedSearchPhaseFactory.buildDefaultPhaseConfigList(configPolicy);
     }
 
     SolverScope<Solution_> partSolverScope =

@@ -238,7 +238,9 @@ public class ListRuinRecreateMove<Solution_> extends AbstractMove<Solution_> {
     var rebasedListVariableDescriptor =
         ((InnerScoreDirector<Solution_, ?>) destinationScoreDirector)
             .getSolutionDescriptor()
-            .getListVariableDescriptor();
+            .resolveListVariableDescriptor(
+                listVariableDescriptor.getEntityDescriptor().getEntityClass(),
+                listVariableDescriptor.getVariableName());
     return new ListRuinRecreateMove<>(
         rebasedListVariableDescriptor,
         constructionHeuristicPhaseBuilder,

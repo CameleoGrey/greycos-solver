@@ -30,7 +30,6 @@ import greycos.solver.core.testcotwin.TestdataConstraintProvider;
 import greycos.solver.core.testcotwin.TestdataEasyScoreCalculator;
 import greycos.solver.core.testcotwin.TestdataEntity;
 import greycos.solver.core.testcotwin.TestdataSolution;
-import greycos.solver.core.testcotwin.list.TestdataListEntity;
 import greycos.solver.core.testcotwin.list.TestdataListSolution;
 import greycos.solver.core.testcotwin.list.TestdataListValue;
 import greycos.solver.core.testcotwin.list.TestdataListVarEasyScoreCalculator;
@@ -254,9 +253,10 @@ class GuidedLocalSearchFeatureTrackerTest {
       assertThat(provider.resetCount).isZero();
       tracker.assertFromScratch();
       assertThat(provider.resetCount).isOne();
+      var listVariableDescriptor = director.getSolutionDescriptor().getListVariableDescriptor();
       var move =
           new ListChangeMove<>(
-              TestdataListEntity.buildVariableDescriptorForValueList(),
+              listVariableDescriptor,
               solution.getEntityList().get(0),
               0,
               solution.getEntityList().get(1),
@@ -264,10 +264,7 @@ class GuidedLocalSearchFeatureTrackerTest {
       director.executeTemporaryMove(move, ignored -> tracker.assertFromScratch(), true);
       tracker.assertFromScratch();
       director.executeTemporaryMove(
-          new ListUnassignMove<>(
-              TestdataListEntity.buildVariableDescriptorForValueList(),
-              solution.getEntityList().get(0),
-              0),
+          new ListUnassignMove<>(listVariableDescriptor, solution.getEntityList().get(0), 0),
           ignored -> {
             tracker.assertFromScratch();
             assertThat(tracker.activeFeatures()).hasSize(3);

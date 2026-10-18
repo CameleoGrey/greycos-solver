@@ -16,11 +16,20 @@ import greycos.solver.core.impl.heuristic.selector.common.nearby.NearbyDistanceM
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
-@XmlType(propOrder = {"minimumK", "maximumK", "originSelectorConfig", "valueSelectorConfig"})
+@XmlType(
+    propOrder = {
+      "entityClass",
+      "minimumK",
+      "maximumK",
+      "originSelectorConfig",
+      "valueSelectorConfig"
+    })
 public class KOptListMoveSelectorConfig extends MoveSelectorConfig<KOptListMoveSelectorConfig>
     implements NearbyAutoConfigurationEnabled<KOptListMoveSelectorConfig> {
 
   public static final String XML_ELEMENT_NAME = "kOptListMoveSelector";
+
+  @Nullable private String entityClass = null;
 
   protected Integer minimumK = null;
   protected Integer maximumK = null;
@@ -30,6 +39,19 @@ public class KOptListMoveSelectorConfig extends MoveSelectorConfig<KOptListMoveS
 
   @XmlElement(name = "valueSelector")
   private ValueSelectorConfig valueSelectorConfig = null;
+
+  public @Nullable Class<?> getEntityClass() {
+    return ConfigUtils.resolveClass(entityClass, "entityClass", this);
+  }
+
+  public void setEntityClass(@Nullable Class<?> entityClass) {
+    this.entityClass = entityClass == null ? null : entityClass.getName();
+  }
+
+  public @NonNull KOptListMoveSelectorConfig withEntityClass(@NonNull Class<?> entityClass) {
+    setEntityClass(entityClass);
+    return this;
+  }
 
   public @Nullable Integer getMinimumK() {
     return minimumK;
@@ -97,6 +119,7 @@ public class KOptListMoveSelectorConfig extends MoveSelectorConfig<KOptListMoveS
   public @NonNull KOptListMoveSelectorConfig inherit(
       @NonNull KOptListMoveSelectorConfig inheritedConfig) {
     super.inherit(inheritedConfig);
+    entityClass = ConfigUtils.inheritOverwritableProperty(entityClass, inheritedConfig.entityClass);
     this.minimumK = ConfigUtils.inheritOverwritableProperty(minimumK, inheritedConfig.minimumK);
     this.maximumK = ConfigUtils.inheritOverwritableProperty(maximumK, inheritedConfig.maximumK);
     this.originSelectorConfig =
@@ -114,6 +137,7 @@ public class KOptListMoveSelectorConfig extends MoveSelectorConfig<KOptListMoveS
   @Override
   public void visitReferencedClasses(@NonNull Consumer<Class<?>> classVisitor) {
     visitCommonReferencedClasses(classVisitor);
+    classVisitor.accept(getEntityClass());
 
     if (originSelectorConfig != null) {
       originSelectorConfig.visitReferencedClasses(classVisitor);

@@ -1,8 +1,5 @@
 package greycos.solver.core.impl.heuristic.selector.move.generic.list;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -14,16 +11,14 @@ import greycos.solver.core.config.heuristic.selector.list.SubListSelectorConfig;
 import greycos.solver.core.config.heuristic.selector.move.MoveSelectorConfig;
 import greycos.solver.core.config.heuristic.selector.move.generic.list.SubListChangeMoveSelectorConfig;
 import greycos.solver.core.config.heuristic.selector.value.ValueSelectorConfig;
-import greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
-import greycos.solver.core.impl.cotwin.variable.descriptor.VariableDescriptor;
 import greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
 import greycos.solver.core.impl.heuristic.selector.entity.EntitySelectorFactory;
 import greycos.solver.core.impl.heuristic.selector.list.DestinationSelectorFactory;
+import greycos.solver.core.impl.heuristic.selector.list.ListVariableSelectorSupport;
 import greycos.solver.core.impl.heuristic.selector.list.SubListSelectorFactory;
 import greycos.solver.core.impl.heuristic.selector.move.AbstractMoveSelectorFactory;
 import greycos.solver.core.impl.heuristic.selector.move.MoveSelector;
-import greycos.solver.core.impl.heuristic.selector.value.ValueSelectorFactory;
 
 public class SubListChangeMoveSelectorFactory<Solution_>
     extends AbstractMoveSelectorFactory<Solution_, SubListChangeMoveSelectorConfig> {
@@ -69,87 +64,34 @@ public class SubListChangeMoveSelectorFactory<Solution_>
   @Override
   protected MoveSelectorConfig<?> buildUnfoldedMoveSelectorConfig(
       HeuristicConfigPolicy<Solution_> configPolicy) {
-    var destinationSelectorConfig = config.getDestinationSelectorConfig();
-    var destinationEntitySelectorConfig =
-        destinationSelectorConfig == null
-            ? null
-            : destinationSelectorConfig.getEntitySelectorConfig();
-    Collection<EntityDescriptor<Solution_>> entityDescriptors;
-    var onlyEntityDescriptor =
-        destinationEntitySelectorConfig == null
-            ? null
-            : EntitySelectorFactory.<Solution_>create(destinationEntitySelectorConfig)
-                .extractEntityDescriptor(configPolicy);
-    if (onlyEntityDescriptor != null) {
-      entityDescriptors = Collections.singletonList(onlyEntityDescriptor);
-    } else {
-      // We select a single entity since there is only one descriptor that includes a list variable
-      var onlyEntityDescriptorWithListVariable =
-          getTheOnlyEntityDescriptorWithListVariable(configPolicy.getSolutionDescriptor());
-      entityDescriptors = new ArrayList<>();
-      if (onlyEntityDescriptorWithListVariable != null) {
-        entityDescriptors.add(onlyEntityDescriptorWithListVariable);
-      }
+    var destinationConfig = config.getDestinationSelectorConfig();
+    var entityConfig =
+        destinationConfig == null ? null : destinationConfig.getEntitySelectorConfig();
+    var entityClass = entityConfig == null ? null : entityConfig.getEntityClass();
+    if (entityConfig != null && entityConfig.getMimicSelectorRef() != null) {
+      entityClass =
+          EntitySelectorFactory.<Solution_>create(entityConfig)
+              .extractEntityDescriptor(configPolicy)
+              .getEntityClass();
     }
-    if (entityDescriptors.isEmpty()) {
-      throw new IllegalArgumentException(
-          "The subListChangeMoveSelector (%s) cannot unfold because there are no planning list variables."
-              .formatted(config));
+    var subListConfig = config.getSubListSelectorConfig();
+    var destinationValueConfig =
+        destinationConfig == null ? null : destinationConfig.getValueSelectorConfig();
+    var descriptor =
+        ListVariableSelectorSupport.resolve(
+            configPolicy, entityClass, subListConfig, destinationValueConfig);
+    var sourceValueConfig = subListConfig == null ? null : subListConfig.getValueSelectorConfig();
+    if (entityClass != null
+        && subListConfig != null
+        && destinationValueConfig != null
+        && (subListConfig.getMimicSelectorRef() != null
+            || sourceValueConfig != null
+                && (sourceValueConfig.getVariableName() != null
+                    || sourceValueConfig.getMimicSelectorRef() != null))
+        && destinationValueConfig.getVariableName() != null) {
+      return null;
     }
-    var entityDescriptor = entityDescriptors.iterator().next();
-
-    var subListSelectorConfig = config.getSubListSelectorConfig();
-    var subListValueSelectorConfig =
-        subListSelectorConfig == null ? null : subListSelectorConfig.getValueSelectorConfig();
-    var variableDescriptorList = new ArrayList<ListVariableDescriptor<Solution_>>();
-    var onlySubListVariableDescriptor =
-        subListValueSelectorConfig == null
-            ? null
-            : ValueSelectorFactory.<Solution_>create(subListValueSelectorConfig)
-                .extractVariableDescriptor(configPolicy, entityDescriptor);
-    var destinationValueSelectorConfig =
-        destinationSelectorConfig == null
-            ? null
-            : destinationSelectorConfig.getValueSelectorConfig();
-    var onlyDestinationVariableDescriptor =
-        destinationValueSelectorConfig == null
-            ? null
-            : ValueSelectorFactory.<Solution_>create(destinationValueSelectorConfig)
-                .extractVariableDescriptor(configPolicy, entityDescriptor);
-    if (onlySubListVariableDescriptor != null && onlyDestinationVariableDescriptor != null) {
-      if (!onlySubListVariableDescriptor.isListVariable()) {
-        throw new IllegalArgumentException(
-            "The subListChangeMoveSelector (%s) is configured to use a planning variable (%s), which is not a planning list variable."
-                .formatted(config, onlySubListVariableDescriptor));
-      }
-      if (!onlyDestinationVariableDescriptor.isListVariable()) {
-        throw new IllegalArgumentException(
-            "The subListChangeMoveSelector (%s) is configured to use a planning variable (%s), which is not a planning list variable."
-                .formatted(config, onlyDestinationVariableDescriptor));
-      }
-      if (onlySubListVariableDescriptor != onlyDestinationVariableDescriptor) {
-        throw new IllegalArgumentException(
-            "The subListSelector's valueSelector (%s) and destinationSelector's valueSelector (%s) must be configured for the same planning variable."
-                .formatted(subListValueSelectorConfig, destinationEntitySelectorConfig));
-      }
-      if (onlyEntityDescriptor != null) {
-        // No need for unfolding or deducing
-        return null;
-      }
-      variableDescriptorList.add((ListVariableDescriptor<Solution_>) onlySubListVariableDescriptor);
-    } else {
-      variableDescriptorList.addAll(
-          entityDescriptor.getGenuineVariableDescriptorList().stream()
-              .filter(VariableDescriptor::isListVariable)
-              .map(variableDescriptor -> ((ListVariableDescriptor<Solution_>) variableDescriptor))
-              .toList());
-    }
-    if (variableDescriptorList.size() > 1) {
-      throw new IllegalArgumentException(
-          "The subListChangeMoveSelector (%s) cannot unfold because there are multiple planning list variables."
-              .formatted(config));
-    }
-    return buildChildMoveSelectorConfig(variableDescriptorList.get(0));
+    return buildChildMoveSelectorConfig(descriptor);
   }
 
   private SubListChangeMoveSelectorConfig buildChildMoveSelectorConfig(
@@ -194,7 +136,9 @@ public class SubListChangeMoveSelectorFactory<Solution_>
 
     var effectiveSubListSelectorConfig =
         Objects.requireNonNull(subListChangeMoveSelectorConfig.getSubListSelectorConfig());
-    if (effectiveSubListSelectorConfig.getMimicSelectorRef() == null) {
+    if (effectiveSubListSelectorConfig.getMimicSelectorRef() != null) {
+      effectiveSubListSelectorConfig.setValueSelectorConfig(null);
+    } else {
       Objects.requireNonNull(effectiveSubListSelectorConfig.getValueSelectorConfig())
           .setVariableName(variableDescriptor.getVariableName());
     }

@@ -41,7 +41,7 @@ public class SelectorBasedSubListChangeMove<Solution_> extends SubListChangeMove
       ScoreDirector<Solution_> destinationScoreDirector) {
     var rebased = super.rebase(destinationScoreDirector);
     return new SelectorBasedSubListChangeMove<>(
-        getVariableDescriptor(),
+        rebased.getVariableDescriptor(),
         rebased.getSourceEntity(),
         rebased.getFromIndex(),
         rebased.getSubListSize(),

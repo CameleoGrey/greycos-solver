@@ -16,6 +16,7 @@ import greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 import greycos.solver.core.impl.cotwin.variable.descriptor.GenuineVariableDescriptor;
 import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
+import greycos.solver.core.impl.move.VariableDescriptorRebaser;
 import greycos.solver.core.impl.score.director.InnerScoreDirector;
 
 /** Selector configuration and owner-local provider sessions, shared safely with move workers. */
@@ -186,7 +187,7 @@ public final class MultistageDefinition<Solution_> {
             providerKind,
             director.getWorkingSolution(),
             currentGeneration,
-            domains(director.getWorkingSolution()));
+            domains(director));
     try {
       created.initialize();
     } catch (RuntimeException | Error failure) {
@@ -204,16 +205,25 @@ public final class MultistageDefinition<Solution_> {
   }
 
   private Map<MultistageVariableBinding<Solution_>, MultistageDomain<Solution_>> domains(
-      Solution_ solution) {
+      InnerScoreDirector<Solution_, ?> director) {
+    var solution = director.getWorkingSolution();
     var result =
         new LinkedHashMap<MultistageVariableBinding<Solution_>, MultistageDomain<Solution_>>();
     var scopes = new IdentityHashMap<EntityDescriptor<Solution_>, MultistageDomain<Solution_>>();
     for (var binding : bindings) {
+      var targetDescriptor =
+          director
+              .getSolutionDescriptor()
+              .findEntityDescriptorOrFail(binding.targetEntityDescriptor().getEntityClass());
+      var destinationBinding =
+          new MultistageVariableBinding<>(
+              binding.reference(),
+              VariableDescriptorRebaser.rebase(binding.variable(), director),
+              targetDescriptor);
       result.put(
-          binding,
+          destinationBinding,
           scopes.computeIfAbsent(
-              binding.targetEntityDescriptor(),
-              target -> new MultistageDomain<>(target, solution)));
+              targetDescriptor, target -> new MultistageDomain<>(target, solution)));
     }
     return java.util.Collections.unmodifiableMap(result);
   }

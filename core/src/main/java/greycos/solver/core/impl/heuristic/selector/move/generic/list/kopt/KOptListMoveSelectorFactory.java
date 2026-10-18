@@ -2,14 +2,13 @@ package greycos.solver.core.impl.heuristic.selector.move.generic.list.kopt;
 
 import java.util.Objects;
 
-import greycos.solver.core.api.cotwin.entity.PlanningEntity;
-import greycos.solver.core.api.cotwin.variable.PlanningListVariable;
 import greycos.solver.core.config.heuristic.selector.common.SelectionCacheType;
 import greycos.solver.core.config.heuristic.selector.common.SelectionOrder;
 import greycos.solver.core.config.heuristic.selector.move.generic.list.kopt.KOptListMoveSelectorConfig;
 import greycos.solver.core.config.heuristic.selector.value.ValueSelectorConfig;
 import greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
+import greycos.solver.core.impl.heuristic.selector.list.ListVariableSelectorSupport;
 import greycos.solver.core.impl.heuristic.selector.move.AbstractMoveSelectorFactory;
 import greycos.solver.core.impl.heuristic.selector.move.MoveSelector;
 import greycos.solver.core.impl.heuristic.selector.value.IterableValueSelector;
@@ -30,29 +29,20 @@ public final class KOptListMoveSelectorFactory<Solution_>
       HeuristicConfigPolicy<Solution_> configPolicy,
       SelectionCacheType minimumCacheType,
       boolean randomSelection) {
-    var listVariableDescriptor = configPolicy.getSolutionDescriptor().getListVariableDescriptor();
-    if (listVariableDescriptor == null) {
-      throw new IllegalArgumentException(
-          """
-                    The kOptListMoveSelector (%s) can only be used when the cotwin model has a list variable.
-                    Check your @%s and make sure it has a @%s."""
-              .formatted(
-                  config,
-                  PlanningEntity.class.getSimpleName(),
-                  PlanningListVariable.class.getSimpleName()));
-    }
-
     var originSelectorConfig =
-        Objects.requireNonNullElseGet(config.getOriginSelectorConfig(), ValueSelectorConfig::new);
+        Objects.requireNonNullElseGet(config.getOriginSelectorConfig(), ValueSelectorConfig::new)
+            .copyConfig();
     var valueSelectorConfig =
-        Objects.requireNonNullElseGet(config.getValueSelectorConfig(), ValueSelectorConfig::new);
-
-    var entityDescriptor =
-        getTheOnlyEntityDescriptorWithListVariable(configPolicy.getSolutionDescriptor());
-    if (originSelectorConfig.getVariableName() == null) {
+        Objects.requireNonNullElseGet(config.getValueSelectorConfig(), ValueSelectorConfig::new)
+            .copyConfig();
+    var listVariableDescriptor =
+        ListVariableSelectorSupport.resolve(
+            configPolicy, config.getEntityClass(), originSelectorConfig, valueSelectorConfig);
+    var entityDescriptor = listVariableDescriptor.getEntityDescriptor();
+    if (originSelectorConfig.getMimicSelectorRef() == null) {
       originSelectorConfig.setVariableName(listVariableDescriptor.getVariableName());
     }
-    if (valueSelectorConfig.getVariableName() == null) {
+    if (valueSelectorConfig.getMimicSelectorRef() == null) {
       valueSelectorConfig.setVariableName(listVariableDescriptor.getVariableName());
     }
     var selectionOrder = SelectionOrder.fromRandomSelectionBoolean(randomSelection);

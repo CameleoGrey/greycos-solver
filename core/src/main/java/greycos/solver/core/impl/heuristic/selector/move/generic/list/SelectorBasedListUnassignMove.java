@@ -18,6 +18,6 @@ public class SelectorBasedListUnassignMove<Solution_> extends ListUnassignMove<S
       ScoreDirector<Solution_> destinationScoreDirector) {
     var rebased = (ListUnassignMove<Solution_>) super.rebase(destinationScoreDirector);
     return new SelectorBasedListUnassignMove<>(
-        getVariableDescriptor(), rebased.getSourceEntity(), rebased.getSourceIndex());
+        rebased.getVariableDescriptor(), rebased.getSourceEntity(), rebased.getSourceIndex());
   }
 }

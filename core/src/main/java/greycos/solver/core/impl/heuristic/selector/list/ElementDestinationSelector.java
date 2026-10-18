@@ -114,6 +114,9 @@ public final class ElementDestinationSelector<Solution_> extends AbstractListMov
           valueSelector.getSize()
               - (allowsUnassignedValues ? listVariableState.getUnassignedCount() : 0);
       var totalSize = Math.addExact(entitySelector.getSize(), totalValueSize);
+      if (totalSize == 0) {
+        return Collections.emptyIterator();
+      }
       return new ElementPositionRandomIterator<>(
           listVariableState,
           entitySelector,

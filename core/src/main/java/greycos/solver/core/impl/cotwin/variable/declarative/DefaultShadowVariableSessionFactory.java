@@ -22,6 +22,7 @@ import java.util.stream.Collectors;
 import greycos.solver.core.api.function.TriFunction;
 import greycos.solver.core.api.solver.SolutionManager;
 import greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
+import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import greycos.solver.core.impl.cotwin.variable.descriptor.VariableDescriptor;
 import greycos.solver.core.impl.score.director.InnerScoreDirector;
 import greycos.solver.core.impl.util.CollectionUtils;
@@ -253,7 +254,8 @@ public class DefaultShadowVariableSessionFactory<Solution_> {
         getTopologicalSorter(
             graphDescriptor.solutionDescriptor(),
             Objects.requireNonNull(graphDescriptor.changedVariableNotifier().innerScoreDirector()),
-            Objects.requireNonNull(graphStructureAndDirection.direction()));
+            Objects.requireNonNull(graphStructureAndDirection.direction()),
+            Objects.requireNonNull(graphStructureAndDirection.parentMetaModel()));
 
     return new SingleDirectionalParentVariableReferenceGraph<>(
         graphDescriptor.consistencyTracker(),
@@ -320,21 +322,28 @@ public class DefaultShadowVariableSessionFactory<Solution_> {
   private static <Solution_> TopologicalSorter getTopologicalSorter(
       SolutionDescriptor<Solution_> solutionDescriptor,
       InnerScoreDirector<Solution_, ?> scoreDirector,
-      ParentVariableType parentVariableType) {
+      ParentVariableType parentVariableType,
+      VariableMetaModel<?, ?, ?> parentMetaModel) {
+    var parentDescriptor =
+        solutionDescriptor
+            .findEntityDescriptorOrFail(parentMetaModel.entity().type())
+            .getShadowVariableDescriptor(parentMetaModel.name());
+    var sourceDescriptor = parentDescriptor.getSourceVariableDescriptor();
+    if (!(sourceDescriptor instanceof ListVariableDescriptor<Solution_> listDescriptor)) {
+      throw new IllegalStateException(
+          "The directional shadow variable (%s) must have a planning list source, but has (%s)."
+              .formatted(parentDescriptor, sourceDescriptor));
+    }
     return switch (parentVariableType) {
       case PREVIOUS -> {
-        var listVariableState =
-            scoreDirector.getListVariableState(
-                Objects.requireNonNull(solutionDescriptor.getListVariableDescriptor()));
+        var listVariableState = scoreDirector.getListVariableState(listDescriptor);
         yield new TopologicalSorter(
             listVariableState::getNextElement,
             Comparator.comparingInt(entity -> listVariableState.getIndexOrElse(entity, 0)),
             listVariableState::getInverseSingleton);
       }
       case NEXT -> {
-        var listVariableState =
-            scoreDirector.getListVariableState(
-                Objects.requireNonNull(solutionDescriptor.getListVariableDescriptor()));
+        var listVariableState = scoreDirector.getListVariableState(listDescriptor);
         yield new TopologicalSorter(
             listVariableState::getPreviousElement,
             Comparator.comparingInt(entity -> listVariableState.getIndexOrElse(entity, 0))

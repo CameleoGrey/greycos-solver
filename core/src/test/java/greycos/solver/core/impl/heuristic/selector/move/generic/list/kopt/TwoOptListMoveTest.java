@@ -16,6 +16,9 @@ import greycos.solver.core.impl.score.director.ValueRangeManager;
 import greycos.solver.core.testcotwin.list.TestdataListEntity;
 import greycos.solver.core.testcotwin.list.TestdataListSolution;
 import greycos.solver.core.testcotwin.list.TestdataListValue;
+import greycos.solver.core.testcotwin.list.pinned.index.TestdataPinnedWithIndexListEntity;
+import greycos.solver.core.testcotwin.list.pinned.index.TestdataPinnedWithIndexListSolution;
+import greycos.solver.core.testcotwin.list.pinned.index.TestdataPinnedWithIndexListValue;
 import greycos.solver.core.testcotwin.list.valuerange.TestdataListEntityProvidingEntity;
 import greycos.solver.core.testcotwin.list.valuerange.TestdataListEntityProvidingSolution;
 import greycos.solver.core.testcotwin.list.valuerange.TestdataListEntityProvidingValue;
@@ -23,7 +26,6 @@ import greycos.solver.core.testutil.PlannerTestUtils;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 
 class TwoOptListMoveTest {
 
@@ -283,38 +285,33 @@ class TwoOptListMoveTest {
 
   @Test
   void doMoveSecondEndsBeforeFirstPinned() {
-    TestdataListValue v1 = new TestdataListValue("1");
-    TestdataListValue v2 = new TestdataListValue("2");
-    TestdataListValue v3 = new TestdataListValue("3");
-    TestdataListValue v4 = new TestdataListValue("4");
-    TestdataListValue v5 = new TestdataListValue("5");
-    TestdataListValue v6 = new TestdataListValue("6");
-    TestdataListValue v7 = new TestdataListValue("7");
-    TestdataListValue v8 = new TestdataListValue("8");
-    TestdataListEntity e1 =
-        TestdataListEntity.createWithValues("e1", v8, v7, v3, v4, v5, v6, v2, v1);
-    var solution = new TestdataListSolution();
+    var solutionDescriptor = TestdataPinnedWithIndexListSolution.buildSolutionDescriptor();
+    var variableDescriptor = solutionDescriptor.getListVariableDescriptor();
+    var scoreDirector = PlannerTestUtils.mockScoreDirector(solutionDescriptor);
+    TestdataPinnedWithIndexListValue v1 = new TestdataPinnedWithIndexListValue("1");
+    TestdataPinnedWithIndexListValue v2 = new TestdataPinnedWithIndexListValue("2");
+    TestdataPinnedWithIndexListValue v3 = new TestdataPinnedWithIndexListValue("3");
+    TestdataPinnedWithIndexListValue v4 = new TestdataPinnedWithIndexListValue("4");
+    TestdataPinnedWithIndexListValue v5 = new TestdataPinnedWithIndexListValue("5");
+    TestdataPinnedWithIndexListValue v6 = new TestdataPinnedWithIndexListValue("6");
+    TestdataPinnedWithIndexListValue v7 = new TestdataPinnedWithIndexListValue("7");
+    TestdataPinnedWithIndexListValue v8 = new TestdataPinnedWithIndexListValue("8");
+    TestdataPinnedWithIndexListEntity e1 =
+        TestdataPinnedWithIndexListEntity.createWithValues("e1", v8, v7, v3, v4, v5, v6, v2, v1);
+    var solution = new TestdataPinnedWithIndexListSolution();
     solution.setEntityList(List.of(e1));
     solution.setValueList(List.of(v1, v2, v5, v4, v3, v6, v7, v8));
+    e1.setPinIndex(1);
     scoreDirector.setWorkingSolution(solution);
 
-    var variableDescriptorSpy = Mockito.spy(variableDescriptor);
-    var entityDescriptor =
-        Mockito.spy(
-            TestdataListSolution.buildSolutionDescriptor()
-                .findEntityDescriptorOrFail(TestdataListEntity.class));
-    Mockito.when(variableDescriptorSpy.getEntityDescriptor()).thenReturn(entityDescriptor);
-    Mockito.when(variableDescriptorSpy.getFirstUnpinnedIndex(e1)).thenReturn(1);
-    Mockito.when(entityDescriptor.supportsPinning()).thenReturn(true);
-
     // 2-Opt((v6, v2), (v7, v3))
-    TwoOptListMove<TestdataListSolution> move =
-        new TwoOptListMove<>(variableDescriptorSpy, e1, e1, 6, 2);
+    TwoOptListMove<TestdataPinnedWithIndexListSolution> move =
+        new TwoOptListMove<>(variableDescriptor, e1, e1, 6, 2);
     move.doMoveOnly(scoreDirector);
     assertThat(e1.getValueList()).containsExactly(v8, v2, v3, v4, v5, v6, v7, v1);
 
-    verify(scoreDirector).beforeListVariableChanged(variableDescriptorSpy, e1, 1, 8);
-    verify(scoreDirector).afterListVariableChanged(variableDescriptorSpy, e1, 1, 8);
+    verify(scoreDirector).beforeListVariableChanged(variableDescriptor, e1, 1, 8);
+    verify(scoreDirector).afterListVariableChanged(variableDescriptor, e1, 1, 8);
     verify(scoreDirector).updateShadowVariables();
   }
 

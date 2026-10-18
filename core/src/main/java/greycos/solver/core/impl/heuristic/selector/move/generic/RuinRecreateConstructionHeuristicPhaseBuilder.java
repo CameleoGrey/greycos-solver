@@ -11,6 +11,7 @@ import greycos.solver.core.impl.constructionheuristic.DefaultConstructionHeurist
 import greycos.solver.core.impl.constructionheuristic.DefaultConstructionHeuristicPhase.DefaultConstructionHeuristicPhaseBuilder;
 import greycos.solver.core.impl.constructionheuristic.decider.ConstructionHeuristicDecider;
 import greycos.solver.core.impl.constructionheuristic.placer.EntityPlacer;
+import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
 import greycos.solver.core.impl.score.director.InnerScoreDirector;
 import greycos.solver.core.impl.solver.termination.PhaseTermination;
@@ -33,8 +34,16 @@ public final class RuinRecreateConstructionHeuristicPhaseBuilder<Solution_>
   public static <Solution_> RuinRecreateConstructionHeuristicPhaseBuilder<Solution_> create(
       HeuristicConfigPolicy<Solution_> solverConfigPolicy,
       ConstructionHeuristicPhaseConfig constructionHeuristicConfig) {
+    return create(solverConfigPolicy, constructionHeuristicConfig, null);
+  }
+
+  public static <Solution_> RuinRecreateConstructionHeuristicPhaseBuilder<Solution_> create(
+      HeuristicConfigPolicy<Solution_> solverConfigPolicy,
+      ConstructionHeuristicPhaseConfig constructionHeuristicConfig,
+      ListVariableDescriptor<Solution_> listVariableDescriptor) {
     var constructionHeuristicPhaseFactory =
-        new RuinRecreateConstructionHeuristicPhaseFactory<Solution_>(constructionHeuristicConfig);
+        new RuinRecreateConstructionHeuristicPhaseFactory<Solution_>(
+            constructionHeuristicConfig, listVariableDescriptor);
     var builder =
         (RuinRecreateConstructionHeuristicPhaseBuilder<Solution_>)
             constructionHeuristicPhaseFactory.getBuilder(
@@ -56,6 +65,7 @@ public final class RuinRecreateConstructionHeuristicPhaseBuilder<Solution_>
       constructionHeuristicPhaseFactory;
   private final PhaseTermination<Solution_> phaseTermination;
 
+  final ListVariableDescriptor<Solution_> listVariableDescriptor;
   Set<Object> elementsToRuin;
   List<Object> elementsToRecreate;
   private boolean multithreaded = false;
@@ -65,13 +75,15 @@ public final class RuinRecreateConstructionHeuristicPhaseBuilder<Solution_>
       RuinRecreateConstructionHeuristicPhaseFactory<Solution_> constructionHeuristicPhaseFactory,
       PhaseTermination<Solution_> phaseTermination,
       EntityPlacer<Solution_> entityPlacer,
-      ConstructionHeuristicDecider<Solution_> decider) {
+      ConstructionHeuristicDecider<Solution_> decider,
+      ListVariableDescriptor<Solution_> listVariableDescriptor) {
     // The config policy here belongs to the phase whose move selector built this nested R&R,
     // so the nested construction heuristic runs in the enclosing phase's environment mode
     super(0, false, configPolicy.getEnvironmentMode(), "", phaseTermination, entityPlacer, decider);
     this.configPolicy = configPolicy;
     this.constructionHeuristicPhaseFactory = constructionHeuristicPhaseFactory;
     this.phaseTermination = phaseTermination;
+    this.listVariableDescriptor = listVariableDescriptor;
   }
 
   /**
@@ -80,17 +92,25 @@ public final class RuinRecreateConstructionHeuristicPhaseBuilder<Solution_>
    * decider}, will be shared between the main and move threads. This sharing can lead to race
    * conditions. The method creates a new copy of the builder and the decider to avoid race
    * conditions. Copy on every execution when threading is enabled, because some score director
-   * implementations do not identify move-worker directors as derived.
+   * implementations do not identify move-worker directors as derived. A destination with an
+   * independently built solution descriptor also requires rebuilding the selector graph against
+   * that model, even when the enclosing phase does not use move threads.
    */
   public RuinRecreateConstructionHeuristicPhaseBuilder<Solution_> ensureThreadSafe(
       InnerScoreDirector<Solution_, ?> scoreDirector) {
+    if (configPolicy.getSolutionDescriptor() != scoreDirector.getSolutionDescriptor()) {
+      var builder = constructionHeuristicPhaseFactory.rebuild(configPolicy, scoreDirector);
+      builder.multithreaded = multithreaded;
+      return builder;
+    }
     if (multithreaded) {
       return new RuinRecreateConstructionHeuristicPhaseBuilder<>(
           configPolicy,
           constructionHeuristicPhaseFactory,
           phaseTermination,
           super.getEntityPlacer().copy(),
-          constructionHeuristicPhaseFactory.buildDecider(configPolicy, phaseTermination));
+          constructionHeuristicPhaseFactory.buildDecider(configPolicy, phaseTermination),
+          listVariableDescriptor);
     }
     return this;
   }

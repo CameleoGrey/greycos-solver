@@ -66,7 +66,7 @@ class SelectorBasedListRuinRecreateMoveTest {
 
     var move =
         new SelectorBasedListRuinRecreateMove<TestdataListSolution>(
-            mock(ListVariableDescriptor.class),
+            variableDescriptor,
             mock(RuinRecreateConstructionHeuristicPhaseBuilder.class),
             mock(SolverScope.class),
             Arrays.asList(v1, v2),
@@ -189,7 +189,7 @@ class SelectorBasedListRuinRecreateMoveTest {
         new ConstructionHeuristicPhaseConfig().withEntityPlacerConfig(entityPlacerConfig);
     var constructionHeuristicPhaseBuilder =
         RuinRecreateConstructionHeuristicPhaseBuilder.create(
-            solverConfigPolicy, constructionHeuristicPhaseConfig);
+            solverConfigPolicy, constructionHeuristicPhaseConfig, listVariableDescriptor);
 
     var solverScope = new SolverScope<TestdataPinnedWithIndexListSolution>();
     solverScope.setScoreDirector(scoreDirector);

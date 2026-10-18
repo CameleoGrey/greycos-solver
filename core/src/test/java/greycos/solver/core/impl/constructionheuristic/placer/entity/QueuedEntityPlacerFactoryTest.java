@@ -14,6 +14,7 @@ import java.util.List;
 import greycos.solver.core.api.score.SimpleScore;
 import greycos.solver.core.config.constructionheuristic.placer.QueuedEntityPlacerConfig;
 import greycos.solver.core.config.heuristic.selector.common.SelectionOrder;
+import greycos.solver.core.config.heuristic.selector.entity.EntitySelectorConfig;
 import greycos.solver.core.config.heuristic.selector.entity.EntitySorterManner;
 import greycos.solver.core.config.heuristic.selector.move.generic.ChangeMoveSelectorConfig;
 import greycos.solver.core.config.heuristic.selector.value.ValueSelectorConfig;
@@ -22,17 +23,23 @@ import greycos.solver.core.impl.constructionheuristic.placer.QueuedEntityPlacer;
 import greycos.solver.core.impl.constructionheuristic.placer.QueuedEntityPlacerFactory;
 import greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
 import greycos.solver.core.impl.heuristic.HeuristicConfigPolicy;
+import greycos.solver.core.impl.heuristic.selector.move.generic.ChangeMoveSelector;
 import greycos.solver.core.impl.phase.scope.AbstractPhaseScope;
 import greycos.solver.core.impl.phase.scope.AbstractStepScope;
 import greycos.solver.core.impl.score.director.InnerScoreDirector;
 import greycos.solver.core.impl.score.director.ValueRangeManager;
 import greycos.solver.core.impl.solver.scope.SolverScope;
 import greycos.solver.core.testcotwin.TestdataValue;
+import greycos.solver.core.testcotwin.multiplelist.TestdataMultipleListEntity;
+import greycos.solver.core.testcotwin.multiplelist.TestdataMultipleListSecondValue;
+import greycos.solver.core.testcotwin.multiplelist.TestdataMultipleListSolution;
 import greycos.solver.core.testcotwin.multivar.TestdataMultiVarEntity;
 import greycos.solver.core.testcotwin.multivar.TestdataMultiVarSolution;
 import greycos.solver.core.testcotwin.sort.comparator.TestdataComparatorSortableSolution;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class QueuedEntityPlacerFactoryTest {
 
@@ -87,6 +94,34 @@ class QueuedEntityPlacerFactoryTest {
     Placement<TestdataMultiVarSolution> placement = placementIterator.next();
 
     assertEntityPlacement(placement, "e1", "e1v1", "e1v2", "e2v1", "e2v2");
+  }
+
+  @ParameterizedTest
+  @ValueSource(classes = {TestdataMultipleListEntity.class, TestdataMultipleListSecondValue.class})
+  void unnamedExplicitEntitySelectorBindsGeneratedMovesToItsOwnQueue(Class<?> entityClass) {
+    var descriptor = TestdataMultipleListSolution.buildSolutionDescriptor();
+    var policy = buildHeuristicConfigPolicy(descriptor);
+    var configuredSelector = new EntitySelectorConfig(entityClass);
+    var placer =
+        new QueuedEntityPlacerFactory<TestdataMultipleListSolution>(
+                new QueuedEntityPlacerConfig().withEntitySelectorConfig(configuredSelector))
+            .buildEntityPlacer(policy);
+    var ownerDescriptor = descriptor.findEntityDescriptorOrFail(entityClass);
+    assertThat(placer.getEntityDescriptor()).isSameAs(ownerDescriptor);
+    assertThat(placer.getCandidateMoveSelectors())
+        .singleElement()
+        .satisfies(
+            selector -> {
+              assertThat(selector).isInstanceOf(ChangeMoveSelector.class);
+              var change = (ChangeMoveSelector<TestdataMultipleListSolution>) selector;
+              assertThat(change.getEntitySelector().getEntityDescriptor())
+                  .isSameAs(ownerDescriptor);
+              assertThat(change.getValueSelector().getVariableDescriptor().getEntityDescriptor())
+                  .isSameAs(ownerDescriptor);
+            });
+    assertThat(policy.getEntityMimicRecorder(entityClass.getName()).getEntityDescriptor())
+        .isSameAs(ownerDescriptor);
+    assertThat(configuredSelector.getId()).isNull();
   }
 
   @Test

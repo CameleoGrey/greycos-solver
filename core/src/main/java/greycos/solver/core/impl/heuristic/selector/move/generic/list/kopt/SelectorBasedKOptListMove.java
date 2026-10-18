@@ -3,6 +3,7 @@ package greycos.solver.core.impl.heuristic.selector.move.generic.list.kopt;
 import java.util.List;
 
 import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
+import greycos.solver.core.impl.move.VariableDescriptorRebaser;
 import greycos.solver.core.impl.score.director.ScoreDirector;
 import greycos.solver.core.impl.score.director.VariableDescriptorAwareScoreDirector;
 
@@ -55,12 +56,12 @@ public class SelectorBasedKOptListMove<Solution_> extends KOptListMove<Solution_
       newEntities[i] = castScoreDirector.lookUpWorkingObject(getOriginalEntities()[i]);
     }
     for (var twoOpt : getEquivalent2Opts()) {
-      rebasedEquivalent2Opts.add(twoOpt.rebase());
+      rebasedEquivalent2Opts.add(twoOpt.rebase(destinationScoreDirector));
     }
 
     return new SelectorBasedKOptListMove<>(
-        getListVariableDescriptor(),
-        getDescriptor(),
+        VariableDescriptorRebaser.rebase(getListVariableDescriptor(), destinationScoreDirector),
+        getDescriptor().rebase(destinationScoreDirector),
         rebasedEquivalent2Opts,
         getPostShiftAmount(),
         getNewEndIndices(),

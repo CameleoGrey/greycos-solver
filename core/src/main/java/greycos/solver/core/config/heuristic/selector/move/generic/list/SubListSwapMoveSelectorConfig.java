@@ -14,6 +14,7 @@ import org.jspecify.annotations.Nullable;
 
 @XmlType(
     propOrder = {
+      "entityClass",
       "selectReversingMoveToo",
       "subListSelectorConfig",
       "secondarySubListSelectorConfig"
@@ -23,6 +24,8 @@ public class SubListSwapMoveSelectorConfig
 
   public static final String XML_ELEMENT_NAME = "subListSwapMoveSelector";
 
+  @Nullable private String entityClass = null;
+
   private Boolean selectReversingMoveToo = null;
 
   @XmlElement(name = "subListSelector")
@@ -30,6 +33,19 @@ public class SubListSwapMoveSelectorConfig
 
   @XmlElement(name = "secondarySubListSelector")
   private SubListSelectorConfig secondarySubListSelectorConfig = null;
+
+  public @Nullable Class<?> getEntityClass() {
+    return ConfigUtils.resolveClass(entityClass, "entityClass", this);
+  }
+
+  public void setEntityClass(@Nullable Class<?> entityClass) {
+    this.entityClass = entityClass == null ? null : entityClass.getName();
+  }
+
+  public @NonNull SubListSwapMoveSelectorConfig withEntityClass(@NonNull Class<?> entityClass) {
+    setEntityClass(entityClass);
+    return this;
+  }
 
   public @Nullable Boolean getSelectReversingMoveToo() {
     return selectReversingMoveToo;
@@ -82,6 +98,7 @@ public class SubListSwapMoveSelectorConfig
   public @NonNull SubListSwapMoveSelectorConfig inherit(
       @NonNull SubListSwapMoveSelectorConfig inheritedConfig) {
     super.inherit(inheritedConfig);
+    entityClass = ConfigUtils.inheritOverwritableProperty(entityClass, inheritedConfig.entityClass);
     this.selectReversingMoveToo =
         ConfigUtils.inheritOverwritableProperty(
             selectReversingMoveToo, inheritedConfig.selectReversingMoveToo);
@@ -101,6 +118,7 @@ public class SubListSwapMoveSelectorConfig
   @Override
   public void visitReferencedClasses(@NonNull Consumer<Class<?>> classVisitor) {
     visitCommonReferencedClasses(classVisitor);
+    classVisitor.accept(getEntityClass());
     if (subListSelectorConfig != null) {
       subListSelectorConfig.visitReferencedClasses(classVisitor);
     }

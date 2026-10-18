@@ -50,7 +50,9 @@ public class SelectorBasedListRuinRecreateMove<Solution_> extends ListRuinRecrea
     var rebasedListVariableDescriptor =
         ((InnerScoreDirector<Solution_, ?>) destinationScoreDirector)
             .getSolutionDescriptor()
-            .getListVariableDescriptor();
+            .resolveListVariableDescriptor(
+                getListVariableDescriptor().getEntityDescriptor().getEntityClass(),
+                getListVariableDescriptor().getVariableName());
     return new SelectorBasedListRuinRecreateMove<>(
         rebasedListVariableDescriptor,
         getConstructionHeuristicPhaseBuilder(),

@@ -12,6 +12,8 @@ import org.jspecify.annotations.Nullable;
 
 @XmlType(
     propOrder = {
+      "entityClass",
+      "variableName",
       "minimumRuinedCount",
       "maximumRuinedCount",
       "minimumRuinedPercentage",
@@ -27,6 +29,9 @@ public class ListRuinRecreateMoveSelectorConfig
 
   public static final String XML_ELEMENT_NAME = "listRuinRecreateMoveSelector";
 
+  @Nullable private String entityClass = null;
+  private String variableName = null;
+
   protected Integer minimumRuinedCount = null;
   protected Integer maximumRuinedCount = null;
 
@@ -37,6 +42,34 @@ public class ListRuinRecreateMoveSelectorConfig
   // **************************
   // Getters/Setters
   // **************************
+
+  public @Nullable Class<?> getEntityClass() {
+    return ConfigUtils.resolveClass(entityClass, "entityClass", this);
+  }
+
+  public void setEntityClass(@Nullable Class<?> entityClass) {
+    this.entityClass = entityClass == null ? null : entityClass.getName();
+  }
+
+  public @NonNull ListRuinRecreateMoveSelectorConfig withEntityClass(
+      @NonNull Class<?> entityClass) {
+    setEntityClass(entityClass);
+    return this;
+  }
+
+  public @Nullable String getVariableName() {
+    return variableName;
+  }
+
+  public void setVariableName(@Nullable String variableName) {
+    this.variableName = variableName;
+  }
+
+  public @NonNull ListRuinRecreateMoveSelectorConfig withVariableName(
+      @NonNull String variableName) {
+    setVariableName(variableName);
+    return this;
+  }
 
   public @Nullable Integer getMinimumRuinedCount() {
     return minimumRuinedCount;
@@ -132,6 +165,9 @@ public class ListRuinRecreateMoveSelectorConfig
   public @NonNull ListRuinRecreateMoveSelectorConfig inherit(
       @NonNull ListRuinRecreateMoveSelectorConfig inheritedConfig) {
     super.inherit(inheritedConfig);
+    entityClass = ConfigUtils.inheritOverwritableProperty(entityClass, inheritedConfig.entityClass);
+    variableName =
+        ConfigUtils.inheritOverwritableProperty(variableName, inheritedConfig.variableName);
     minimumRuinedCount =
         ConfigUtils.inheritOverwritableProperty(
             minimumRuinedCount, inheritedConfig.getMinimumRuinedCount());
@@ -153,7 +189,8 @@ public class ListRuinRecreateMoveSelectorConfig
 
   @Override
   public void visitReferencedClasses(@NonNull Consumer<Class<?>> classVisitor) {
-    // No referenced classes.
+    visitCommonReferencedClasses(classVisitor);
+    classVisitor.accept(getEntityClass());
   }
 
   public int determineMinimumRuinedCount(long valueCount) {
