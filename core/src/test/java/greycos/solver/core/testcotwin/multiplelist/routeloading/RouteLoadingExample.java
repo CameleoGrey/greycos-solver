@@ -4,6 +4,14 @@ import java.util.List;
 
 import greycos.solver.core.api.score.HardSoftScore;
 import greycos.solver.core.api.solver.SolverFactory;
+import greycos.solver.core.config.constructionheuristic.ConstructionHeuristicPhaseConfig;
+import greycos.solver.core.config.constructionheuristic.placer.QueuedEntityPlacerConfig;
+import greycos.solver.core.config.constructionheuristic.placer.QueuedValuePlacerConfig;
+import greycos.solver.core.config.heuristic.selector.entity.EntitySelectorConfig;
+import greycos.solver.core.config.heuristic.selector.list.DestinationSelectorConfig;
+import greycos.solver.core.config.heuristic.selector.move.generic.list.ListChangeMoveSelectorConfig;
+import greycos.solver.core.config.heuristic.selector.value.ValueSelectorConfig;
+import greycos.solver.core.config.localsearch.LocalSearchPhaseConfig;
 import greycos.solver.core.config.solver.EnvironmentMode;
 import greycos.solver.core.config.solver.SolverConfig;
 import greycos.solver.core.config.solver.termination.TerminationConfig;
@@ -54,7 +62,34 @@ public final class RouteLoadingExample {
         .withConstraintProviderClass(RouteLoadingConstraintProvider.class)
         .withEnvironmentMode(EnvironmentMode.FULL_ASSERT)
         .withRandomSeed(seed)
-        .withTerminationConfig(new TerminationConfig().withStepCountLimit(stepCount));
+        .withPhases(
+            listConstruction("loadingOrder"),
+            listConstruction("visits"),
+            new ConstructionHeuristicPhaseConfig()
+                .withEntityPlacerConfig(
+                    new QueuedEntityPlacerConfig()
+                        .withEntitySelectorConfig(
+                            new EntitySelectorConfig(RouteLoadingSolution.Cargo.class))),
+            new LocalSearchPhaseConfig()
+                .withTerminationConfig(new TerminationConfig().withStepCountLimit(stepCount)));
+  }
+
+  private static ConstructionHeuristicPhaseConfig listConstruction(String variableName) {
+    return new ConstructionHeuristicPhaseConfig()
+        .withEntityPlacerConfig(
+            new QueuedValuePlacerConfig()
+                .withEntityClass(RouteLoadingSolution.Vehicle.class)
+                .withValueSelectorConfig(new ValueSelectorConfig(variableName).withId(variableName))
+                .withMoveSelectorConfig(
+                    new ListChangeMoveSelectorConfig()
+                        .withValueSelectorConfig(
+                            new ValueSelectorConfig(variableName)
+                                .withMimicSelectorRef(variableName))
+                        .withDestinationSelectorConfig(
+                            new DestinationSelectorConfig()
+                                .withEntitySelectorConfig(
+                                    new EntitySelectorConfig(RouteLoadingSolution.Vehicle.class))
+                                .withValueSelectorConfig(new ValueSelectorConfig(variableName)))));
   }
 
   public static HardSoftScore score(Metrics metrics) {

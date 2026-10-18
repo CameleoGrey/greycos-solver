@@ -46,15 +46,18 @@ java -cp "core/target/test-classes:core/target/classes:$(cat core/target/route-l
   greycos.solver.core.testcotwin.multiplelist.routeloading.RouteLoadingExample 0 2000
 ```
 
-The optional arguments are random seed and solver step limit. The example uses the automatically
-generated phases and selectors, with `FULL_ASSERT`. Output labels the returned plan `FEASIBLE` or
-`DRAFT` according to independent replay, prints all decisions, and verifies replay score equality.
-A bounded solve is not an optimality certificate.
+The optional arguments are random seed and Local Search step limit. Construction finishes before
+that limit applies, including when the limit is one. Explicit construction phases preserve the
+default model order: loading order, visits, then cargo compartment and quantity assignments. Local
+Search uses the default selectors, and all phases use `FULL_ASSERT`. Output labels the returned plan
+`FEASIBLE` or `DRAFT` according to independent replay, prints all decisions, and verifies replay
+score equality. A bounded solve is not an optimality certificate.
 
 `RouteLoadingExampleTest` enumerates all 36 decisions of a tiny one-vehicle case, including infeasible
 quantity assignments. Four are feasible and the independently calculated optimum is `0hard/-6soft`.
 The test compares every state's independently calculated score with the ConstraintProvider. Additional tests cover incremental cross-list changes, basic-variable changes,
-restoration, returned-solution cloning, shadow consistency and malformed replay input.
+restoration, returned-solution cloning, shadow consistency and malformed replay input. The complete
+demo input also verifies that construction finishes before a one-step Local Search budget is used.
 
 ## Measurement protocol
 

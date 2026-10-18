@@ -150,6 +150,18 @@ final class JointExhaustiveSearchDeciderFactory<Solution_> {
     return value;
   }
 
+  private EntitySelectorConfig normalizeEntityConfig(
+      EntitySelectorConfig selector, GenuineVariableDescriptor<Solution_> variable) {
+    if (selector == null) {
+      return entityConfig(variable.getEntityDescriptor());
+    }
+    var copy = selector.copyConfig();
+    if (copy.getEntityClass() == null) {
+      copy.setEntityClass(variable.getEntityDescriptor().getEntityClass());
+    }
+    return copy;
+  }
+
   private MoveSelectorConfig<?> defaultMoves(
       GenuineVariableDescriptor<Solution_> variable, EntitySelectorConfig entity) {
     if (variable instanceof ListVariableDescriptor<Solution_>) {
@@ -394,9 +406,7 @@ final class JointExhaustiveSearchDeciderFactory<Solution_> {
               selector);
       covered.add(variable);
       var copy = change.copyConfig();
-      copy.setEntitySelectorConfig(
-          (entity == null ? entityConfig(variable.getEntityDescriptor()) : entity.copyConfig())
-              .withEntityClass(variable.getEntityDescriptor().getEntityClass()));
+      copy.setEntitySelectorConfig(normalizeEntityConfig(entity, variable));
       copy.setValueSelectorConfig(
           (value == null ? valueConfig(variable) : value.copyConfig())
               .withVariableName(variable.getVariableName()));
@@ -426,9 +436,7 @@ final class JointExhaustiveSearchDeciderFactory<Solution_> {
           (sourceValue == null ? valueConfig(variable) : sourceValue.copyConfig())
               .withVariableName(variable.getVariableName()));
       var target = destination == null ? new DestinationSelectorConfig() : destination.copyConfig();
-      target.setEntitySelectorConfig(
-          (entity == null ? entityConfig(variable.getEntityDescriptor()) : entity.copyConfig())
-              .withEntityClass(variable.getEntityDescriptor().getEntityClass()));
+      target.setEntitySelectorConfig(normalizeEntityConfig(entity, variable));
       target.setValueSelectorConfig(
           (destinationValue == null ? new ValueSelectorConfig() : destinationValue.copyConfig())
               .withVariableName(variable.getVariableName()));

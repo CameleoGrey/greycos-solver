@@ -10,7 +10,12 @@ import java.util.List;
 import greycos.solver.core.api.score.HardSoftScore;
 import greycos.solver.core.api.solver.SolutionManager;
 import greycos.solver.core.api.solver.SolverFactory;
+import greycos.solver.core.impl.constructionheuristic.scope.ConstructionHeuristicStepScope;
+import greycos.solver.core.impl.localsearch.scope.LocalSearchStepScope;
+import greycos.solver.core.impl.phase.event.PhaseLifecycleListenerAdapter;
+import greycos.solver.core.impl.phase.scope.AbstractStepScope;
 import greycos.solver.core.impl.score.director.InnerScoreDirector;
+import greycos.solver.core.impl.solver.DefaultSolver;
 import greycos.solver.core.impl.solver.DefaultSolverFactory;
 import greycos.solver.core.testcotwin.multiplelist.routeloading.RouteLoadingDomain.CargoData;
 import greycos.solver.core.testcotwin.multiplelist.routeloading.RouteLoadingDomain.CompartmentData;
@@ -26,6 +31,44 @@ import greycos.solver.core.testcotwin.multiplelist.routeloading.RouteLoadingSolu
 import org.junit.jupiter.api.Test;
 
 class RouteLoadingExampleTest {
+
+  @Test
+  void oneLocalSearchStepStillCompletesConstructionFromUninitializedDemoInput() {
+    var input = RouteLoadingExample.demoInput();
+    var solver =
+        (DefaultSolver<RouteLoadingSolution>)
+            SolverFactory.<RouteLoadingSolution>create(RouteLoadingExample.solverConfig(0L, 1))
+                .buildSolver();
+    var stepCounts = new int[4];
+    solver.addPhaseLifecycleListener(
+        new PhaseLifecycleListenerAdapter<>() {
+          @Override
+          public void stepEnded(AbstractStepScope<RouteLoadingSolution> step) {
+            if (step instanceof ConstructionHeuristicStepScope<?>) {
+              stepCounts[step.getPhaseScope().getPhaseIndex()]++;
+            } else if (step instanceof LocalSearchStepScope<?>) {
+              stepCounts[3]++;
+            }
+          }
+        });
+
+    var result = solver.solve(RouteLoadingSolution.fromInput(input));
+
+    assertThat(stepCounts).containsExactly(6, 3, 6, 1);
+    assertThat(result.vehicles.stream().flatMap(vehicle -> vehicle.visits.stream()))
+        .containsExactlyInAnyOrderElementsOf(result.visits);
+    assertThat(result.vehicles.stream().flatMap(vehicle -> vehicle.loadingOrder.stream()))
+        .containsExactlyInAnyOrderElementsOf(result.cargo);
+    assertThat(result.cargo)
+        .allSatisfy(
+            cargo -> {
+              assertThat(cargo.compartment).isNotNull();
+              assertThat(cargo.quantity).isNotNull();
+            });
+    assertShadows(result);
+    assertThat(result.score)
+        .isEqualTo(RouteLoadingExample.score(RouteLoadingReplay.replay(input, result.toPlan())));
+  }
 
   @Test
   void allTinyDecisionsMatchIndependentReplayAndKnownOptimum() {
