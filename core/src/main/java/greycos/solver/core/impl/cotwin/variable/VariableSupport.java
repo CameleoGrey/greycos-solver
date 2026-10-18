@@ -649,7 +649,8 @@ public final class VariableSupport<Solution_> implements TrackerResolver<Solutio
         return false;
       }
       if (hasCascadingUpdates) {
-        for (var context : listVariableContextList) {
+        for (var i = 0; i < listVariableContextList.size(); i++) {
+          var context = listVariableContextList.get(i);
           if (context.cascadingUpdateQueue != null && !context.cascadingUpdateQueue.isEmpty()) {
             triggerCascadingUpdateShadowVariableUpdate(context);
           }

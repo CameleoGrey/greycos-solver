@@ -114,20 +114,24 @@ public final class BavetConstraintFactory<Solution_>
       // Resolve once per runtime class, while keeping each session's consistency predicates
       // private.
       Map<Class<?>, Predicate<A>> predicateMap = new HashMap<>();
-      return value ->
-          predicateMap
-              .computeIfAbsent(
-                  value.getClass(),
-                  runtimeClass -> {
-                    var entityDescriptor = solutionDescriptor.findEntityDescriptor(runtimeClass);
-                    Predicate<A> predicate =
-                        entityDescriptor == null
-                            ? null
-                            : helper.getForEachPredicateForEntityDescriptorAndCriteria(
-                                entityDescriptor, criteria);
-                    return predicate == null ? ignored -> true : predicate;
-                  })
-              .test(value);
+      return value -> {
+        var runtimeClass = value.getClass();
+        // Avoid allocating a capturing computeIfAbsent resolver on every cache hit.
+        var predicate = predicateMap.get(runtimeClass);
+        if (predicate == null) {
+          var entityDescriptor = solutionDescriptor.findEntityDescriptor(runtimeClass);
+          predicate =
+              entityDescriptor == null
+                  ? null
+                  : helper.getForEachPredicateForEntityDescriptorAndCriteria(
+                      entityDescriptor, criteria);
+          if (predicate == null) {
+            predicate = ignored -> true;
+          }
+          predicateMap.put(runtimeClass, predicate);
+        }
+        return predicate.test(value);
+      };
     }
   }
 
