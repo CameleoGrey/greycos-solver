@@ -1,6 +1,24 @@
 [#upgradeToLatest]
 = Upgrading to the latest version
 
+[#solverRunSummaryUpgrade]
+== Finished-run statistics and event snapshots
+
+Built-in solvers provide `Solver.solveAndSummarize(problem)`, and solver jobs provide `SolverJob.getResult()`.
+Both return a `SolverRunResult` containing the final best solution and whole-run statistics,
+including solving segments separated by problem changes.
+Built-in final best-solution events expose the same statistics through `SolverRunSummary`.
+See xref:using-greycos-solver/running-the-solver.adoc#solverRunSummary[finished-run statistics] for usage and accounting semantics.
+
+Existing `solve()` and `getFinalBestSolution()` calls keep their contracts.
+Existing custom implementations and `FinalBestSolutionEvent` lambdas remain compatible;
+their new summary methods throw `UnsupportedOperationException` unless implemented.
+First-initialized solution events now carry a planning snapshot instead of the mutable working solution.
+Started events retain their existing snapshot behavior.
+
+Inherited variable metamodels now compare consistently with equality across entity views.
+This fixes sorted collections containing inherited basic, list, or shadow variables without changing their entity-view scope.
+
 [#multiplePlanningListsUpgrade]
 == Multiple planning list variables
 

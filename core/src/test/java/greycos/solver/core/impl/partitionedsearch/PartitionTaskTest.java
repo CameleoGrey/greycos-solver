@@ -6,11 +6,13 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 import greycos.solver.core.impl.score.director.InnerScoreDirector;
+import greycos.solver.core.impl.solver.monitoring.SolverWorkSnapshot;
 import greycos.solver.core.impl.solver.scope.SolverScope;
 import greycos.solver.core.testcotwin.TestdataSolution;
 
@@ -33,7 +35,7 @@ class PartitionTaskTest {
 
     task.cancelBeforeStart();
     task.cancelBeforeStart();
-    assertThat(task.call()).isZero();
+    assertThat(task.call()).isSameAs(SolverWorkSnapshot.ZERO);
 
     verify(director).close();
     verify(solver, never()).solve(solution);
@@ -57,7 +59,9 @@ class PartitionTaskTest {
               assertThat(finish.await(3, TimeUnit.SECONDS)).isTrue();
               return solution;
             });
-    when(solver.getScoreCalculationCount()).thenReturn(123L);
+    when(director.getCalculationCount()).thenReturn(123L);
+    scope.addMoveEvaluationCount(7L);
+    scope.addMoveEvaluationCountPerType("test move", 7L);
     var task = new PartitionTask<>(solver, solution);
     var executor = Executors.newSingleThreadExecutor();
     try {
@@ -66,7 +70,8 @@ class PartitionTaskTest {
       task.cancelBeforeStart();
       verify(director, never()).close();
       finish.countDown();
-      assertThat(future.get(3, TimeUnit.SECONDS)).isEqualTo(123L);
+      assertThat(future.get(3, TimeUnit.SECONDS))
+          .isEqualTo(new SolverWorkSnapshot(123L, 7L, Map.of("test move", 7L)));
       task.cancelBeforeStart();
       verify(director, never()).close();
     } finally {

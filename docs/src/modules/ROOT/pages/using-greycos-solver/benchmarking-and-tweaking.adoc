@@ -19,6 +19,13 @@ against each other in development, so you can use the best configuration for you
 
 image::using-greycos-solver/benchmarking-and-tweaking/benchmarkOverview.png[align="center"]
 
+Finished benchmark runs use the solver's
+xref:using-greycos-solver/running-the-solver.adoc#solverRunSummary[whole-run summary]
+for solving duration, score calculation count, and move evaluation count.
+These totals include solving segments separated by problem changes and reported native-worker and island work.
+Physical score calculations and logical move evaluations are distinct measures;
+compare solution quality and equal-work results separately from throughput.
+
 
 [#benchmarkConfiguration]
 == Benchmark configuration

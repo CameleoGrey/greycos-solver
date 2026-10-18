@@ -511,6 +511,17 @@
     ]
   },
   {
+    "name": "greycos.solver.core.config.islandmodel.IslandModelPhaseConfig",
+    "allDeclaredFields": true,
+    "queryAllDeclaredMethods": true,
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": []
+      }
+    ]
+  },
+  {
     "name": "greycos.solver.core.config.localsearch.GuidedLocalSearchConfig",
     "allDeclaredFields": true,
     "queryAllDeclaredMethods": true,
@@ -554,6 +565,10 @@
         "parameterTypes": []
       }
     ]
+  },
+  {
+    "name": "greycos.solver.core.config.localsearch.LocalSearchStepLoggingMode",
+    "allDeclaredFields": true
   },
   {
     "name": "greycos.solver.core.config.localsearch.LocalSearchType",
@@ -921,6 +936,10 @@
   },
   {
     "name": "greycos.solver.core.config.alns.AlnsAcceptanceType",
+    "allDeclaredFields": true
+  },
+  {
+    "name": "greycos.solver.core.config.alns.AlnsMoveThreadingMode",
     "allDeclaredFields": true
   },
   {

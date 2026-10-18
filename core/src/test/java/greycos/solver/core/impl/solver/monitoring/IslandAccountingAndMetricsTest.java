@@ -54,7 +54,9 @@ class IslandAccountingAndMetricsTest extends AbstractMeterTest {
         for (int run = 0; run < 2; run++) {
           samples.clear();
           CountingCalculator.calls.set(0);
-          solver.solve(problem());
+          var result = solver.solveAndSummarize(problem());
+          assertThat(result.scoreCalculationCount()).isEqualTo(CountingCalculator.calls.get());
+          assertThat(result.moveEvaluationCount()).isEqualTo(solver.getMoveEvaluationCount());
           var scope = solver.getSolverScope();
           assertThat(scope.getReportedScoreCalculationCount())
               .isEqualTo(CountingCalculator.calls.get());
@@ -152,7 +154,9 @@ class IslandAccountingAndMetricsTest extends AbstractMeterTest {
     var samples = new ArrayList<SolverMetricSample>();
     solver.getSolverScope().addMetricSampleListener(samples::add);
     CountingCalculator.calls.set(0);
-    solver.solve(problem());
+    var result = solver.solveAndSummarize(problem());
+    assertThat(result.scoreCalculationCount()).isEqualTo(CountingCalculator.calls.get());
+    assertThat(result.moveEvaluationCount()).isEqualTo(6);
     assertThat(solver.getSolverScope().getReportedScoreCalculationCount())
         .isEqualTo(CountingCalculator.calls.get());
     assertThat(solver.getSolverScope().getReportedMoveEvaluationCount()).isEqualTo(6);

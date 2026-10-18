@@ -28,6 +28,7 @@ import greycos.solver.core.impl.solver.recaller.BestSolutionRecaller;
 import greycos.solver.core.impl.solver.scope.SolverScope;
 import greycos.solver.core.impl.solver.termination.BasicPlumbingTermination;
 import greycos.solver.core.impl.solver.termination.UniversalTermination;
+import greycos.solver.core.impl.util.MathUtils;
 
 import io.micrometer.core.instrument.Metrics;
 
@@ -149,6 +150,11 @@ public class DefaultSolver<Solution_> extends AbstractSolver<Solution_>
 
   @Override
   public final Solution_ solve(Solution_ problem) {
+    return solveAndSummarize(problem).solution();
+  }
+
+  @Override
+  public final DefaultSolverRunResult<Solution_> solveAndSummarize(Solution_ problem) {
     // A rejected reuse must not reset or clean up state still owned by previous workers.
     solverScope.getWorkerRegistry().assertNoActiveWorkers();
     // No tags for these metrics; they are global
@@ -197,7 +203,8 @@ public class DefaultSolver<Solution_> extends AbstractSolver<Solution_>
         restartSolver = checkProblemChanges();
       }
       outerSolvingEnded(solverScope);
-      return solverScope.getBestSolution();
+      return new DefaultSolverRunResult<>(
+          solverScope.getBestSolution(), DefaultSolverRunSummary.of(solverScope));
     } catch (Exception | Error failure) {
       errorCounter.increment();
       try {
@@ -218,6 +225,7 @@ public class DefaultSolver<Solution_> extends AbstractSolver<Solution_>
     basicPlumbingTermination.resetTerminateEarly();
     solverScope.setStartingSolverCount(0);
     solverScope.setWorkingRandom(randomFactory.get());
+    solverScope.getSolverStatistics().solvingStarted();
   }
 
   @Override
@@ -366,15 +374,24 @@ public class DefaultSolver<Solution_> extends AbstractSolver<Solution_>
   public void solvingEnded(SolverScope<Solution_> solverScope) {
     super.solvingEnded(solverScope);
     solverScope.endingNow();
+    // All child workers have finished and published their work. Count each root segment once;
+    // child scopes already contribute through the reported counters, not as extra segments.
+    solverScope
+        .getSolverStatistics()
+        .addSegment(
+            solverScope.getTimeMillisSpent(),
+            solverScope.getReportedScoreCalculationCount(),
+            solverScope.getReportedMoveEvaluationCount());
   }
 
   public void outerSolvingEnded(SolverScope<Solution_> solverScope) {
+    var statistics = solverScope.getSolverStatistics();
     logger.info(
         "Solving ended: time spent ({}), best score ({}), move evaluation speed ({}/sec), "
             + "phase total ({}), environment mode ({}), move thread count ({}).",
-        solverScope.getTimeMillisSpent(),
+        statistics.getTimeMillisSpent(),
         solverScope.getBestScore().raw(),
-        solverScope.getReportedMoveEvaluationSpeed(),
+        MathUtils.getSpeed(statistics.getMoveEvaluationCount(), statistics.getTimeMillisSpent()),
         phaseList.size(),
         globalEnvironmentMode.name(),
         moveThreadCountDescription);

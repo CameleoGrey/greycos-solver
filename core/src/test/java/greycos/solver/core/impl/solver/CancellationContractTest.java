@@ -18,6 +18,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import greycos.solver.core.api.solver.SolverJob;
 import greycos.solver.core.api.solver.SolverManager;
+import greycos.solver.core.api.solver.SolverRunResult;
 import greycos.solver.core.api.solver.SolverStatus;
 import greycos.solver.core.api.solver.phase.PhaseCommand;
 import greycos.solver.core.config.constructionheuristic.ConstructionHeuristicPhaseConfig;
@@ -636,7 +637,10 @@ class CancellationContractTest {
         var first = manager.solve("first", firstInput);
         var second = manager.solve("second", problem());
         var finalFuture =
-            new FutureTask<TestdataSolution>(() -> firstInput) {
+            new FutureTask<SolverRunResult<TestdataSolution>>(
+                () -> {
+                  throw new AssertionError("Canceled task must not run.");
+                }) {
               @Override
               public boolean cancel(boolean mayInterruptIfRunning) {
                 if (firstCancellation.compareAndSet(true, false)) {
@@ -651,7 +655,8 @@ class CancellationContractTest {
         var field = DefaultSolverJob.class.getDeclaredField("finalBestSolutionFuture");
         field.setAccessible(true);
         @SuppressWarnings("unchecked")
-        var futureReference = (AtomicReference<Future<TestdataSolution>>) field.get(first);
+        var futureReference =
+            (AtomicReference<Future<SolverRunResult<TestdataSolution>>>) field.get(first);
         futureReference.set(finalFuture);
         var firstChange = first.addProblemChange((s, d) -> {});
         var secondChange = second.addProblemChange((s, d) -> {});

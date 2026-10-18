@@ -96,6 +96,16 @@ record DelegatingListVariableState<Solution_>(
   }
 
   @Override
+  public boolean isPreviousElementExternalized() {
+    return delegate.isPreviousElementExternalized();
+  }
+
+  @Override
+  public boolean isNextElementExternalized() {
+    return delegate.isNextElementExternalized();
+  }
+
+  @Override
   public @Nullable Object getPreviousElement(Object queryCompositeKey) {
     return delegate.getPreviousElement(queryCompositeKey);
   }

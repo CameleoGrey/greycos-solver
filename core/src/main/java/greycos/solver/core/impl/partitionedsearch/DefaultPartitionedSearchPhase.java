@@ -31,6 +31,7 @@ import greycos.solver.core.impl.phase.Phase;
 import greycos.solver.core.impl.phase.PhaseFactory;
 import greycos.solver.core.impl.phase.PhaseType;
 import greycos.solver.core.impl.score.director.InnerScoreDirector;
+import greycos.solver.core.impl.solver.monitoring.SolverWorkSnapshot;
 import greycos.solver.core.impl.solver.recaller.BestSolutionRecaller;
 import greycos.solver.core.impl.solver.recaller.BestSolutionRecallerFactory;
 import greycos.solver.core.impl.solver.scope.SolverScope;
@@ -125,8 +126,9 @@ public class DefaultPartitionedSearchPhase<Solution_> extends AbstractPhase<Solu
         partCount);
 
     var terminationBudget = new PartitionTerminationBudget<>(phaseTermination, phaseScope);
-    phaseScope.addChildThreadsScoreCalculationCount(
-        runPartitionTasks(partList, phaseScope, ownership, terminationBudget));
+    var work = runPartitionTasks(partList, phaseScope, ownership, terminationBudget);
+    phaseScope.addChildThreadsScoreCalculationCount(work.scoreCalculationCount());
+    solverScope.addChildPartitionMoveWork(work);
     phaseScope.endingNow();
     logger.info(
         "{}Partitioned Search phase ({}) ended: time spent ({}), best score ({}),"
@@ -140,7 +142,7 @@ public class DefaultPartitionedSearchPhase<Solution_> extends AbstractPhase<Solu
     phaseEnded(phaseScope);
   }
 
-  private long runPartitionTasks(
+  private SolverWorkSnapshot runPartitionTasks(
       List<Solution_> partList,
       PartitionedSearchPhaseScope<Solution_> phaseScope,
       PartitionOwnership<Solution_> ownership,
@@ -152,14 +154,14 @@ public class DefaultPartitionedSearchPhase<Solution_> extends AbstractPhase<Solu
             partList.size(),
             ThreadUtils.requireNonNullThreads(threadFactory, "Partitioned Search"));
     solverScope.getWorkerRegistry().registerExecutor(executor, "Partitioned Search");
-    var completionService = new ExecutorCompletionService<Long>(executor);
+    var completionService = new ExecutorCompletionService<SolverWorkSnapshot>(executor);
     var tasks = new ArrayList<PartitionTask<Solution_>>(partList.size());
-    var futures = new ArrayList<Future<Long>>(partList.size());
-    var pendingTasks = new IdentityHashMap<Future<Long>, PartitionTask<Solution_>>();
+    var futures = new ArrayList<Future<SolverWorkSnapshot>>(partList.size());
+    var pendingTasks = new IdentityHashMap<Future<SolverWorkSnapshot>, PartitionTask<Solution_>>();
     var childTermination = new ChildThreadPlumbingTermination<Solution_>();
     var semaphore =
         runnablePartThreadLimit == null ? null : new Semaphore(runnablePartThreadLimit, true);
-    long calculationCount = 0L;
+    var work = SolverWorkSnapshot.ZERO;
     Throwable failure = null;
     try {
       for (int partIndex = 0; partIndex < partList.size(); partIndex++) {
@@ -196,10 +198,10 @@ public class DefaultPartitionedSearchPhase<Solution_> extends AbstractPhase<Solu
             || childTermination.isSolverTerminated(solverScope)) {
           break;
         }
-        Future<Long> completed;
+        Future<SolverWorkSnapshot> completed;
         while ((completed = completionService.poll()) != null) {
           var task = pendingTasks.remove(completed);
-          calculationCount += completedCalculationCount(completed, task.getPartIndex());
+          work = work.plus(completedWork(completed, task.getPartIndex()));
         }
         var move = partitionQueue.poll(pendingTasks.isEmpty() ? 0L : 10L);
         if (move != null) {
@@ -238,8 +240,7 @@ public class DefaultPartitionedSearchPhase<Solution_> extends AbstractPhase<Solu
     // termination.
     try {
       for (var entry : pendingTasks.entrySet()) {
-        calculationCount +=
-            completedCalculationCount(entry.getKey(), entry.getValue().getPartIndex());
+        work = work.plus(completedWork(entry.getKey(), entry.getValue().getPartIndex()));
       }
     } finally {
       partitionQueue.stopAcceptingMoves();
@@ -256,10 +257,10 @@ public class DefaultPartitionedSearchPhase<Solution_> extends AbstractPhase<Solu
       Thread.currentThread().interrupt();
       throw new IllegalStateException("Solver thread was interrupted in Partitioned Search.", e);
     }
-    return calculationCount;
+    return work;
   }
 
-  private long completedCalculationCount(Future<Long> future, int partIndex) {
+  private SolverWorkSnapshot completedWork(Future<SolverWorkSnapshot> future, int partIndex) {
     try {
       return future.get();
     } catch (InterruptedException e) {
@@ -281,7 +282,7 @@ public class DefaultPartitionedSearchPhase<Solution_> extends AbstractPhase<Solu
   private void stopAndAwaitPartitions(
       ExecutorService executor,
       List<PartitionTask<Solution_>> tasks,
-      List<Future<Long>> futures,
+      List<Future<SolverWorkSnapshot>> futures,
       PartitionQueue<Solution_> partitionQueue,
       boolean abort) {
     boolean interrupted = Thread.interrupted();
@@ -342,7 +343,7 @@ public class DefaultPartitionedSearchPhase<Solution_> extends AbstractPhase<Solu
   private void cancelPartitionTasks(
       ExecutorService executor,
       List<PartitionTask<Solution_>> tasks,
-      List<Future<Long>> futures,
+      List<Future<SolverWorkSnapshot>> futures,
       Throwable failure) {
     for (var future : futures) {
       future.cancel(true);

@@ -141,4 +141,33 @@ class LinkedIdentityHashSetTest {
     identityHashSet.clear();
     assertThat(identityHashSet).isEmpty();
   }
+
+  @Test
+  void preservesIdentityAndInsertionOrderAfterLargeThenSmallClears() {
+    record Key(int id) {}
+    var identityHashSet = new LinkedIdentityHashSet<Key>();
+    for (var i = 0; i < 1000; i++) {
+      identityHashSet.add(new Key(i));
+    }
+    identityHashSet.clear();
+    var first = new Key(1);
+    var second = new Key(1);
+    for (var cycle = 0; cycle < 10; cycle++) {
+      identityHashSet.add(first);
+      identityHashSet.clear();
+    }
+
+    assertThat(identityHashSet.add(second)).isTrue();
+    assertThat(identityHashSet.add(first)).isTrue();
+    assertThat(identityHashSet.add(second)).isFalse();
+    assertThat(identityHashSet).hasSize(2);
+    var iterator = identityHashSet.iterator();
+    assertThat(iterator.next()).isSameAs(second);
+    assertThat(iterator.next()).isSameAs(first);
+    assertThat(iterator.hasNext()).isFalse();
+    assertThat(identityHashSet.remove(new Key(1))).isFalse();
+    assertThat(identityHashSet.remove(second)).isTrue();
+    assertThat(identityHashSet).hasSize(1);
+    assertThat(identityHashSet.iterator().next()).isSameAs(first);
+  }
 }

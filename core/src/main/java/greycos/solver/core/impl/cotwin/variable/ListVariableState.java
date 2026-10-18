@@ -107,6 +107,18 @@ public interface ListVariableState<Solution_, Entity_, Element_>
   int getUnassignedCount();
 
   /**
+   * Whether {@link #getPreviousElement(Object)} reads an externalized shadow instead of the list.
+   */
+  default boolean isPreviousElementExternalized() {
+    return false;
+  }
+
+  /** Whether {@link #getNextElement(Object)} reads an externalized shadow instead of the list. */
+  default boolean isNextElementExternalized() {
+    return false;
+  }
+
+  /**
    * @param element never null
    * @return null if the element is the first element in the list
    */

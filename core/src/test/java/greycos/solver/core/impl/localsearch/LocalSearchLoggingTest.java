@@ -202,7 +202,7 @@ class LocalSearchLoggingTest {
 
   @ParameterizedTest
   @EnumSource(LocalSearchStepLoggingMode.class)
-  void prematureRejectedFallbackIsLoggedOnlyInAllMode(LocalSearchStepLoggingMode mode) {
+  void completedRejectedFallbackUsesRegularLogOnlyInAllMode(LocalSearchStepLoggingMode mode) {
     var phase =
         scriptedPhase(LocalSearchType.LATE_ACCEPTANCE, mode)
             .withTerminationConfig(new TerminationConfig().withMoveCountLimit(1L));
@@ -229,12 +229,45 @@ class LocalSearchLoggingTest {
                         .contains(
                             "score (0)",
                             "best score (4)",
-                            "terminated prematurely after selecting 1 moves"));
+                            "accepted/selected move count (0/1)",
+                            "picked move (e0 {v5 -> v0})")
+                        .doesNotContain("terminated prematurely"));
+        assertThat(MOVE_STRINGS).hasValue(1);
       } else {
         assertThat(capture.steps()).isEmpty();
         assertThat(MOVE_STRINGS).hasValue(0);
       }
       assertThat(capture.summaries()).hasSize(1);
+    }
+  }
+
+  @ParameterizedTest
+  @EnumSource(LocalSearchStepLoggingMode.class)
+  void incompleteDecisionDoesNotLogACompletedStep(LocalSearchStepLoggingMode mode) {
+    var phase =
+        scriptedPhase(LocalSearchType.LATE_ACCEPTANCE, mode)
+            .withMoveSelectorConfig(
+                new MoveIteratorFactoryConfig()
+                    .withMoveIteratorFactoryClass(EmptyMoves.class)
+                    .withSelectionOrder(SelectionOrder.ORIGINAL));
+    try (var capture = new LogCapture(Level.DEBUG)) {
+      var run = run(phase, "NONE", false, problem(0));
+
+      assertThat(run.steps()).isEmpty();
+      assertThat(run.score()).isEqualTo(SimpleScore.ZERO);
+      assertThat(run.values()).containsExactly("v0");
+      assertThat(capture.steps()).isEmpty();
+      assertThat(MOVE_STRINGS).hasValue(0);
+      assertThat(capture.events)
+          .anySatisfy(
+              event -> {
+                assertThat(event.getLevel()).isEqualTo(Level.WARN);
+                assertThat(event.getFormattedMessage())
+                    .contains("No doable selected move at step index (0)");
+              });
+      assertThat(capture.summaries())
+          .singleElement()
+          .satisfies(event -> assertThat(event.getFormattedMessage()).contains("step total (0)"));
     }
   }
 
@@ -453,6 +486,19 @@ class LocalSearchLoggingTest {
               .mapToInt(
                   entity -> SCORES[Integer.parseInt(entity.getValue().getCode().substring(1))])
               .sum());
+    }
+  }
+
+  public static class EmptyMoves extends NextValueMoves {
+    @Override
+    public long getSize(ScoreDirector<TestdataSolution> director) {
+      return 0L;
+    }
+
+    @Override
+    public Iterator<Move<TestdataSolution>> createOriginalMoveIterator(
+        ScoreDirector<TestdataSolution> director) {
+      return List.<Move<TestdataSolution>>of().iterator();
     }
   }
 

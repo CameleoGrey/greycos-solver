@@ -8,6 +8,10 @@ import org.jspecify.annotations.NullMarked;
  *
  * <p>Instances are {@link Comparable}, so that they can be sorted in a predictable iteration order.
  *
+ * <p>Equal when describing the same variable; an inherited variable obtained from different
+ * entities gives equal metamodels with a different {@link #entity()}, because moves compare
+ * variables by what they change.
+ *
  * <p><strong>This package and all of its contents are part of the Neighborhoods API, which is under
  * development and is only offered as a preview feature.</strong> There are no guarantees for
  * backward compatibility; any class, method, or field may change or be removed without prior
@@ -28,7 +32,7 @@ public sealed interface VariableMetaModel<Solution_, Entity_, Value_>
     permits GenuineVariableMetaModel, ShadowVariableMetaModel {
 
   /**
-   * Describes the entity that owns this variable.
+   * The entity this metamodel was obtained from, not necessarily the declaring one.
    *
    * @return never null
    */

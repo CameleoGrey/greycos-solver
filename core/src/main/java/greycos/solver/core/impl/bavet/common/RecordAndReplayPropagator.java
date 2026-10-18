@@ -2,7 +2,6 @@ package greycos.solver.core.impl.bavet.common;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.List;
@@ -44,15 +43,15 @@ public final class RecordAndReplayPropagator<Tuple_ extends Tuple> implements Pr
 
   private final Supplier<BavetPrecomputeBuildHelper<Tuple_>> precomputeBuildHelperSupplier;
   private final UnaryOperator<Tuple_> internalTupleToOutputTupleMapper;
-  private final Map<Object, List<Tuple_>> objectToOutputTuplesMap;
+  private final Map<Object, RecordedTupleList<Tuple_>> objectToOutputTuplesMap;
   private final List<Tuple_> factOutputTupleList;
-  private final Set<Object> alreadyUpdatingSet = Collections.newSetFromMap(new IdentityHashMap<>());
   private final Map<Class<?>, Boolean> objectClassToIsEntitySourceClassMap;
   private final Map<Class<?>, List<AbstractRootNode<?>>> rootNodesByClassScratch;
   private final IdentityHashMap<Tuple_, Tuple_> internalTupleToOutputTupleMapScratch;
-  private final ArrayDeque<ArrayList<Tuple_>> reusableTupleListPool;
+  private final ArrayDeque<RecordedTupleList<Tuple_>> reusableTupleListPool;
 
   private final StaticPropagationQueue<Tuple_> propagationQueue;
+  private long updateEpoch = 0;
 
   public RecordAndReplayPropagator(
       Supplier<BavetPrecomputeBuildHelper<Tuple_>> precomputeBuildHelperSupplier,
@@ -100,19 +99,16 @@ public final class RecordAndReplayPropagator<Tuple_ extends Tuple> implements Pr
   }
 
   public void update(Object object) {
-    if (!alreadyUpdatingSet.add(object)) {
-      // The list was already sent to the propagation queue.
-      // Don't iterate over it again, even though the queue would deduplicate its contents.
-      return;
-    }
     // Updates happen very frequently, so we optimize by avoiding the update queue
     // and going straight to the propagation queue.
-    // The propagation queue deduplicates updates internally.
     var outTupleList = objectToOutputTuplesMap.get(object);
-    if (outTupleList != null) {
-      for (int i = 0, outTupleListSize = outTupleList.size(); i < outTupleListSize; i++) {
-        propagationQueue.update(outTupleList.get(i));
-      }
+    if (outTupleList == null || outTupleList.lastUpdateEpoch == updateEpoch) {
+      // Null: the object produces no tuples. Same epoch: already queued in this cycle.
+      return;
+    }
+    outTupleList.lastUpdateEpoch = updateEpoch;
+    for (int i = 0, outTupleListSize = outTupleList.size(); i < outTupleListSize; i++) {
+      propagationQueue.update(outTupleList.get(i));
     }
   }
 
@@ -192,7 +188,7 @@ public final class RecordAndReplayPropagator<Tuple_ extends Tuple> implements Pr
   @Override
   public void propagateUpdates() {
     propagationQueue.propagateUpdates();
-    alreadyUpdatingSet.clear();
+    updateEpoch++;
   }
 
   @Override
@@ -291,21 +287,28 @@ public final class RecordAndReplayPropagator<Tuple_ extends Tuple> implements Pr
     internalTupleToOutputTupleMapScratch.clear();
   }
 
-  private ArrayList<Tuple_> borrowTupleList() {
+  private RecordedTupleList<Tuple_> borrowTupleList() {
     var tupleList = reusableTupleListPool.pollLast();
-    return tupleList != null ? tupleList : new ArrayList<>();
+    if (tupleList == null) {
+      tupleList = new RecordedTupleList<>();
+    }
+    // A rebuilt cache can reuse a list that was already updated in this same epoch.
+    // Subtraction also keeps the initial stamp distinct when the epoch wraps around.
+    tupleList.lastUpdateEpoch = updateEpoch - 1;
+    return tupleList;
   }
 
-  @SuppressWarnings("unchecked")
-  private void recycleTupleList(List<Tuple_> tupleList) {
-    if (tupleList instanceof ArrayList<?> arrayList) {
-      int tupleListSize = tupleList.size();
-      var reusableTupleList = (ArrayList<Tuple_>) arrayList;
-      reusableTupleList.clear();
-      if (tupleListSize <= MAX_REUSABLE_TUPLE_LIST_SIZE
-          && reusableTupleListPool.size() < MAX_REUSABLE_TUPLE_LIST_POOL_SIZE) {
-        reusableTupleListPool.addLast(reusableTupleList);
-      }
+  private void recycleTupleList(RecordedTupleList<Tuple_> tupleList) {
+    int tupleListSize = tupleList.size();
+    tupleList.clear();
+    if (tupleListSize <= MAX_REUSABLE_TUPLE_LIST_SIZE
+        && reusableTupleListPool.size() < MAX_REUSABLE_TUPLE_LIST_POOL_SIZE) {
+      reusableTupleListPool.addLast(tupleList);
     }
+  }
+
+  private static final class RecordedTupleList<Tuple_> extends ArrayList<Tuple_> {
+
+    private long lastUpdateEpoch;
   }
 }

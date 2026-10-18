@@ -45,6 +45,7 @@ import io.micrometer.core.instrument.Tags;
  * @param <Solution_> the solution type, the class with the {@link PlanningSolution} annotation
  */
 public class SolverScope<Solution_> {
+  private final SolverRunStatisticsTracker solverRunStatistics = new SolverRunStatisticsTracker();
 
   private final Clock clock;
   private SolverWorkerRegistry workerRegistry = new SolverWorkerRegistry();
@@ -85,6 +86,10 @@ public class SolverScope<Solution_> {
 
   private long childThreadsScoreCalculationCount = 0L;
 
+  // Reporting only: partition moves must not consume this scope's local termination budget.
+  // Scores already flow through childThreadsScoreCalculationCount and the phase score counter.
+  private SolverWorkSnapshot childPartitionMoveWork = SolverWorkSnapshot.ZERO;
+
   private long moveEvaluationCount = 0L;
 
   private Score<?> startingInitializedScore;
@@ -113,6 +118,10 @@ public class SolverScope<Solution_> {
 
   public SolverScope(Clock clock) {
     this.clock = Objects.requireNonNull(clock);
+  }
+
+  public SolverRunStatisticsTracker getSolverStatistics() {
+    return solverRunStatistics;
   }
 
   public SolverMetricRun getMetricRun() {
@@ -187,13 +196,33 @@ public class SolverScope<Solution_> {
 
   public long getReportedMoveEvaluationCount() {
     return getMoveEvaluationCount()
+        + childPartitionMoveWork.moveEvaluationCount()
         + (reportIslandWork ? islandWorkAccounting.snapshot().moveEvaluationCount() : 0L);
   }
 
   public Map<String, Long> getReportedMoveCountsByType() {
     var local = new SolverWorkSnapshot(0L, 0L, getMoveEvaluationCountPerType());
+    if (childPartitionMoveWork != SolverWorkSnapshot.ZERO) {
+      local = local.plus(childPartitionMoveWork);
+    }
     return (reportIslandWork ? local.plus(islandWorkAccounting.snapshot()) : local)
         .moveCountsByType();
+  }
+
+  public SolverWorkSnapshot getChildPartitionMoveWork() {
+    return childPartitionMoveWork;
+  }
+
+  /** Called on the owning solver thread after all partition workers have finished successfully. */
+  public void addChildPartitionMoveWork(SolverWorkSnapshot work) {
+    if (work.moveEvaluationCount() == 0L && work.moveCountsByType().isEmpty()) {
+      return;
+    }
+    var moveWork = new SolverWorkSnapshot(0L, work.moveEvaluationCount(), work.moveCountsByType());
+    childPartitionMoveWork =
+        childPartitionMoveWork == SolverWorkSnapshot.ZERO
+            ? moveWork
+            : childPartitionMoveWork.plus(moveWork);
   }
 
   public long getReportedScoreCalculationSpeed() {
@@ -447,6 +476,7 @@ public class SolverScope<Solution_> {
     this.moveEvaluationCount = 0L;
     this.childScopeCount = 0;
     this.childThreadsScoreCalculationCount = 0L;
+    this.childPartitionMoveWork = SolverWorkSnapshot.ZERO;
     this.moveEvaluationCountPerTypeMap.clear();
   }
 

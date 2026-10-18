@@ -14,10 +14,15 @@ public final class SolverMetricSamples {
   private SolverMetricSamples() {}
 
   public static SolverWorkSnapshot localWork(SolverScope<?> scope) {
-    return new SolverWorkSnapshot(
-        scope.getScoreCalculationCount(),
-        scope.getMoveEvaluationCount(),
-        scope.getMoveEvaluationCountPerType());
+    var local =
+        new SolverWorkSnapshot(
+            scope.getScoreCalculationCount(),
+            scope.getMoveEvaluationCount(),
+            scope.getMoveEvaluationCountPerType());
+    var partitionWork = scope.getChildPartitionMoveWork();
+    // Descendant islands publish separate sources to the shared accounting. Only partition
+    // work belongs to this local snapshot; including shared island totals would count it twice.
+    return partitionWork == SolverWorkSnapshot.ZERO ? local : local.plus(partitionWork);
   }
 
   public static SolverWorkSnapshot reportedWork(SolverScope<?> scope) {

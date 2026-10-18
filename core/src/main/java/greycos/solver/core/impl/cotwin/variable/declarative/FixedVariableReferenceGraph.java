@@ -65,6 +65,11 @@ public final class FixedVariableReferenceGraph<Solution_>
   }
 
   @Override
+  public boolean hasPendingChanges() {
+    return !changeTracker.isEmpty();
+  }
+
+  @Override
   void markChanged(@NonNull GraphNode<Solution_> node) {
     // Before the graph is finalized, ignore changes, since
     // we don't know the topological order yet

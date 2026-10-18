@@ -101,9 +101,9 @@ class NullableFixedSourceShadowVariableTest {
     assertThat(graph.updateChanged()).isTrue();
     assertThat(first.barCalls).isEqualTo(1);
 
-    graph.beforeVariableChanged(previous, second);
+    graph.resolveHookFor(previous).beforeVariableChanged(second);
     second.previous = unrelated;
-    graph.afterVariableChanged(previous, second);
+    graph.resolveHookFor(previous).afterVariableChanged(second);
     assertThat(graph.updateChanged()).isTrue();
     assertThat(second.foo).isEqualTo(8);
     assertThat(second.fooCalls).isEqualTo(2);
@@ -112,9 +112,9 @@ class NullableFixedSourceShadowVariableTest {
     assertThat(unrelated.fooCalls).isEqualTo(1);
 
     // first.foo -> second.bar -> first.foo is a real cycle; constant bar nodes stay independent.
-    graph.beforeVariableChanged(previous, first);
+    graph.resolveHookFor(previous).beforeVariableChanged(first);
     first.previous = second;
-    graph.afterVariableChanged(previous, first);
+    graph.resolveHookFor(previous).afterVariableChanged(first);
     assertThat(graph.updateChanged()).isEqualTo(!ignoreInconsistent);
     assertThat(graph.getVariableLoops()).hasSize(1);
     if (!ignoreInconsistent) {
@@ -122,9 +122,9 @@ class NullableFixedSourceShadowVariableTest {
       assertThat(second.bar).isNull();
     }
 
-    graph.beforeVariableChanged(previous, first);
+    graph.resolveHookFor(previous).beforeVariableChanged(first);
     first.previous = null;
-    graph.afterVariableChanged(previous, first);
+    graph.resolveHookFor(previous).afterVariableChanged(first);
     assertThat(graph.updateChanged()).isTrue();
     assertThat(graph.getVariableLoops()).isEmpty();
     assertThat(first.foo).isEqualTo(1);

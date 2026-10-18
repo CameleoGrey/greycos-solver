@@ -24,6 +24,7 @@ import java.util.function.Consumer;
 import greycos.solver.core.api.solver.Solver;
 import greycos.solver.core.api.solver.change.ProblemChange;
 import greycos.solver.core.api.solver.event.EventProducerId;
+import greycos.solver.core.api.solver.event.FinalBestSolutionEvent;
 import greycos.solver.core.api.solver.event.NewBestSolutionEvent;
 import greycos.solver.core.testcotwin.TestdataSolution;
 
@@ -109,7 +110,7 @@ class ConsumerSupportTest {
     consumeIntermediateBestSolution(TestdataSolution.generateSolution());
     assertThat(futureProblemChange).isNotCompleted();
     TestdataSolution finalBestSolution = TestdataSolution.generateSolution();
-    consumerSupport.consumeFinalBestSolution(finalBestSolution);
+    consumerSupport.consumeFinalBestSolution(finalEvent(finalBestSolution));
     futureProblemChange.get();
     assertThat(finalBestSolutionRef.get()).isSameAs(finalBestSolution);
     assertThat(futureProblemChange).isCompleted();
@@ -152,7 +153,7 @@ class ConsumerSupportTest {
     assertThat(futureProblemChange).isNotCompleted();
 
     CompletableFuture<Void> pendingProblemChange = addProblemChange(bestSolutionHolder);
-    consumerSupport.consumeFinalBestSolution(TestdataSolution.generateSolution());
+    consumerSupport.consumeFinalBestSolution(finalEvent(TestdataSolution.generateSolution()));
     futureProblemChange.get();
     assertThat(futureProblemChange).isCompleted();
 
@@ -188,7 +189,7 @@ class ConsumerSupportTest {
 
     TestdataSolution finalBestSolution = TestdataSolution.generateSolution();
     consumeIntermediateBestSolution(finalBestSolution);
-    consumerSupport.consumeFinalBestSolution(finalBestSolution);
+    consumerSupport.consumeFinalBestSolution(finalEvent(finalBestSolution));
 
     assertThat(intermediateConsumed.await(1, TimeUnit.SECONDS)).isTrue();
     assertThat(finalConsumed.await(1, TimeUnit.SECONDS)).isTrue();
@@ -230,7 +231,7 @@ class ConsumerSupportTest {
     assertThat(callbackStarted.getCount()).isOne();
 
     try {
-      consumerSupport.consumeFinalBestSolution(latestSolution);
+      consumerSupport.consumeFinalBestSolution(finalEvent(latestSolution));
       assertThat(callbackStarted.await(5, TimeUnit.SECONDS)).isTrue();
       assertThat(firstChange).isNotCompleted();
       assertThat(secondChange).isNotCompleted();
@@ -314,7 +315,7 @@ class ConsumerSupportTest {
     var solution = TestdataSolution.generateSolution();
     consumeIntermediateBestSolution(solution);
 
-    consumerSupport.consumeFinalBestSolution(solution);
+    consumerSupport.consumeFinalBestSolution(finalEvent(solution));
     consumerSupport.close();
 
     assertThatExceptionOfType(ExecutionException.class).isThrownBy(change::get).withCause(failure);
@@ -359,7 +360,7 @@ class ConsumerSupportTest {
       consumerSupport.consumeFirstInitializedSolution(
           solution, EventProducerId.constructionHeuristic(0), false);
       consumerSupport.consumeStartSolverJob(solution);
-      consumerSupport.consumeFinalBestSolution(solution);
+      consumerSupport.consumeFinalBestSolution(finalEvent(solution));
       assertThat(lifecycleConsumed.await(100, TimeUnit.MILLISECONDS)).isFalse();
     } finally {
       releaseBest.countDown();
@@ -568,7 +569,7 @@ class ConsumerSupportTest {
       producing.set(false);
       producer.join();
     }
-    consumerSupport.consumeFinalBestSolution(latestSolution.get());
+    consumerSupport.consumeFinalBestSolution(finalEvent(latestSolution.get()));
     consumerSupport.close();
     assertThat(lastConsumed).hasValue(latestSolution.get());
     assertThat(failures).isEmpty();
@@ -629,7 +630,7 @@ class ConsumerSupportTest {
               new BestSolutionHolder<>());
       var solution = TestdataSolution.generateSolution();
       consumeIntermediateBestSolution(solution);
-      consumerSupport.consumeFinalBestSolution(solution);
+      consumerSupport.consumeFinalBestSolution(finalEvent(solution));
       var concurrentClose = Thread.ofPlatform().daemon().start(consumerSupport::close);
       closeWithinTimeout(consumerSupport);
       concurrentClose.join(TimeUnit.SECONDS.toMillis(5));
@@ -666,6 +667,10 @@ class ConsumerSupportTest {
               }
             });
     completed.get(5, TimeUnit.SECONDS);
+  }
+
+  private static FinalBestSolutionEvent<TestdataSolution> finalEvent(TestdataSolution solution) {
+    return () -> solution;
   }
 
   private CompletableFuture<Void> addProblemChange(

@@ -85,6 +85,7 @@ class QueuedSolverJobLifecycleTest {
       assertThat(job.getSolverStatus()).isEqualTo(SolverStatus.NOT_SOLVING);
       assertThat(fixture.manager.getSolverStatus("queued")).isEqualTo(SolverStatus.NOT_SOLVING);
       assertThat(job.isTerminatedEarly()).isTrue();
+      assertThatThrownBy(job::getResult).isInstanceOf(CancellationException.class);
       assertThat(finderCalls).hasValue(1); // Only the canceled-input getter above called it.
       assertThatThrownBy(job::call).isInstanceOf(CancellationException.class);
       assertThat(finderCalls).hasValue(1);

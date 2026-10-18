@@ -20,6 +20,7 @@ import greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import greycos.solver.core.api.solver.ProblemSizeStatistics;
 import greycos.solver.core.api.solver.Solver;
 import greycos.solver.core.api.solver.SolverJob;
+import greycos.solver.core.api.solver.SolverRunResult;
 import greycos.solver.core.api.solver.SolverStatus;
 import greycos.solver.core.api.solver.change.ProblemChange;
 import greycos.solver.core.api.solver.event.BestSolutionChangedEvent;
@@ -45,7 +46,7 @@ import org.slf4j.LoggerFactory;
  */
 @NullMarked
 public final class DefaultSolverJob<Solution_>
-    implements SolverJob<Solution_>, Callable<Solution_> {
+    implements SolverJob<Solution_>, Callable<SolverRunResult<Solution_>> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DefaultSolverJob.class);
   private static final Duration EARLY_TERMINATION_TIMEOUT = Duration.ofMinutes(1);
@@ -73,8 +74,8 @@ public final class DefaultSolverJob<Solution_>
   private final BestSolutionHolder<Solution_> bestSolutionHolder = new BestSolutionHolder<>();
   private final AtomicReference<SolverStatus> solverStatus =
       new AtomicReference<>(SolverStatus.SOLVING_SCHEDULED);
-  private final AtomicReference<@Nullable Future<Solution_>> finalBestSolutionFuture =
-      new AtomicReference<>();
+  private final AtomicReference<@Nullable Future<SolverRunResult<Solution_>>>
+      finalBestSolutionFuture = new AtomicReference<>();
   private final AtomicReference<@Nullable ConsumerSupport<Solution_, Object>> consumerSupport =
       new AtomicReference<>();
   private final AtomicReference<@Nullable ProblemSizeStatistics> temporaryProblemSizeStatistics =
@@ -108,7 +109,8 @@ public final class DefaultSolverJob<Solution_>
     this.terminatedLatch = new CountDownLatch(1);
   }
 
-  public void setFinalBestSolutionFuture(Future<Solution_> finalBestSolutionFuture) {
+  public void setFinalBestSolutionFuture(
+      Future<SolverRunResult<Solution_>> finalBestSolutionFuture) {
     var oldFuture = this.finalBestSolutionFuture.getAndSet(finalBestSolutionFuture);
     if (oldFuture != null) {
       throw new IllegalStateException(
@@ -128,7 +130,7 @@ public final class DefaultSolverJob<Solution_>
   }
 
   @Override
-  public Solution_ call() {
+  public SolverRunResult<Solution_> call() {
     boolean started = false;
     boolean cancelledBeforeStart = false;
     boolean failed = false;
@@ -175,9 +177,9 @@ public final class DefaultSolverJob<Solution_>
       solver.addPhaseLifecycleListener(
           new StartSolverJobPhaseLifecycleListener(currentConsumerSupport));
       solver.addEventListener(this::onBestSolutionChangedEvent);
-      final var finalBestSolution = solver.solve(problem);
-      currentConsumerSupport.consumeFinalBestSolution(finalBestSolution);
-      return finalBestSolution;
+      var result = solver.solveAndSummarize(problem);
+      currentConsumerSupport.consumeFinalBestSolution(result);
+      return result;
     } catch (Throwable e) {
       if (cancelledBeforeStart) {
         throw e;
@@ -406,19 +408,24 @@ public final class DefaultSolverJob<Solution_>
   @Override
   public Solution_ getFinalBestSolution() throws InterruptedException, ExecutionException {
     try {
-      var future = finalBestSolutionFuture.get();
-      if (future == null) {
-        throw new IllegalStateException(
-            "Impossible state: the finalBestSolutionFuture is not set yet for problemId (%s)."
-                .formatted(problemId));
-      }
-      return future.get();
+      return getResult().solution();
     } catch (CancellationException cancellationException) {
       LOGGER.debug(
           "terminateEarly() has been called before the solver job started solving. "
               + "Retrieving the input problem instead.");
       return problemFinder.apply(problemId);
     }
+  }
+
+  @Override
+  public SolverRunResult<Solution_> getResult() throws InterruptedException, ExecutionException {
+    var future = finalBestSolutionFuture.get();
+    if (future == null) {
+      throw new IllegalStateException(
+          "Impossible state: the finalBestSolutionFuture is not set yet for problemId (%s)."
+              .formatted(problemId));
+    }
+    return future.get();
   }
 
   @Override
@@ -621,13 +628,14 @@ public final class DefaultSolverJob<Solution_>
                       new IllegalStateException(
                           "Impossible state: Solving failed for problemId (%s) because the phase id %d was not found."
                               .formatted(problemId, phaseScope.getPhaseIndex())));
-      if (eventPhase instanceof PossiblyInitializingPhase<Solution_> possiblyInitializingPhase
+      if (firstInitializedSolutionConsumer != null
+          && eventPhase instanceof PossiblyInitializingPhase<Solution_> possiblyInitializingPhase
           && possiblyInitializingPhase.isLastInitializingPhase()) {
         // The Solver thread calls the method,
         // but the consumption is done asynchronously by the Consumer thread.
         // Only happens if the phase initializes the solution.
         consumerSupport.consumeFirstInitializedSolution(
-            phaseScope.getWorkingSolution(),
+            phaseScope.getScoreDirector().cloneWorkingSolution(),
             phaseScope.getPhaseId(),
             possiblyInitializingPhase.getTerminationStatus().early());
       }

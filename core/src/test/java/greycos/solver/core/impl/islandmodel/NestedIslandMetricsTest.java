@@ -80,7 +80,9 @@ class NestedIslandMetricsTest extends AbstractMeterTest {
     try (var executor = Executors.newSingleThreadExecutor()) {
       Metrics.addRegistry(registry);
       try {
-        var solving = executor.submit(() -> solver.solve(TestdataSolution.generateSolution(3, 3)));
+        var solving =
+            executor.submit(
+                () -> solver.solveAndSummarize(TestdataSolution.generateSolution(3, 3)));
         try {
           assertThat(entered.await(5, TimeUnit.SECONDS)).isTrue();
           assertThat(islandIds(registry))
@@ -100,7 +102,9 @@ class NestedIslandMetricsTest extends AbstractMeterTest {
                     assertThat(ids.stream().filter(id -> id.contains("/"))).hasSize(1);
                   });
           release.getLast().countDown();
-          solving.get(5, TimeUnit.SECONDS);
+          var result = solving.get(5, TimeUnit.SECONDS);
+          assertThat(result.scoreCalculationCount()).isEqualTo(solver.getScoreCalculationCount());
+          assertThat(result.moveEvaluationCount()).isEqualTo(solver.getMoveEvaluationCount());
 
           assertThat(islandIds(registry)).isEmpty();
           assertThat(samples.stream().filter(sample -> sample.source().contains("/phase-")))

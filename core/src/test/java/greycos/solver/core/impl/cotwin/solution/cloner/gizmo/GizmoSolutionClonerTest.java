@@ -5,10 +5,18 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
 import greycos.solver.core.api.cotwin.solution.cloner.SolutionCloner;
@@ -27,12 +35,149 @@ import greycos.solver.core.testcotwin.inheritance.solution.baseannotated.childno
 import greycos.solver.core.testcotwin.inheritance.solution.baseannotated.childnot.TestdataOnlyBaseAnnotatedSolution;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 
 import io.quarkus.gizmo2.Gizmo;
 import io.quarkus.gizmo2.desc.FieldDesc;
 import io.quarkus.gizmo2.desc.MethodDesc;
 
 class GizmoSolutionClonerTest extends AbstractSolutionClonerTest {
+
+  @Test
+  void varyingCloneSizesKeepIndependentGraphsAndUpdateOnlyAfterSuccess()
+      throws ReflectiveOperationException {
+    var descriptor = TestdataMixedCascadingSolution.buildSolutionDescriptor();
+    var classLoader = new GizmoClassLoader();
+    var cloner = GizmoSolutionClonerFactory.build(descriptor, classLoader);
+    var otherCloner = GizmoSolutionClonerFactory.build(descriptor, classLoader);
+    var countField = cloner.getClass().getDeclaredField("lastCloneObjectCount");
+    countField.setAccessible(true);
+    assertThat(Modifier.isPrivate(countField.getModifiers())).isTrue();
+    assertThat(Modifier.isVolatile(countField.getModifiers())).isTrue();
+    assertThat(Modifier.isStatic(countField.getModifiers())).isFalse();
+    assertThat(countField.getInt(cloner)).isZero();
+
+    var small = cyclicGraph(2, 1);
+    var large = cyclicGraph(8, 24);
+    var clonedObjects = Collections.newSetFromMap(new IdentityHashMap<Object, Boolean>());
+    assertIndependentGraph(small, cloner.cloneSolution(small), clonedObjects);
+    var smallCount = countField.getInt(cloner);
+    assertThat(smallCount).isPositive();
+    assertIndependentGraph(large, cloner.cloneSolution(large), clonedObjects);
+    var largeCount = countField.getInt(cloner);
+    assertThat(largeCount).isGreaterThan(smallCount);
+
+    assertThatCode(() -> cloner.cloneSolution(new TestdataMixedCascadingSolution() {}))
+        .isInstanceOf(IllegalArgumentException.class);
+    assertThat(countField.getInt(cloner)).isEqualTo(largeCount);
+
+    assertIndependentGraph(small, cloner.cloneSolution(small), clonedObjects);
+    assertThat(countField.getInt(cloner)).isEqualTo(smallCount);
+    assertThat(countField.getInt(otherCloner)).isZero();
+    assertIndependentGraph(small, otherCloner.cloneSolution(small), clonedObjects);
+    assertThat(countField.getInt(otherCloner)).isEqualTo(smallCount);
+
+    assertThat(cloner.cloneSolution(null)).isNull();
+    assertThat(countField.getInt(cloner)).isZero();
+    assertIndependentGraph(small, cloner.cloneSolution(small), clonedObjects);
+    assertThat(countField.getInt(cloner)).isEqualTo(smallCount);
+  }
+
+  @Test
+  @Timeout(30)
+  void concurrentClonesKeepIdentityMapsIsolated() throws Exception {
+    var cloner =
+        GizmoSolutionClonerFactory.build(
+            TestdataMixedCascadingSolution.buildSolutionDescriptor(), new GizmoClassLoader());
+    var originals = List.of(cyclicGraph(2, 1), cyclicGraph(8, 24));
+    var ready = new CountDownLatch(4);
+    var start = new CountDownLatch(1);
+    var futures = new ArrayList<Future<List<TestdataMixedCascadingSolution>>>();
+    try (var executor = Executors.newFixedThreadPool(4)) {
+      for (var worker = 0; worker < 4; worker++) {
+        futures.add(
+            executor.submit(
+                () -> {
+                  ready.countDown();
+                  if (!start.await(10, TimeUnit.SECONDS)) {
+                    throw new IllegalStateException("Concurrent clone test did not start.");
+                  }
+                  var clones = new ArrayList<TestdataMixedCascadingSolution>();
+                  for (var iteration = 0; iteration < 8; iteration++) {
+                    clones.add(cloner.cloneSolution(originals.get(iteration % originals.size())));
+                  }
+                  return clones;
+                }));
+      }
+      assertThat(ready.await(10, TimeUnit.SECONDS)).isTrue();
+      start.countDown();
+      var clonedObjects = Collections.newSetFromMap(new IdentityHashMap<Object, Boolean>());
+      for (var future : futures) {
+        var clones = future.get(10, TimeUnit.SECONDS);
+        for (var iteration = 0; iteration < clones.size(); iteration++) {
+          assertIndependentGraph(
+              originals.get(iteration % originals.size()), clones.get(iteration), clonedObjects);
+        }
+      }
+    } finally {
+      start.countDown();
+    }
+  }
+
+  private static TestdataMixedCascadingSolution cyclicGraph(int routeCount, int visitsPerRoute) {
+    var solution = TestdataMixedCascadingSolution.generate(routeCount, visitsPerRoute);
+    var undeclaredRoute = new UndeclaredRoute("original marker");
+    undeclaredRoute.visits = solution.routes.getFirst().visits;
+    undeclaredRoute.related = undeclaredRoute;
+    undeclaredRoute.other = solution.routes.get(1);
+    solution.routes.set(0, undeclaredRoute);
+    for (var route : solution.routes) {
+      for (var visit : route.visits) {
+        visit.route = route;
+        visit.partner = solution.visits.getFirst();
+      }
+    }
+    solution.visits.getFirst().dependents.addAll(solution.visits);
+    return solution;
+  }
+
+  private static void assertIndependentGraph(
+      TestdataMixedCascadingSolution original,
+      TestdataMixedCascadingSolution clone,
+      Set<Object> clonedObjects) {
+    assertThat(clone).isNotSameAs(original);
+    assertThat(clone.routes).isNotSameAs(original.routes).hasSize(original.routes.size());
+    assertThat(clone.visits).isNotSameAs(original.visits).hasSize(original.visits.size());
+    assertThat(clone.delays).isSameAs(original.delays);
+    assertThat(clonedObjects.add(clone)).isTrue();
+    assertThat(clonedObjects.add(clone.routes)).isTrue();
+    assertThat(clonedObjects.add(clone.visits)).isTrue();
+    var visitIndex = 0;
+    for (var routeIndex = 0; routeIndex < clone.routes.size(); routeIndex++) {
+      var route = clone.routes.get(routeIndex);
+      var originalRoute = original.routes.get(routeIndex);
+      assertThat(route).isNotSameAs(originalRoute);
+      assertThat(route.visits)
+          .isNotSameAs(originalRoute.visits)
+          .hasSize(originalRoute.visits.size());
+      assertThat(clonedObjects.add(route)).isTrue();
+      assertThat(clonedObjects.add(route.visits)).isTrue();
+      for (var visit : route.visits) {
+        var originalVisit = original.visits.get(visitIndex);
+        assertThat(visit).isSameAs(clone.visits.get(visitIndex++)).isNotSameAs(originalVisit);
+        assertThat(visit.route).isSameAs(route);
+        assertThat(visit.partner).isSameAs(clone.visits.getFirst());
+        assertThat(visit.dependents).isNotSameAs(originalVisit.dependents);
+        assertThat(clonedObjects.add(visit)).isTrue();
+        assertThat(clonedObjects.add(visit.dependents)).isTrue();
+      }
+    }
+    var undeclaredRoute = (UndeclaredRoute) clone.routes.getFirst();
+    assertThat(undeclaredRoute.related).isSameAs(undeclaredRoute);
+    assertThat(undeclaredRoute.other).isSameAs(clone.routes.get(1));
+    assertThat(undeclaredRoute.marker).isEqualTo("original marker");
+    assertThat(clone.visits.getFirst().dependents).containsExactlyElementsOf(clone.visits);
+  }
 
   @Test
   void undeclaredEntitySubclassKeepsDeepFieldsAndSharedReferences() {
@@ -60,8 +205,17 @@ class GizmoSolutionClonerTest extends AbstractSolutionClonerTest {
   }
 
   public static class UndeclaredRoute extends TestdataMixedCascadingSolution.Route {
+    private final String marker;
     public TestdataMixedCascadingSolution.Route related;
     public TestdataMixedCascadingSolution.Route other;
+
+    public UndeclaredRoute() {
+      this("default marker");
+    }
+
+    private UndeclaredRoute(String marker) {
+      this.marker = marker;
+    }
   }
 
   @Test

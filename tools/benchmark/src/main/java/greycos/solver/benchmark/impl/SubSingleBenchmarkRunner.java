@@ -8,6 +8,7 @@ import greycos.solver.benchmark.impl.statistic.StatisticRegistry;
 import greycos.solver.core.api.solver.ScoreAnalysisFetchPolicy;
 import greycos.solver.core.api.solver.SolutionManager;
 import greycos.solver.core.api.solver.SolutionUpdatePolicy;
+import greycos.solver.core.api.solver.SolverRunResult;
 import greycos.solver.core.config.solver.SolverConfig;
 import greycos.solver.core.impl.solver.DefaultSolver;
 import greycos.solver.core.impl.solver.DefaultSolverFactory;
@@ -107,7 +108,7 @@ public class SubSingleBenchmarkRunner<Solution_>
     var solver = (DefaultSolver<Solution_>) solverFactory.buildSolver();
     solver.setMonitorTags(subSingleBenchmarkSolverTags);
     var runTag = subSingleBenchmarkSolverTags.asTags();
-    Solution_ solution;
+    SolverRunResult<Solution_> result;
     Metrics.addRegistry(statisticRegistry);
     try {
       subSingleBenchmarkResult
@@ -119,7 +120,7 @@ public class SubSingleBenchmarkRunner<Solution_>
               });
       solver.addPhaseLifecycleListener(statisticRegistry);
       statisticRegistry.attach(solver.getSolverScope());
-      solution = solver.solve(problem);
+      result = solver.solveAndSummarize(problem);
       for (var statistic : subSingleBenchmarkResult.getEffectiveSubSingleStatisticMap().values()) {
         statistic.close(statisticRegistry, runTag);
         statistic.hibernatePointList();
@@ -130,18 +131,17 @@ public class SubSingleBenchmarkRunner<Solution_>
       Metrics.removeRegistry(statisticRegistry);
       statisticRegistry.close();
     }
-    var timeMillisSpent = solver.getTimeMillisSpent();
+    var solution = result.solution();
 
     if (!warmUp) {
       var solverScope = solver.getSolverScope();
       var solutionDescriptor = solverScope.getSolutionDescriptor();
-      problemBenchmarkResult.registerProblemSizeStatistics(solverScope.getProblemSizeStatistics());
+      problemBenchmarkResult.registerProblemSizeStatistics(result.problemSizeStatistics());
       subSingleBenchmarkResult.setScore(
-          solutionDescriptor.getScore(solution), solverScope.isBestSolutionInitialized());
-      subSingleBenchmarkResult.setTimeMillisSpent(timeMillisSpent);
-      subSingleBenchmarkResult.setScoreCalculationCount(
-          solverScope.getReportedScoreCalculationCount());
-      subSingleBenchmarkResult.setMoveEvaluationCount(solverScope.getReportedMoveEvaluationCount());
+          solutionDescriptor.getScore(solution), result.isSolutionInitialized());
+      subSingleBenchmarkResult.setTimeMillisSpent(result.solvingDuration().toMillis());
+      subSingleBenchmarkResult.setScoreCalculationCount(result.scoreCalculationCount());
+      subSingleBenchmarkResult.setMoveEvaluationCount(result.moveEvaluationCount());
 
       var solutionManager = SolutionManager.create(solverFactory);
       var isConstraintMatchEnabled =

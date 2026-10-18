@@ -61,9 +61,9 @@ class SelfReferenceShadowVariableTest {
     assertThat(first.twiceDepth).isEqualTo(2);
     assertThat(second.depth).isEqualTo(2);
 
-    graph.beforeVariableChanged(previous, first);
+    graph.resolveHookFor(previous).beforeVariableChanged(first);
     first.previous = first;
-    graph.afterVariableChanged(previous, first);
+    graph.resolveHookFor(previous).afterVariableChanged(first);
     assertThat(graph.updateChanged()).isEqualTo(!ignoreInconsistentSolutions);
     assertThat(graph.getVariableLoops())
         .singleElement()
@@ -73,9 +73,9 @@ class SelfReferenceShadowVariableTest {
       assertThat(second.depth).isNull();
     }
 
-    graph.beforeVariableChanged(previous, first);
+    graph.resolveHookFor(previous).beforeVariableChanged(first);
     first.previous = root;
-    graph.afterVariableChanged(previous, first);
+    graph.resolveHookFor(previous).afterVariableChanged(first);
     assertThat(graph.updateChanged()).isTrue();
     assertThat(graph.getVariableLoops()).isEmpty();
     assertThat(first.depth).isEqualTo(1);
@@ -129,9 +129,9 @@ class SelfReferenceShadowVariableTest {
     assertThat(entity.a).isEqualTo(1);
 
     // b now depends on this entity's a, closing a cycle between distinct shadows.
-    graph.beforeVariableChanged(next, entity);
+    graph.resolveHookFor(next).beforeVariableChanged(entity);
     entity.next = entity;
-    graph.afterVariableChanged(next, entity);
+    graph.resolveHookFor(next).afterVariableChanged(entity);
     assertThat(graph.updateChanged()).isEqualTo(!ignoreInconsistentSolutions);
     assertThat(graph.getVariableLoops())
         .singleElement()
@@ -143,9 +143,9 @@ class SelfReferenceShadowVariableTest {
                   .containsExactlyInAnyOrder("a", "b");
             });
 
-    graph.beforeVariableChanged(next, entity);
+    graph.resolveHookFor(next).beforeVariableChanged(entity);
     entity.next = null;
-    graph.afterVariableChanged(next, entity);
+    graph.resolveHookFor(next).afterVariableChanged(entity);
     assertThat(graph.updateChanged()).isTrue();
     assertThat(graph.getVariableLoops()).isEmpty();
     assertThat(entity.b).isZero();

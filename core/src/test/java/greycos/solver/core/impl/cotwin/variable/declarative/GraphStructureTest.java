@@ -28,6 +28,8 @@ import greycos.solver.core.testcotwin.shadow.multi_entity.TestdataMultiEntityDep
 import greycos.solver.core.testcotwin.shadow.multi_entity.TestdataMultiEntityDependencyValue;
 import greycos.solver.core.testcotwin.shadow.simple_list.TestdataDeclarativeSimpleListSolution;
 import greycos.solver.core.testcotwin.shadow.simple_list.TestdataDeclarativeSimpleListValue;
+import greycos.solver.core.testcotwin.shadow.simple_list_next.TestdataDeclarativeSimpleNextListSolution;
+import greycos.solver.core.testcotwin.shadow.simple_list_next.TestdataDeclarativeSimpleNextListValue;
 
 import org.junit.jupiter.api.Test;
 
@@ -38,6 +40,16 @@ class GraphStructureTest {
             GraphStructure.determineGraphStructure(
                 TestdataDeclarativeSimpleListSolution.buildSolutionDescriptor()))
         .hasFieldOrPropertyWithValue("structure", EMPTY);
+  }
+
+  @Test
+  void simpleNextListStructure() {
+    var entity = new TestdataDeclarativeSimpleNextListValue();
+    assertThat(
+            GraphStructure.determineGraphStructure(
+                TestdataDeclarativeSimpleNextListSolution.buildSolutionDescriptor(), entity))
+        .hasFieldOrPropertyWithValue("structure", SINGLE_DIRECTIONAL_PARENT)
+        .hasFieldOrPropertyWithValue("direction", ParentVariableType.NEXT);
   }
 
   @Test

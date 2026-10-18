@@ -187,6 +187,16 @@ final class DefaultListVariableState<Solution_>
   }
 
   @Override
+  public boolean isPreviousElementExternalized() {
+    return previousExternalized;
+  }
+
+  @Override
+  public boolean isNextElementExternalized() {
+    return nextExternalized;
+  }
+
+  @Override
   public @Nullable Object getPreviousElement(Object element) {
     return stateCarrier.getPreviousElement(element);
   }

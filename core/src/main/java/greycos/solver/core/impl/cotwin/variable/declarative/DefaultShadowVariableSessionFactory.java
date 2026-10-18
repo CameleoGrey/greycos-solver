@@ -22,6 +22,7 @@ import java.util.stream.Collectors;
 import greycos.solver.core.api.function.TriFunction;
 import greycos.solver.core.api.solver.SolutionManager;
 import greycos.solver.core.impl.cotwin.solution.descriptor.SolutionDescriptor;
+import greycos.solver.core.impl.cotwin.variable.ListVariableState;
 import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import greycos.solver.core.impl.cotwin.variable.descriptor.VariableDescriptor;
 import greycos.solver.core.impl.score.director.InnerScoreDirector;
@@ -250,17 +251,26 @@ public class DefaultShadowVariableSessionFactory<Solution_> {
 
     var canTerminateEarly = hasNoNonDeclarativeSourcesFromParent(declarativeShadowVariables);
 
-    var topologicalSorter =
-        getTopologicalSorter(
+    var listVariableState =
+        getDirectionalListVariableState(
             graphDescriptor.solutionDescriptor(),
             Objects.requireNonNull(graphDescriptor.changedVariableNotifier().innerScoreDirector()),
-            Objects.requireNonNull(graphStructureAndDirection.direction()),
             Objects.requireNonNull(graphStructureAndDirection.parentMetaModel()));
+    var forward =
+        switch (Objects.requireNonNull(graphStructureAndDirection.direction())) {
+          case PREVIOUS -> true;
+          case NEXT -> false;
+          default ->
+              throw new IllegalStateException(
+                  "Impossible state: expected previous or next parent direction but was %s."
+                      .formatted(graphStructureAndDirection.direction()));
+        };
 
     return new SingleDirectionalParentVariableReferenceGraph<>(
         graphDescriptor.consistencyTracker(),
         sortedDeclarativeVariables,
-        topologicalSorter,
+        listVariableState,
+        forward,
         graphDescriptor.changedVariableNotifier(),
         canTerminateEarly,
         graphDescriptor.entities());
@@ -319,11 +329,11 @@ public class DefaultShadowVariableSessionFactory<Solution_> {
     return sortedDeclarativeVariables;
   }
 
-  private static <Solution_> TopologicalSorter getTopologicalSorter(
-      SolutionDescriptor<Solution_> solutionDescriptor,
-      InnerScoreDirector<Solution_, ?> scoreDirector,
-      ParentVariableType parentVariableType,
-      VariableMetaModel<?, ?, ?> parentMetaModel) {
+  private static <Solution_>
+      ListVariableState<Solution_, Object, Object> getDirectionalListVariableState(
+          SolutionDescriptor<Solution_> solutionDescriptor,
+          InnerScoreDirector<Solution_, ?> scoreDirector,
+          VariableMetaModel<?, ?, ?> parentMetaModel) {
     var parentDescriptor =
         solutionDescriptor
             .findEntityDescriptorOrFail(parentMetaModel.entity().type())
@@ -334,27 +344,7 @@ public class DefaultShadowVariableSessionFactory<Solution_> {
           "The directional shadow variable (%s) must have a planning list source, but has (%s)."
               .formatted(parentDescriptor, sourceDescriptor));
     }
-    return switch (parentVariableType) {
-      case PREVIOUS -> {
-        var listVariableState = scoreDirector.getListVariableState(listDescriptor);
-        yield new TopologicalSorter(
-            listVariableState::getNextElement,
-            Comparator.comparingInt(entity -> listVariableState.getIndexOrElse(entity, 0)),
-            listVariableState::getInverseSingleton);
-      }
-      case NEXT -> {
-        var listVariableState = scoreDirector.getListVariableState(listDescriptor);
-        yield new TopologicalSorter(
-            listVariableState::getPreviousElement,
-            Comparator.comparingInt(entity -> listVariableState.getIndexOrElse(entity, 0))
-                .reversed(),
-            listVariableState::getInverseSingleton);
-      }
-      default ->
-          throw new IllegalStateException(
-              "Impossible state: expected parentVariableType to be previous or next but was %s."
-                  .formatted(parentVariableType));
-    };
+    return scoreDirector.getListVariableState(listDescriptor);
   }
 
   private static <Solution_> VariableReferenceGraph buildArbitraryGraph(

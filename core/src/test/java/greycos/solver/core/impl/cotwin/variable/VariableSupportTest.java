@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.atMost;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
@@ -12,9 +13,12 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -28,6 +32,7 @@ import greycos.solver.core.impl.cotwin.variable.declarative.GraphNode;
 import greycos.solver.core.impl.cotwin.variable.declarative.TopologicalOrderGraph;
 import greycos.solver.core.impl.cotwin.variable.declarative.VariableUpdaterInfo;
 import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
+import greycos.solver.core.impl.cotwin.variable.descriptor.VariableDescriptor;
 import greycos.solver.core.impl.cotwin.variable.violation.BasicVariableTracker;
 import greycos.solver.core.impl.score.director.InnerScoreDirector;
 import greycos.solver.core.impl.score.director.NeighborhoodNotifier;
@@ -50,12 +55,18 @@ import greycos.solver.core.testcotwin.shadow.declarative.basicinverse.TestdataBa
 import greycos.solver.core.testcotwin.shadow.declarative.basicinverse.TestdataBasicInverseGroup;
 import greycos.solver.core.testcotwin.shadow.declarative.basicinverse.TestdataBasicInverseOwner;
 import greycos.solver.core.testcotwin.shadow.declarative.basicinverse.TestdataBasicInverseSolution;
+import greycos.solver.core.testcotwin.shadow.dependency.TestdataDependencyEntity;
+import greycos.solver.core.testcotwin.shadow.dependency.TestdataDependencySimpleSolution;
+import greycos.solver.core.testcotwin.shadow.dependency.TestdataDependencyValue;
 import greycos.solver.core.testcotwin.shadow.inverserelation.TestdataInverseRelationEntity;
 import greycos.solver.core.testcotwin.shadow.inverserelation.TestdataInverseRelationSolution;
 import greycos.solver.core.testcotwin.shadow.inverserelation.TestdataInverseRelationValue;
 import greycos.solver.core.testcotwin.shadow.mixed.TestdataMixedEntity;
 import greycos.solver.core.testcotwin.shadow.mixed.TestdataMixedSolution;
 import greycos.solver.core.testcotwin.shadow.mixed.TestdataMixedValue;
+import greycos.solver.core.testcotwin.shadow.simple_list.TestdataDeclarativeSimpleListEntity;
+import greycos.solver.core.testcotwin.shadow.simple_list.TestdataDeclarativeSimpleListSolution;
+import greycos.solver.core.testcotwin.shadow.simple_list.TestdataDeclarativeSimpleListValue;
 
 import org.junit.jupiter.api.Test;
 
@@ -872,6 +883,266 @@ class VariableSupportTest {
     variableSupport.resetWorkingSolution();
     assertThat(basicVariableState.<TestdataInverseRelationEntity>getInverseCollection(value1))
         .containsExactly(entity);
+  }
+
+  @Test
+  void variableChangeOutsideDeclarativeGraphLeavesShadowVariablesUpToDate() {
+    var solutionDescriptor = TestdataDependencySimpleSolution.buildSolutionDescriptor();
+    var solution = dependencySolution();
+    var variableSupport = createResetAndUpdate(solutionDescriptor, solution);
+    var invalidDescriptor =
+        Objects.requireNonNull(
+            solutionDescriptor
+                .getEntityDescriptorStrict(TestdataDependencyValue.class)
+                .getVariableDescriptor("isInvalid")); // In no @ShadowSources, and no cascade.
+    var value = solution.getValues().getFirst();
+
+    variableSupport.beforeVariableChanged(invalidDescriptor, value);
+    variableSupport.afterVariableChanged(invalidDescriptor, value);
+
+    variableSupport.assertShadowVariablesAreUpToDate();
+  }
+
+  @Test
+  void variableChangeOutsideDeclarativeGraphStillSchedulesCascade() {
+    var solutionDescriptor = TestdataConcurrentSolution.buildSolutionDescriptor();
+    var solution = concurrentSolution();
+    var variableSupport = createResetAndUpdate(solutionDescriptor, solution);
+    var indexDescriptor = concurrentValueVariable(solutionDescriptor, "index");
+    var visit = solution.getValues().getFirst();
+    // This field is outside @ShadowSources, but the cascading supplier reads it.
+    visit.setCascadingTime(null);
+    variableSupport.beforeVariableChanged(indexDescriptor, visit);
+    variableSupport.afterVariableChanged(indexDescriptor, visit);
+
+    assertThatThrownBy(variableSupport::assertShadowVariablesAreUpToDate)
+        .isInstanceOf(IllegalStateException.class);
+    variableSupport.updateShadowVariables();
+    variableSupport.assertShadowVariablesAreUpToDate();
+    assertThat(visit.getCascadingTime()).isEqualTo(TestdataConcurrentValue.BASE_START_TIME);
+  }
+
+  @Test
+  void variableChangeInsideDeclarativeGraphMakesShadowVariablesStale() {
+    var solutionDescriptor = TestdataConcurrentSolution.buildSolutionDescriptor();
+    var solution = concurrentSolution();
+    var variableSupport = createResetAndUpdate(solutionDescriptor, solution);
+    var previousDescriptor = concurrentValueVariable(solutionDescriptor, "previousValue");
+
+    variableSupport.beforeVariableChanged(previousDescriptor, solution.getValues().get(1));
+
+    assertThatThrownBy(variableSupport::assertShadowVariablesAreUpToDate)
+        .isInstanceOf(IllegalStateException.class);
+  }
+
+  @Test
+  void afterVariableChangedAloneInsideDeclarativeGraphMakesShadowVariablesStale() {
+    var solutionDescriptor = TestdataConcurrentSolution.buildSolutionDescriptor();
+    var solution = concurrentSolution();
+    var variableSupport = createResetAndUpdate(solutionDescriptor, solution);
+    var previousDescriptor = concurrentValueVariable(solutionDescriptor, "previousValue");
+
+    variableSupport.afterVariableChanged(previousDescriptor, solution.getValues().get(1));
+
+    assertThatThrownBy(variableSupport::assertShadowVariablesAreUpToDate)
+        .isInstanceOf(IllegalStateException.class);
+  }
+
+  @Test
+  void listVariableChangeOutsideDeclarativeGraphLeavesShadowVariablesUpToDate() {
+    // Declarative sources are "entity" and "previous" only, never the list contents; no cascade.
+    var solutionDescriptor = TestdataDeclarativeSimpleListSolution.buildSolutionDescriptor();
+    var entity = new TestdataDeclarativeSimpleListEntity("e", 0, 0);
+    var value1 = new TestdataDeclarativeSimpleListValue("v1", 1, 1);
+    var value2 = new TestdataDeclarativeSimpleListValue("v2", 2, 1);
+    entity.setValues(new ArrayList<>(List.of(value1, value2)));
+    var solution =
+        new TestdataDeclarativeSimpleListSolution(List.of(entity), List.of(value1, value2));
+    var variableSupport = createResetAndUpdate(solutionDescriptor, solution);
+    var listVariableDescriptor =
+        Objects.requireNonNull(solutionDescriptor.getListVariableDescriptor());
+
+    variableSupport.beforeListVariableChanged(listVariableDescriptor, entity, 0, 2);
+    variableSupport.afterListVariableChanged(listVariableDescriptor, entity, 0, 2);
+
+    variableSupport.assertShadowVariablesAreUpToDate();
+  }
+
+  @Test
+  void firstUpdateAfterResetWaitsForAnEvent() {
+    // This domain's graph marks all nodes when built; the marks wait for the next event of any
+    // kind.
+    var solutionDescriptor = TestdataDependencySimpleSolution.buildSolutionDescriptor();
+    var solution = dependencySolution();
+    var variableSupport = createAndReset(solutionDescriptor, solution);
+    var invalidDescriptor =
+        Objects.requireNonNull(
+            solutionDescriptor
+                .getEntityDescriptorStrict(TestdataDependencyValue.class)
+                .getVariableDescriptor("isInvalid")); // In no @ShadowSources.
+    var value = solution.getValues().get(0);
+
+    variableSupport
+        .assertShadowVariablesAreUpToDate(); // As SolutionManager does without shadow updates.
+    variableSupport.updateShadowVariables();
+    assertThat(value.getEndTime()).isNull();
+
+    variableSupport.beforeVariableChanged(invalidDescriptor, value);
+    variableSupport.afterVariableChanged(invalidDescriptor, value);
+    assertThatThrownBy(variableSupport::assertShadowVariablesAreUpToDate)
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("shadow variables might be stale (true)");
+    variableSupport.updateShadowVariables();
+    assertThat(value.getEndTime()).isNotNull();
+  }
+
+  @Test
+  void resetDropsPreviousEventsAndFreshEventCalculatesDeclarativeShadowVariables() {
+    // Reset drops events from the previous session; initial graph marks wait for a fresh event.
+    var solutionDescriptor = TestdataDependencySimpleSolution.buildSolutionDescriptor();
+    var solution = dependencySolution();
+    var variableSupport = createResetAndUpdate(solutionDescriptor, solution);
+    var invalidDescriptor =
+        Objects.requireNonNull(
+            solutionDescriptor
+                .getEntityDescriptorStrict(TestdataDependencyValue.class)
+                .getVariableDescriptor("isInvalid")); // In no @ShadowSources.
+    var value = solution.getValues().get(0);
+    var expectedEndTime = value.getEndTime();
+    assertThat(expectedEndTime).isNotNull();
+
+    variableSupport.beforeVariableChanged(invalidDescriptor, value);
+    variableSupport.afterVariableChanged(invalidDescriptor, value);
+    variableSupport.resetWorkingSolution();
+    value.setEndTime(null);
+    variableSupport.updateShadowVariables();
+    assertThat(value.getEndTime()).isNull();
+
+    variableSupport.beforeVariableChanged(invalidDescriptor, value);
+    variableSupport.afterVariableChanged(invalidDescriptor, value);
+    variableSupport.updateShadowVariables();
+    assertThat(value.getEndTime()).isEqualTo(expectedEndTime);
+  }
+
+  @Test
+  void listVariableChangeMovingElementsMakesShadowVariablesStaleAndUpdates() {
+    var solutionDescriptor = TestdataDeclarativeSimpleListSolution.buildSolutionDescriptor();
+    var entity = new TestdataDeclarativeSimpleListEntity("e", 0, 0);
+    var value1 = new TestdataDeclarativeSimpleListValue("v1", 1, 1);
+    var value2 = new TestdataDeclarativeSimpleListValue("v2", 2, 1);
+    entity.setValues(new ArrayList<>(List.of(value1, value2)));
+    var solution =
+        new TestdataDeclarativeSimpleListSolution(List.of(entity), List.of(value1, value2));
+    var variableSupport = createResetAndUpdate(solutionDescriptor, solution);
+    var listVariableDescriptor =
+        Objects.requireNonNull(solutionDescriptor.getListVariableDescriptor());
+
+    variableSupport.beforeListVariableChanged(listVariableDescriptor, entity, 0, 2);
+    entity.getValues().set(0, value2);
+    entity.getValues().set(1, value1);
+    variableSupport.afterListVariableChanged(listVariableDescriptor, entity, 0, 2);
+
+    assertThatThrownBy(variableSupport::assertShadowVariablesAreUpToDate)
+        .isInstanceOf(IllegalStateException.class);
+    variableSupport.updateShadowVariables();
+    assertThat(value2.getStartTime()).isEqualTo(2); // Entity start 0, plus distance 2.
+    assertThat(value1.getStartTime()).isEqualTo(4); // v2 end 3, plus distance 1.
+  }
+
+  @Test
+  void clearedPendingChangesWaitForNextEvent() {
+    var solutionDescriptor = TestdataDependencySimpleSolution.buildSolutionDescriptor();
+    var solution = dependencySolution();
+    var variableSupport = createAndReset(solutionDescriptor, solution);
+    var entityDescriptor =
+        Objects.requireNonNull(
+            solutionDescriptor
+                .getEntityDescriptorStrict(TestdataDependencyValue.class)
+                .getVariableDescriptor("entity"));
+    var value = solution.getValues().get(0);
+
+    variableSupport.clearPendingShadowVariableUpdates();
+    variableSupport.updateShadowVariables();
+    assertThat(value.getEndTime()).isNull();
+
+    variableSupport.beforeVariableChanged(entityDescriptor, value);
+    variableSupport.afterVariableChanged(entityDescriptor, value);
+    variableSupport.updateShadowVariables();
+    assertThat(value.getEndTime()).isNotNull();
+  }
+
+  private static TestdataDependencySimpleSolution dependencySolution() {
+    var entity = new TestdataDependencyEntity(LocalDateTime.of(2025, 1, 1, 9, 0));
+    var value1 = new TestdataDependencyValue("v1", Duration.ofHours(1));
+    var value2 = new TestdataDependencyValue("v2", Duration.ofHours(2), List.of(value1));
+    entity.setValues(new ArrayList<>(List.of(value1, value2)));
+    return new TestdataDependencySimpleSolution(List.of(entity), List.of(value1, value2));
+  }
+
+  private static TestdataConcurrentSolution concurrentSolution() {
+    var vehicle = new TestdataConcurrentEntity("1");
+    var visitA = new TestdataConcurrentValue("a");
+    var visitB = new TestdataConcurrentValue("b");
+    vehicle.setValues(List.of(visitA, visitB));
+    vehicle.updateValueShadows();
+    var solution = new TestdataConcurrentSolution();
+    solution.setEntities(List.of(vehicle));
+    solution.setValues(List.of(visitA, visitB));
+    return solution;
+  }
+
+  private static VariableDescriptor<TestdataConcurrentSolution> concurrentValueVariable(
+      SolutionDescriptor<TestdataConcurrentSolution> solutionDescriptor, String variableName) {
+    return Objects.requireNonNull(
+        solutionDescriptor
+            .getEntityDescriptorStrict(TestdataConcurrentValue.class)
+            .getVariableDescriptor(variableName));
+  }
+
+  private static <Solution_> VariableSupport<Solution_> createAndReset(
+      SolutionDescriptor<Solution_> solutionDescriptor, Solution_ solution) {
+    var scoreDirector = basicScoreDirectorMock(solutionDescriptor);
+    var valueRangeManager = new ValueRangeManager<>(solutionDescriptor);
+    valueRangeManager.reset(solution);
+    when(scoreDirector.getValueRangeManager()).thenReturn(valueRangeManager);
+    // Route shadow writes back into the VariableSupport, as the real score director does.
+    var variableSupportReference = new AtomicReference<VariableSupport<Solution_>>();
+    when(scoreDirector.getListVariableState(any(ListVariableDescriptor.class)))
+        .thenAnswer(
+            invocation ->
+                variableSupportReference.get().getListVariableState(invocation.getArgument(0)));
+    doAnswer(
+            invocation -> {
+              variableSupportReference
+                  .get()
+                  .beforeVariableChanged(invocation.getArgument(0), invocation.getArgument(1));
+              return null;
+            })
+        .when(scoreDirector)
+        .beforeVariableChanged(any(VariableDescriptor.class), any(Object.class));
+    doAnswer(
+            invocation -> {
+              variableSupportReference
+                  .get()
+                  .afterVariableChanged(invocation.getArgument(0), invocation.getArgument(1));
+              return null;
+            })
+        .when(scoreDirector)
+        .afterVariableChanged(any(VariableDescriptor.class), any(Object.class));
+    var variableSupport = new VariableSupport<>(scoreDirector, DefaultTopologicalOrderGraph::new);
+    variableSupportReference.set(variableSupport);
+    variableSupport.linkShadowVariables();
+    when(scoreDirector.getWorkingSolution()).thenReturn(solution);
+    variableSupport.resetWorkingSolution();
+    return variableSupport;
+  }
+
+  private static <Solution_> VariableSupport<Solution_> createResetAndUpdate(
+      SolutionDescriptor<Solution_> solutionDescriptor, Solution_ solution) {
+    var variableSupport = createAndReset(solutionDescriptor, solution);
+    variableSupport.forceUpdateAllShadowVariables(solution); // As setWorkingSolution() does.
+    variableSupport.assertShadowVariablesAreUpToDate();
+    return variableSupport;
   }
 
   private static <Solution_> InnerScoreDirector<Solution_, ?> basicScoreDirectorMock(

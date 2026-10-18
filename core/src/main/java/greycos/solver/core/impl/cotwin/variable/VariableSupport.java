@@ -24,6 +24,7 @@ import greycos.solver.core.impl.cotwin.variable.declarative.DefaultShadowVariabl
 import greycos.solver.core.impl.cotwin.variable.declarative.DefaultTopologicalOrderGraph;
 import greycos.solver.core.impl.cotwin.variable.declarative.ShadowVariablesInconsistentVariableDescriptor;
 import greycos.solver.core.impl.cotwin.variable.declarative.TopologicalOrderGraph;
+import greycos.solver.core.impl.cotwin.variable.declarative.VariableReferenceGraph.VariableChangeHook;
 import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import greycos.solver.core.impl.cotwin.variable.descriptor.ShadowVariableDescriptor;
 import greycos.solver.core.impl.cotwin.variable.descriptor.VariableDescriptor;
@@ -60,10 +61,8 @@ public final class VariableSupport<Solution_> implements TrackerResolver<Solutio
   private final InnerScoreDirector<Solution_, ?> scoreDirector;
   private final Map<Demand<?>, SupplyWithDemandCount> supplyMap = new HashMap<>();
 
-  // The single source of truth for the basic variable' state and trackers, created at the first
-  // request per variable.
-  // Indexed by [{@link EntityDescriptor#getOrdinal()}][{@link VariableDescriptor#getOrdinal()}].
-  private final List<BasicVariableChangeHandler<Solution_>>[][] basicVariableChangeHandlerArray;
+  // Handlers and graph reactions resolved by declaring entity and variable ordinals.
+  private final VariableDispatch<Solution_>[][] variableDispatchArray;
   private final List<ListVariableContext<Solution_>> listVariableContextList;
   private final Map<ListVariableDescriptor<Solution_>, ListVariableContext<Solution_>>
       listVariableContextMap;
@@ -78,6 +77,9 @@ public final class VariableSupport<Solution_> implements TrackerResolver<Solutio
   // States and trackers may register after the working solution has been initialized.
   private boolean hasBasicVariableChangeHandlers = false;
   private boolean dirty = false;
+  private boolean isUpdatingDeclarativeShadows;
+  // Initial graph marks wait for the first event, including events outside the graph.
+  private boolean eventSinceUpdate;
   private boolean updateSuccessful = true;
   private boolean shadowUpdateFailed;
   @Nullable private DefaultShadowVariableSession<Solution_> shadowVariableSession = null;
@@ -111,15 +113,14 @@ public final class VariableSupport<Solution_> implements TrackerResolver<Solutio
         listVariableContextList.size() == 1 ? listVariableContextList.getFirst() : null;
     this.hasCascadingUpdates = !cascadingDescriptors.isEmpty();
     this.listShadowVariableSources = new ListVariableDescriptor[entityDescriptorList.size()][];
-    this.basicVariableChangeHandlerArray = new List[entityDescriptorList.size()][];
+    this.variableDispatchArray = new VariableDispatch[entityDescriptorList.size()][];
     for (var entityDescriptor : entityDescriptorList) {
       var declaredVariableDescriptorList = entityDescriptor.getDeclaredVariableDescriptors();
-      var array = new List[declaredVariableDescriptorList.size()];
+      var array = new VariableDispatch[declaredVariableDescriptorList.size()];
       var listShadowSources = new ListVariableDescriptor[declaredVariableDescriptorList.size()];
       listShadowVariableSources[entityDescriptor.getOrdinal()] = listShadowSources;
       for (var variableDescriptor : declaredVariableDescriptorList) {
-        array[variableDescriptor.getOrdinal()] =
-            new ArrayList<BasicVariableChangeHandler<Solution_>>();
+        array[variableDescriptor.getOrdinal()] = new VariableDispatch<>(variableDescriptor);
         if ((variableDescriptor instanceof IndexShadowVariableDescriptor<?>
                 || variableDescriptor instanceof InverseRelationShadowVariableDescriptor<?>
                 || variableDescriptor instanceof PreviousElementShadowVariableDescriptor<?>
@@ -130,7 +131,7 @@ public final class VariableSupport<Solution_> implements TrackerResolver<Solutio
           listShadowSources[variableDescriptor.getOrdinal()] = source;
         }
       }
-      basicVariableChangeHandlerArray[entityDescriptor.getOrdinal()] = array;
+      variableDispatchArray[entityDescriptor.getOrdinal()] = array;
     }
 
     this.shadowVariableGraphCreator = shadowVariableGraphCreator;
@@ -424,10 +425,23 @@ public final class VariableSupport<Solution_> implements TrackerResolver<Solutio
     return null;
   }
 
+  private VariableDispatch<Solution_> getVariableDispatch(
+      VariableDescriptor<Solution_> descriptor) {
+    return variableDispatchArray[descriptor.getEntityDescriptor().getOrdinal()][
+        descriptor.getOrdinal()];
+  }
+
   private List<BasicVariableChangeHandler<Solution_>> getBasicVariableChangeHandlerList(
       VariableDescriptor<Solution_> variableDescriptor) {
-    return basicVariableChangeHandlerArray[variableDescriptor.getEntityDescriptor().getOrdinal()][
-        variableDescriptor.getOrdinal()];
+    return getVariableDispatch(variableDescriptor).handlerList;
+  }
+
+  private void clearGraphHooks() {
+    for (var dispatchArray : variableDispatchArray) {
+      for (var dispatch : dispatchArray) {
+        dispatch.graphHook = null;
+      }
+    }
   }
 
   private void registerBasicVariableChangeHandler(
@@ -459,6 +473,7 @@ public final class VariableSupport<Solution_> implements TrackerResolver<Solutio
   public void resetWorkingSolution() {
     // No callback for the new solution may reach the graph of the previous solution.
     shadowVariableSession = null;
+    clearGraphHooks();
     clearPendingShadowVariableUpdates();
     updateSuccessful = true;
     shadowUpdateFailed = false;
@@ -467,9 +482,9 @@ public final class VariableSupport<Solution_> implements TrackerResolver<Solutio
         handler.resetWorkingSolution(scoreDirector);
       }
     }
-    for (var handlerList : basicVariableChangeHandlerArray) {
-      for (var handlers : handlerList) {
-        for (var handler : handlers) {
+    for (var dispatchArray : variableDispatchArray) {
+      for (var dispatch : dispatchArray) {
+        for (var handler : dispatch.handlerList) {
           handler.resetWorkingSolution(scoreDirector);
         }
       }
@@ -485,6 +500,11 @@ public final class VariableSupport<Solution_> implements TrackerResolver<Solutio
               consistencyTracker,
               scoreDirector.getWorkingSolution(),
               scoreDirector.ignoreInconsistentSolutions());
+      for (var dispatchArray : variableDispatchArray) {
+        for (var dispatch : dispatchArray) {
+          dispatch.graphHook = shadowVariableSession.resolveHookFor(dispatch.variableDescriptor);
+        }
+      }
     }
   }
 
@@ -499,6 +519,7 @@ public final class VariableSupport<Solution_> implements TrackerResolver<Solutio
   public void close() {
     clearPendingShadowVariableUpdates();
     shadowVariableSession = null;
+    clearGraphHooks();
     for (var context : listVariableContextList) {
       if (context.cascadingUpdateQueue != null) {
         context.cascadingUpdateQueue.close();
@@ -511,9 +532,9 @@ public final class VariableSupport<Solution_> implements TrackerResolver<Solutio
         handler.close();
       }
     }
-    for (var handlerList : basicVariableChangeHandlerArray) {
-      for (var handlers : handlerList) {
-        for (var handler : handlers) {
+    for (var dispatchArray : variableDispatchArray) {
+      for (var dispatch : dispatchArray) {
+        for (var handler : dispatch.handlerList) {
           handler.close();
         }
       }
@@ -525,13 +546,15 @@ public final class VariableSupport<Solution_> implements TrackerResolver<Solutio
     if (!hasBasicVariableChangeHandlers && shadowVariableSession == null) {
       return;
     }
-    var handlerList = getBasicVariableChangeHandlerList(variableDescriptor);
-    for (var i = 0; i < handlerList.size(); i++) { // Avoid iterator allocations on the hot path.
-      var handler = handlerList.get(i);
-      handler.beforeVariableChanged(scoreDirector, entity);
+    var dispatch = getVariableDispatch(variableDescriptor);
+    var handlerList = dispatch.handlerList;
+    for (var i = 0; i < handlerList.size(); i++) {
+      handlerList.get(i).beforeVariableChanged(scoreDirector, entity);
     }
-    if (shadowVariableSession != null) {
-      shadowVariableSession.beforeVariableChanged(variableDescriptor, entity);
+    eventSinceUpdate |= shadowVariableSession != null;
+    var graphHook = dispatch.graphHook;
+    if (graphHook != null) {
+      graphHook.beforeVariableChanged(entity);
       dirty = true;
     }
   }
@@ -542,13 +565,16 @@ public final class VariableSupport<Solution_> implements TrackerResolver<Solutio
     if (!hasBasicVariableChangeHandlers && shadowVariableSession == null) {
       return;
     }
-    var handlerList = getBasicVariableChangeHandlerList(variableDescriptor);
-    for (var i = 0; i < handlerList.size(); i++) { // Avoid iterator allocations on the hot path.
-      var handler = handlerList.get(i);
-      handler.afterVariableChanged(scoreDirector, entity);
+    var dispatch = getVariableDispatch(variableDescriptor);
+    var handlerList = dispatch.handlerList;
+    for (var i = 0; i < handlerList.size(); i++) {
+      handlerList.get(i).afterVariableChanged(scoreDirector, entity);
     }
-    if (shadowVariableSession != null) {
-      shadowVariableSession.afterVariableChanged(variableDescriptor, entity);
+    eventSinceUpdate |= shadowVariableSession != null;
+    var graphHook = dispatch.graphHook;
+    if (graphHook != null) {
+      graphHook.afterVariableChanged(entity);
+      dirty = true;
     }
   }
 
@@ -584,6 +610,7 @@ public final class VariableSupport<Solution_> implements TrackerResolver<Solutio
       Object entity,
       int fromIndex,
       int toIndex) {
+    assertNotUpdatingDeclarativeShadows();
     var context = getListVariableContext(variableDescriptor);
     for (var i = 0;
         i < context.handlers.size();
@@ -591,9 +618,11 @@ public final class VariableSupport<Solution_> implements TrackerResolver<Solutio
       var handler = context.handlers.get(i);
       handler.beforeListVariableChanged(scoreDirector, entity, fromIndex, toIndex);
     }
-    if (shadowVariableSession != null) {
-      shadowVariableSession.beforeListVariableChanged(
-          variableDescriptor, entity, fromIndex, toIndex);
+    eventSinceUpdate |= shadowVariableSession != null;
+    var graphHook = getVariableDispatch(variableDescriptor).graphHook;
+    if (graphHook != null) {
+      graphHook.beforeListVariableChanged(
+          entity, variableDescriptor.getValue(entity), fromIndex, toIndex);
       dirty = true;
     }
   }
@@ -603,6 +632,7 @@ public final class VariableSupport<Solution_> implements TrackerResolver<Solutio
       Object entity,
       int fromIndex,
       int toIndex) {
+    assertNotUpdatingDeclarativeShadows();
     var context = getListVariableContext(variableDescriptor);
     for (var i = 0;
         i < context.handlers.size();
@@ -621,11 +651,19 @@ public final class VariableSupport<Solution_> implements TrackerResolver<Solutio
       context.cascadingUpdateQueue.addRange(entity, fromIndex, toIndex);
       dirty = true;
     }
-    if (shadowVariableSession != null) {
-      // See afterElementUnassigned().
+    eventSinceUpdate |= shadowVariableSession != null;
+    var graphHook = getVariableDispatch(variableDescriptor).graphHook;
+    if (graphHook != null) {
       dirty = true;
-      shadowVariableSession.afterListVariableChanged(
-          variableDescriptor, entity, fromIndex, toIndex);
+      graphHook.afterListVariableChanged(
+          entity, variableDescriptor.getValue(entity), fromIndex, toIndex);
+    }
+  }
+
+  private void assertNotUpdatingDeclarativeShadows() {
+    if (isUpdatingDeclarativeShadows) {
+      throw new IllegalStateException(
+          "Impossible state: list variable changed during shadow variable update.");
     }
   }
 
@@ -639,14 +677,21 @@ public final class VariableSupport<Solution_> implements TrackerResolver<Solutio
   }
 
   public boolean updateShadowVariables() {
-    if (!dirty || shadowUpdateFailed) {
+    if (isCurrent() || shadowUpdateFailed) {
       return updateSuccessful;
     }
     try {
       // Cascades run last, including changes caused by declarative shadow variables.
-      if (shadowVariableSession != null && !shadowVariableSession.updateVariables()) {
-        updateSuccessful = false;
-        return false;
+      if (shadowVariableSession != null) {
+        isUpdatingDeclarativeShadows = true;
+        try {
+          if (!shadowVariableSession.updateVariables()) {
+            updateSuccessful = false;
+            return false;
+          }
+        } finally {
+          isUpdatingDeclarativeShadows = false;
+        }
       }
       if (hasCascadingUpdates) {
         for (var i = 0; i < listVariableContextList.size(); i++) {
@@ -657,6 +702,7 @@ public final class VariableSupport<Solution_> implements TrackerResolver<Solutio
         }
       }
       dirty = false;
+      eventSinceUpdate = false;
       updateSuccessful = true;
       return true;
     } catch (RuntimeException | Error failure) {
@@ -666,6 +712,13 @@ public final class VariableSupport<Solution_> implements TrackerResolver<Solutio
       updateSuccessful = false;
       throw failure;
     }
+  }
+
+  private boolean isCurrent() {
+    return !dirty
+        && (!eventSinceUpdate
+            || shadowVariableSession == null
+            || !shadowVariableSession.hasPendingChanges());
   }
 
   private void scheduleCascadingUpdate(VariableDescriptor<Solution_> descriptor, Object entity) {
@@ -823,6 +876,7 @@ public final class VariableSupport<Solution_> implements TrackerResolver<Solutio
     clearCascadingUpdateQueues();
     handlingListStateChanges = null;
     dirty = false;
+    eventSinceUpdate = false;
   }
 
   private void clearCascadingUpdateQueues() {
@@ -864,7 +918,7 @@ public final class VariableSupport<Solution_> implements TrackerResolver<Solutio
   }
 
   public void assertShadowVariablesAreUpToDate() {
-    if (!dirty) {
+    if (isCurrent()) {
       return;
     }
     throw new IllegalStateException(
@@ -873,10 +927,20 @@ public final class VariableSupport<Solution_> implements TrackerResolver<Solutio
         Maybe a %s.before*() method was called without calling %s.updateShadowVariables(), before calling %s.calculateScore().\
         """
             .formatted(
-                dirty,
+                !isCurrent(),
                 ScoreDirector.class.getSimpleName(),
                 ScoreDirector.class.getSimpleName(),
                 ScoreDirector.class.getSimpleName()));
+  }
+
+  private static final class VariableDispatch<Solution_> {
+    private final VariableDescriptor<Solution_> variableDescriptor;
+    private final List<BasicVariableChangeHandler<Solution_>> handlerList = new ArrayList<>(2);
+    private @Nullable VariableChangeHook graphHook;
+
+    private VariableDispatch(VariableDescriptor<Solution_> variableDescriptor) {
+      this.variableDescriptor = variableDescriptor;
+    }
   }
 
   private static final class ListVariableContext<Solution_> {

@@ -45,6 +45,21 @@ public interface Solver<Solution_> {
   Solution_ solve(Solution_ problem);
 
   /**
+   * As {@link #solve(Object)}, also returning statistics for the entire run, including restarts
+   * after problem changes. If solving fails, no result is returned.
+   *
+   * <p>The default implementation throws {@link UnsupportedOperationException}, preserving
+   * compatibility with custom solver implementations that do not provide run statistics.
+   *
+   * @param problem the planning problem to solve
+   * @return the final best solution and statistics of the run
+   * @throws UnsupportedOperationException if this implementation does not support run statistics
+   */
+  default SolverRunResult<Solution_> solveAndSummarize(Solution_ problem) {
+    throw new UnsupportedOperationException("This solver does not support run statistics.");
+  }
+
+  /**
    * Notifies the solver that it should stop at its earliest convenience. This method returns
    * immediately, but it takes an undetermined time for the {@link #solve} to actually return.
    *

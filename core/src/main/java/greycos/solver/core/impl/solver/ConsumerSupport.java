@@ -191,11 +191,11 @@ final class ConsumerSupport<Solution_, ProblemId_> implements AutoCloseable {
     }
   }
 
-  void consumeFinalBestSolution(Solution_ solution) {
-    requestFinish(solution);
+  void consumeFinalBestSolution(FinalBestSolutionEvent<Solution_> result) {
+    requestFinish(result);
   }
 
-  private void requestFinish(@Nullable Solution_ finalSolution) {
+  private void requestFinish(@Nullable FinalBestSolutionEvent<Solution_> result) {
     synchronized (admissionLock) {
       if (finishing) {
         return;
@@ -212,21 +212,21 @@ final class ConsumerSupport<Solution_, ProblemId_> implements AutoCloseable {
         }
         consumerExecutor.execute(consumption);
       }
-      consumerExecutor.execute(() -> finish(finalSolution));
+      consumerExecutor.execute(() -> finish(result));
     }
   }
 
-  private void finish(@Nullable Solution_ finalSolution) {
+  private void finish(@Nullable FinalBestSolutionEvent<Solution_> result) {
     try {
       if (bestSolutionConsumer != null) {
         // An already running callback may have left a newer solution in the holder.
         consumeBestSolution(bestSolutionHolder.take());
       }
-      if (finalSolution != null) {
+      if (result != null) {
         var finalSolutionWithChanges =
             bestSolutionConsumer == null ? bestSolutionHolder.take() : null;
         try {
-          finalBestSolutionConsumer.accept(new FinalBestSolutionEventImpl<>(finalSolution));
+          finalBestSolutionConsumer.accept(result);
           if (finalSolutionWithChanges != null) {
             finalSolutionWithChanges.completeProblemChanges();
           }
@@ -333,9 +333,6 @@ final class ConsumerSupport<Solution_, ProblemId_> implements AutoCloseable {
   record FirstInitializedSolutionEventImpl<Solution_>(
       Solution_ solution, EventProducerId producerId, boolean isTerminatedEarly)
       implements FirstInitializedSolutionEvent<Solution_> {}
-
-  record FinalBestSolutionEventImpl<Solution_>(Solution_ solution)
-      implements FinalBestSolutionEvent<Solution_> {}
 
   record SolverJobStartedEventImpl<Solution_>(Solution_ solution)
       implements SolverJobStartedEvent<Solution_> {}

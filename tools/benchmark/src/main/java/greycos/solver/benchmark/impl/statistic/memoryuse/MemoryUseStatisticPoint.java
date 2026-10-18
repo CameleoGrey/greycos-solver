@@ -4,12 +4,6 @@ import greycos.solver.benchmark.impl.statistic.StatisticPoint;
 
 public class MemoryUseStatisticPoint extends StatisticPoint {
 
-  public static MemoryUseStatisticPoint create(long timeMillisSpent) {
-    Runtime runtime = Runtime.getRuntime();
-    return new MemoryUseStatisticPoint(
-        timeMillisSpent, runtime.totalMemory() - runtime.freeMemory(), runtime.maxMemory());
-  }
-
   private final long timeMillisSpent;
   private final long usedMemory;
   private final long maxMemory;

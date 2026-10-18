@@ -77,6 +77,35 @@ given to the method ``solve(solution)``, which implies it is a different instanc
 NOTE: The solution instance given to the `solve(Solution)` method may be partially or fully initialized,
 which is often the case in xref:responding-to-change/responding-to-change.adoc[repeated planning].
 
+[#solverRunSummary]
+=== Finished-run statistics
+
+Use `solveAndSummarize()` to obtain the best solution and an immutable snapshot of the run statistics:
+
+[source,java,options="nowrap"]
+----
+SolverRunResult<Timetable> result = solver.solveAndSummarize(problem);
+Timetable bestSolution = result.solution();
+Duration solvingDuration = result.solvingDuration();
+long scoreCalculations = result.scoreCalculationCount();
+long moveEvaluations = result.moveEvaluationCount();
+----
+
+`SolverRunResult` extends `SolverRunSummary`, which also provides calculation and move evaluation speeds,
+the final problem size, and whether the best solution is initialized.
+Initialization means every required planning assignment is present; it does not establish feasibility or optimality.
+
+The duration and counts cover the whole run, including every solving segment before and after a problem change.
+The duration excludes processing problem changes and waiting for changes in daemon mode.
+Native move-worker and island work is included in the reported counts.
+Score calculations measure physical scoring work; move evaluations measure logical candidate evaluations.
+These quantities need not be equal, and neither should be compared across different workloads as a measure of solution quality.
+
+The summary does not change termination budgets or the segment-based live getters on `SolverJob`.
+Reusing a solver starts a new summary. A failed run throws its exception instead of returning a result.
+Built-in solvers and jobs provide summaries; custom implementations that only implement the older interfaces
+remain compatible and throw `UnsupportedOperationException` when their new summary methods are called.
+
 [#multithreadedSolving]
 === Multi-threaded solving
 
@@ -711,7 +740,7 @@ Java::
 [source,java,options="nowrap"]
 ----
 SolverConfig solverConfig = SolverConfig.createFromXmlResource(".../solverConfig.xml");
-SolverManager<VehicleRoutePlan, String> solverManager = SolverManager.create(solverConfig, new SolverManagerConfig());
+SolverManager<VehicleRoutePlan> solverManager = SolverManager.create(solverConfig, new SolverManagerConfig());
 ----
 ====
 
@@ -739,7 +768,7 @@ Java::
 VehicleRoutePlan problem1 = ...;
 String problemId = UUID.randomUUID().toString();
 // Returns immediately
-SolverJob<VehicleRoutePlan, String> solverJob = solverManager.solve(problemId, problem1);
+SolverJob<VehicleRoutePlan> solverJob = solverManager.solve(problemId, problem1);
 ...
 
 try {
@@ -751,7 +780,12 @@ try {
 ----
 ====
 
-However, there are better approaches, both for solving batch problems before an end-user needs the solution
+To obtain the <<solverRunSummary,finished-run statistics>> along with the solution, call `solverJob.getResult()`.
+It waits for completion and has the same interruption and execution-failure handling as `getFinalBestSolution()`.
+It throws `CancellationException` if the job is cancelled before solving starts or its solver thread is cancelled.
+The existing `getFinalBestSolution()` method retains its cancellation fallback to the original problem.
+
+There are also consumer-based approaches, both for solving batch problems before an end-user needs the solution
 as well as for live solving while an end-user is actively waiting for the solution, as explained below.
 
 The current `SolverManager` implementation runs on a single computer node,
@@ -823,7 +857,9 @@ solverManager.solveBuilder()
 ====
 
 A consumer for the first initialized solution can be configured with `withFirstInitializedSolutionEventConsumer(...)`.
-The solution is returned by the last phase that immediately precedes the first local search phase.
+The solution is captured after the last initialization phase before the first improvement phase,
+such as local search, ALNS, or an island model.
+It is a planning snapshot captured on the solver thread; its assignments remain stable while the consumer runs.
 
 `withSolverJobStartedEventConsumer(...)` receives an initial planning snapshot captured before the search progresses.
 Its assignments remain stable while the consumer runs, even if construction has already advanced on the solver thread.
@@ -833,14 +869,17 @@ it can be consumed by configuring it with `withBestSolutionEventConsumer(...)`.
 The final best solution consumer,
 which is called at the end of the solving process,
 can be set using `withFinalBestSolutionEventConsumer(...)`.
+Built-in final events also expose the same `SolverRunSummary` statistics as `SolverJob.getResult()`.
 Additionally,
 GreyCOS Solver provides xref:advanced-features/advanced-features.adoc#throttlingBestSolutionEvents[throttling of best solution events]
 to help manage event frequency.
 
 [WARNING]
 ====
-Do not modify the solutions returned by the events in `withFirstInitializedSolutionEventConsumer(...)` and `withBestSolutionEventConsumer(...)`.
-These instances are still utilized during the solving process, and any modifications may lead to solver corruption.
+Treat event solutions as read-only.
+Planning snapshots isolate planning assignments, but immutable problem facts may be shared with the solver,
+and best-solution events may expose a solution retained by the solver.
+Modifying these objects may lead to solver corruption.
 ====
 
 To handle errors that may arise during the solving process,

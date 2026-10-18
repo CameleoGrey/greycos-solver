@@ -96,6 +96,25 @@ public interface SolverJob<Solution_> {
   Solution_ getFinalBestSolution() throws InterruptedException, ExecutionException;
 
   /**
+   * Waits for completion and returns the final best solution and statistics for the entire run,
+   * including every restart after a {@link ProblemChange}. The live statistics getters only cover
+   * the segment since the last restart.
+   *
+   * <p>The default implementation throws {@link UnsupportedOperationException}, preserving
+   * compatibility with custom job implementations that do not provide run statistics.
+   *
+   * @return the final best solution and statistics of the run
+   * @throws InterruptedException if interrupted while waiting
+   * @throws ExecutionException if solving failed
+   * @throws java.util.concurrent.CancellationException if the job was canceled before starting, or
+   *     its final result was canceled after an early-termination timeout
+   * @throws UnsupportedOperationException if this implementation does not support run statistics
+   */
+  default SolverRunResult<Solution_> getResult() throws InterruptedException, ExecutionException {
+    throw new UnsupportedOperationException("This solver job does not support run statistics.");
+  }
+
+  /**
    * Returns the {@link Duration} spent solving since the last start. If it hasn't started it yet,
    * it returns {@link Duration#ZERO}. If it hasn't ended yet, it returns the time between the last
    * start and now. If it has ended already, it returns the time between the last start and the

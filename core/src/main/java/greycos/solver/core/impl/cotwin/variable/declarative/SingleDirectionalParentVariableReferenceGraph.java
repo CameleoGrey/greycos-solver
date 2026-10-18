@@ -1,37 +1,46 @@
 package greycos.solver.core.impl.cotwin.variable.declarative;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
-import java.util.IdentityHashMap;
 import java.util.List;
-import java.util.Map;
+import java.util.ListIterator;
+import java.util.Objects;
+import java.util.RandomAccess;
 import java.util.Set;
-import java.util.function.UnaryOperator;
 
 import greycos.solver.core.api.score.analysis.VariableLoop;
+import greycos.solver.core.impl.cotwin.variable.ListVariableState;
+import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import greycos.solver.core.impl.util.LinkedIdentityHashSet;
+import greycos.solver.core.impl.util.ShrinkingIdentityHashMap;
 import greycos.solver.core.preview.api.cotwin.metamodel.VariableMetaModel;
+
+import org.jspecify.annotations.Nullable;
 
 public final class SingleDirectionalParentVariableReferenceGraph<Solution_>
     implements VariableReferenceGraph {
 
   private final Set<VariableMetaModel<?, ?, ?>> monitoredSourceVariableSet;
   private final VariableUpdaterInfo<Solution_>[] sortedVariableUpdaterInfos;
-  private final UnaryOperator<Object> successorFunction;
-  // This is an unstable comparator within a move; the index of a value may change
-  // multiple times during a move, and will only be consistent when updateChanged is called
-  private final Comparator<Object> topologicalOrderComparator;
-  private final UnaryOperator<Object> keyFunction;
+  // Positions are only consistent when updateChanged is called, not during a move.
+  private final ListVariableState<Solution_, Object, Object> listVariableState;
+  private final ListVariableDescriptor<Solution_> listVariableDescriptor;
+
+  /** True if the parent is the previous element, so successors follow in increasing index order. */
+  private final boolean forward;
+
   private final ChangedVariableNotifier<Solution_> changedVariableNotifier;
   private final Set<Object> changedEntities;
-  // This is a field to avoid allocating a new list every update
-  private final List<Object> sortedChangedEntities;
+  private final SortedChangeBatch batch;
+  // Created only for sequential lists without an externalized successor; never retained across
+  // updates.
+  private @Nullable ShrinkingIdentityHashMap<Object, ListIterator<Object>> sequentialIterators;
   private final Class<?> monitoredEntityClass;
-  private final Map<Object, Object> keyToLastProcessedObject;
   private final boolean canTerminateEarly;
+  private final MonitoredVariableChangeHook monitoredVariableChangeHook =
+      new MonitoredVariableChangeHook();
   private boolean isUpdating;
 
   @SuppressWarnings("unchecked")
@@ -39,33 +48,38 @@ public final class SingleDirectionalParentVariableReferenceGraph<Solution_>
       ConsistencyTracker<Solution_> consistencyTracker,
       List<DeclarativeShadowVariableDescriptor<Solution_>>
           sortedDeclarativeShadowVariableDescriptors,
-      TopologicalSorter topologicalSorter,
+      ListVariableState<Solution_, Object, Object> listVariableState,
+      boolean forward,
       ChangedVariableNotifier<Solution_> changedVariableNotifier,
       boolean canTerminateEarly,
       Object[] entities) {
     monitoredEntityClass =
-        sortedDeclarativeShadowVariableDescriptors.get(0).getEntityDescriptor().getEntityClass();
+        sortedDeclarativeShadowVariableDescriptors
+            .getFirst()
+            .getEntityDescriptor()
+            .getEntityClass();
     sortedVariableUpdaterInfos =
         new VariableUpdaterInfo[sortedDeclarativeShadowVariableDescriptors.size()];
     monitoredSourceVariableSet = new HashSet<>();
     changedEntities = new LinkedIdentityHashSet<>();
-    sortedChangedEntities = new ArrayList<>();
-    keyToLastProcessedObject = new IdentityHashMap<>();
     isUpdating = false;
 
     this.canTerminateEarly = canTerminateEarly;
-    this.successorFunction = topologicalSorter.successor();
-    this.topologicalOrderComparator = topologicalSorter.comparator();
-    this.keyFunction = topologicalSorter.key();
+    this.listVariableState = listVariableState;
+    this.listVariableDescriptor = listVariableState.getSourceVariableDescriptor();
+    this.forward = forward;
+    this.batch = new SortedChangeBatch(forward);
     this.changedVariableNotifier = changedVariableNotifier;
+    var comparator =
+        Comparator.comparingInt((Object entity) -> listVariableState.getIndexOrElse(entity, 0));
     var shadowEntities =
         Arrays.stream(entities)
             .filter(monitoredEntityClass::isInstance)
-            .sorted(topologicalOrderComparator)
+            .sorted(forward ? comparator : comparator.reversed())
             .toArray();
     var entityConsistencyState =
         consistencyTracker.getDeclarativeEntityConsistencyState(
-            sortedDeclarativeShadowVariableDescriptors.get(0).getEntityDescriptor());
+            sortedDeclarativeShadowVariableDescriptors.getFirst().getEntityDescriptor());
 
     var updaterIndex = 0;
     for (var variableDescriptor : sortedDeclarativeShadowVariableDescriptors) {
@@ -98,39 +112,53 @@ public final class SingleDirectionalParentVariableReferenceGraph<Solution_>
   @Override
   public boolean updateChanged() {
     isUpdating = true;
-    sortedChangedEntities.addAll(changedEntities);
-    sortedChangedEntities.sort(topologicalOrderComparator);
-    for (var changedEntity : sortedChangedEntities) {
-      var key = keyFunction.apply(changedEntity);
-      if (key == null) {
-        // Unassigned element
-        updateChanged(changedEntity);
-        continue;
+    try {
+      batch.load(changedEntities, listVariableState);
+      for (var i = 0; i < batch.size(); i++) {
+        var changedEntity = batch.entity(i);
+        var owner = batch.owner(i);
+        if (owner == null) { // Unassigned element; it has no successor.
+          propagate(changedEntity, null, 0);
+          continue;
+        }
+        var lastProcessedIndex = batch.lastProcessedIndexToAdvance(i);
+        if (lastProcessedIndex != null) {
+          lastProcessedIndex.setValue(propagate(changedEntity, owner, batch.index(i)));
+        }
       }
-
-      var lastProcessed = keyToLastProcessedObject.get(key);
-      if (lastProcessed == null
-          || topologicalOrderComparator.compare(lastProcessed, changedEntity) < 0) {
-        lastProcessed = updateChanged(changedEntity);
-        keyToLastProcessedObject.put(key, lastProcessed);
+      return true;
+    } finally {
+      isUpdating = false;
+      changedEntities.clear();
+      batch.clear();
+      if (sequentialIterators != null) {
+        sequentialIterators.clear();
       }
     }
-    isUpdating = false;
-    changedEntities.clear();
-    sortedChangedEntities.clear();
-    keyToLastProcessedObject.clear();
-    return true;
   }
 
   /**
-   * Update entities and its successor until one of them does not change.
+   * Update entities and its successor until one of them does not change. Random-access lists use
+   * indexes; sequential lists use externalized neighbors or a cursor shared by this owner's seeds.
    *
    * @param entity The first entity to process.
-   * @return The last processed entity (i.e. the first entity that did not change).
+   * @param owner null if the entity is unassigned
+   * @param index the index of the entity in the owner's list
+   * @return The index of the last processed entity: the first unchanged one, or the last one in
+   *     walk direction if all of them changed.
    */
-  private Object updateChanged(Object entity) {
+  private int propagate(Object entity, @Nullable Object owner, int index) {
+    var elementList =
+        owner == null ? Collections.emptyList() : listVariableDescriptor.getValue(owner);
+    var indexed = elementList instanceof RandomAccess;
+    var externalizedSuccessor =
+        !indexed
+            && (forward
+                ? listVariableState.isNextElementExternalized()
+                : listVariableState.isPreviousElementExternalized());
+    ListIterator<Object> iterator = null;
     var current = entity;
-    var previous = current;
+    var previousIndex = index;
     while (current != null) {
       var anyChanged = false;
       for (var updater : sortedVariableUpdaterInfos) {
@@ -140,26 +168,78 @@ public final class SingleDirectionalParentVariableReferenceGraph<Solution_>
       // If a successor was unchanged and its parent unchanged,
       // it can still be the case that the successor's successor was changed
       if (!canTerminateEarly || anyChanged) {
-        previous = current;
-        current = successorFunction.apply(current);
+        previousIndex = index;
+        index = forward ? index + 1 : index - 1;
+        if (index < 0 || index >= elementList.size()) {
+          current = null;
+        } else if (indexed) {
+          current = elementList.get(index);
+        } else if (externalizedSuccessor) {
+          current =
+              forward
+                  ? listVariableState.getNextElement(current)
+                  : listVariableState.getPreviousElement(current);
+        } else {
+          if (iterator == null) {
+            iterator =
+                sequentialIterator(Objects.requireNonNull(owner), elementList, previousIndex);
+          }
+          current = forward ? iterator.next() : iterator.previous();
+        }
       } else {
-        return current;
+        return index;
       }
     }
-    return previous;
+    return previousIndex;
+  }
+
+  private ListIterator<Object> sequentialIterator(Object owner, List<Object> elements, int index) {
+    if (sequentialIterators == null) {
+      sequentialIterators = new ShrinkingIdentityHashMap<>();
+    }
+    var boundary = forward ? index + 1 : index;
+    var iterator = sequentialIterators.get(owner);
+    if (iterator == null) {
+      iterator = elements.listIterator(boundary);
+      sequentialIterators.put(owner, iterator);
+    } else if (forward) {
+      // SortedChangeBatch guarantees that later seeds of this owner are beyond the previous walk.
+      // Reusing the cursor avoids a linear listIterator(index) seek for every sparse seed.
+      while (iterator.nextIndex() < boundary) {
+        iterator.next();
+      }
+    } else {
+      while (iterator.nextIndex() > boundary) {
+        iterator.previous();
+      }
+    }
+    return iterator;
   }
 
   @Override
-  public void beforeVariableChanged(VariableMetaModel<?, ?, ?> variableReference, Object entity) {
-    // Do nothing
+  public boolean hasPendingChanges() {
+    return !changedEntities.isEmpty();
   }
 
   @Override
-  public void afterVariableChanged(VariableMetaModel<?, ?, ?> variableReference, Object entity) {
-    if (!isUpdating
-        && monitoredSourceVariableSet.contains(variableReference)
-        && monitoredEntityClass.isInstance(entity)) {
-      changedEntities.add(entity);
+  public @Nullable VariableChangeHook resolveHookFor(VariableMetaModel<?, ?, ?> variableReference) {
+    return monitoredSourceVariableSet.contains(variableReference)
+        ? monitoredVariableChangeHook
+        : null;
+  }
+
+  private final class MonitoredVariableChangeHook implements VariableChangeHook {
+
+    @Override
+    public void beforeVariableChanged(Object entity) {
+      // Do nothing
+    }
+
+    @Override
+    public void afterVariableChanged(Object entity) {
+      if (!isUpdating && monitoredEntityClass.isInstance(entity)) {
+        changedEntities.add(entity);
+      }
     }
   }
 

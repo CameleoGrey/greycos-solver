@@ -41,8 +41,7 @@ public record DefaultPlanningListVariableMetaModel<Solution_, Entity_, Value_>(
 
   @Override
   public boolean equals(Object o) {
-    // Do not use entity in equality checks;
-    // If an entity is subclassed, that subclass will have it own distinct VariableMetaModel
+    // Equal when describing the same variable, regardless of entity view; see VariableMetaModel.
     if (o instanceof DefaultPlanningListVariableMetaModel<?, ?, ?> that) {
       return Objects.equals(variableDescriptor, that.variableDescriptor);
     }
@@ -62,6 +61,6 @@ public record DefaultPlanningListVariableMetaModel<Solution_, Entity_, Value_>(
   @Override
   public String toString() {
     return "Genuine List Variable '%s %s.%s' (allowsUnassignedValues: %b)"
-        .formatted(type(), entity.getClass().getSimpleName(), name(), allowsUnassignedValues());
+        .formatted(type(), entity.type().getSimpleName(), name(), allowsUnassignedValues());
   }
 }

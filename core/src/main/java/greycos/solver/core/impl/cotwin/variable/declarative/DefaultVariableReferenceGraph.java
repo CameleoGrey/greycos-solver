@@ -62,6 +62,11 @@ final class DefaultVariableReferenceGraph<Solution_>
   }
 
   @Override
+  public boolean hasPendingChanges() {
+    return !changeTracker.isEmpty();
+  }
+
+  @Override
   void markChanged(@NonNull GraphNode<Solution_> node) {
     changeTracker.set(node.graphNodeId());
   }

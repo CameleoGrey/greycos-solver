@@ -14,6 +14,9 @@ public final class MemoryUseSubSingleStatisticTest
     extends AbstractSubSingleStatisticTest<
         MemoryUseStatisticPoint, MemoryUseSubSingleStatistic<TestdataSolution>> {
 
+  private static final long USED_MEMORY = 123_456_789L;
+  private static final long MAX_MEMORY = 987_654_321L;
+
   @Override
   protected Function<SubSingleBenchmarkResult, MemoryUseSubSingleStatistic<TestdataSolution>>
       getSubSingleStatisticConstructor() {
@@ -22,7 +25,8 @@ public final class MemoryUseSubSingleStatisticTest
 
   @Override
   protected List<MemoryUseStatisticPoint> getInputPoints() {
-    return Collections.singletonList(MemoryUseStatisticPoint.create(Long.MAX_VALUE));
+    return Collections.singletonList(
+        new MemoryUseStatisticPoint(Long.MAX_VALUE, USED_MEMORY, MAX_MEMORY));
   }
 
   @Override
@@ -31,8 +35,8 @@ public final class MemoryUseSubSingleStatisticTest
         .assertThat(outputPoints)
         .hasSize(1)
         .first()
-        .matches(s -> s.getUsedMemory() > 0, "Used memory not recorded.")
-        .matches(s -> s.getMaxMemory() > 0, "Max memory not recorded.")
+        .matches(s -> s.getUsedMemory() == USED_MEMORY, "Used memory does not match.")
+        .matches(s -> s.getMaxMemory() == MAX_MEMORY, "Max memory does not match.")
         .matches(s -> s.getTimeMillisSpent() == Long.MAX_VALUE, "Millis do not match.");
   }
 }

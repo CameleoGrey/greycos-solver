@@ -3,8 +3,11 @@ package greycos.solver.core.impl.partitionedsearch;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicReference;
 
+import greycos.solver.core.impl.solver.monitoring.SolverMetricSamples;
+import greycos.solver.core.impl.solver.monitoring.SolverWorkSnapshot;
+
 /** Owns a child solver even if submission fails or cancellation prevents the task from starting. */
-final class PartitionTask<Solution_> implements Callable<Long> {
+final class PartitionTask<Solution_> implements Callable<SolverWorkSnapshot> {
 
   private final PartitionSolver<Solution_> solver;
   private final Solution_ initialSolution;
@@ -20,13 +23,13 @@ final class PartitionTask<Solution_> implements Callable<Long> {
   }
 
   @Override
-  public Long call() {
+  public SolverWorkSnapshot call() {
     if (!state.compareAndSet(ExecutionState.NEW, ExecutionState.RUNNING)) {
-      return 0L;
+      return SolverWorkSnapshot.ZERO;
     }
     try {
       solver.solve(initialSolution);
-      return solver.getScoreCalculationCount();
+      return SolverMetricSamples.localWork(solver.getSolverScope());
     } finally {
       state.set(ExecutionState.CLOSED);
     }
