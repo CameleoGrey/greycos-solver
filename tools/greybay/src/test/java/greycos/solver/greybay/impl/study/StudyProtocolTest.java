@@ -6,15 +6,21 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 import greycos.solver.core.api.score.HardSoftScore;
 import greycos.solver.core.config.constructionheuristic.ConstructionHeuristicPhaseConfig;
+import greycos.solver.core.config.constructionheuristic.ConstructionHeuristicType;
 import greycos.solver.core.config.islandmodel.IslandModelPhaseConfig;
 import greycos.solver.core.config.localsearch.LocalSearchPhaseConfig;
+import greycos.solver.core.config.localsearch.LocalSearchStepLoggingMode;
 import greycos.solver.core.config.partitionedsearch.PartitionedSearchPhaseConfig;
+import greycos.solver.core.config.solver.EnvironmentMode;
 import greycos.solver.core.config.solver.SolverConfig;
+import greycos.solver.core.config.solver.termination.TerminationConfig;
 import greycos.solver.greybay.api.ComponentIdentity;
 import greycos.solver.greybay.api.ConfigurationTemplate;
 import greycos.solver.greybay.api.ProblemCapabilities;
@@ -26,6 +32,7 @@ import greycos.solver.greybay.config.RandomSamplerConfig;
 import greycos.solver.greybay.config.ResourcePolicy;
 import greycos.solver.greybay.config.SearchSpace;
 import greycos.solver.greybay.examples.GreybayWorkflowExample;
+import greycos.solver.greybay.examples.RoutingExample;
 import greycos.solver.greybay.examples.SchedulingExample;
 
 import org.junit.jupiter.api.Test;
@@ -167,6 +174,71 @@ class StudyProtocolTest {
     assertThat(effective.getPhaseConfigList().get(2).getTerminationConfig()).isNull();
   }
 
+  @ParameterizedTest
+  @MethodSource("invalidCallbackMutations")
+  void approvedLimitCallbackCannotChangeFrozenProtocol(Consumer<SolverConfig> mutation) {
+    var template =
+        caps(
+            config -> {
+              mutation.accept(config);
+              return Map.of();
+            });
+    var definition = definition(pipelineBase(), ResourcePolicy.singleThreaded(), template);
+
+    assertThatThrownBy(() -> apply(definition, template))
+        .isExactlyInstanceOf(StudyProtocolException.class);
+  }
+
+  static Stream<Consumer<SolverConfig>> invalidCallbackMutations() {
+    return Stream.of(
+        config -> config.withEasyScoreCalculatorClass(RoutingExample.RouteScoreCalculator.class),
+        config ->
+            ((ConstructionHeuristicPhaseConfig) config.getPhaseConfigList().getFirst())
+                .setConstructionHeuristicType(ConstructionHeuristicType.FIRST_FIT),
+        config -> config.setDaemon(true),
+        config -> config.setMoveThreadCount("8"),
+        config ->
+            ((LocalSearchPhaseConfig) config.getPhaseConfigList().get(1)).setMoveThreadCount("8"),
+        config ->
+            config.getPhaseConfigList().get(1).setEnvironmentMode(EnvironmentMode.FULL_ASSERT),
+        config ->
+            ((LocalSearchPhaseConfig) config.getPhaseConfigList().get(1))
+                .setStepLoggingMode(LocalSearchStepLoggingMode.BEST_SCORE_IMPROVED),
+        config ->
+            config.withPhases(new LocalSearchPhaseConfig(), new ConstructionHeuristicPhaseConfig()),
+        config -> config.setPhaseConfigList(List.of()),
+        config -> config.setPhaseConfigList(null),
+        config ->
+            config.withPhases(
+                config.getPhaseConfigList().getFirst(),
+                new LocalSearchPhaseConfig()
+                    .withTerminationConfig(new TerminationConfig().withStepCountLimit(1))));
+  }
+
+  @Test
+  void approvedLimitsUseThePhaseListReplacedByTheCallback() {
+    var template =
+        caps(
+            config -> {
+              config.withPhases(
+                  config.getPhaseConfigList().getFirst(),
+                  new LocalSearchPhaseConfig(),
+                  new LocalSearchPhaseConfig(),
+                  new LocalSearchPhaseConfig());
+              return Map.of(2, Duration.ofMillis(300));
+            });
+    var definition = definition(pipelineBase(), ResourcePolicy.singleThreaded(), template);
+
+    var effective = apply(definition, template);
+
+    assertThat(effective.getPhaseConfigList()).hasSize(4);
+    assertThat(effective.getPhaseConfigList().get(1).getTerminationConfig()).isNull();
+    assertThat(effective.getPhaseConfigList().get(2).getTerminationConfig().getSpentLimit())
+        .isEqualTo(Duration.ofMillis(300));
+    assertThat(effective.getPhaseConfigList().get(3).getTerminationConfig()).isNull();
+    assertThat(effective.getTerminationConfig().getSpentLimit()).isEqualTo(HORIZON);
+  }
+
   private static SolverConfig apply(
       GreybayStudyDefinition<?, ?> definition, ConfigurationTemplate template) {
     return StudyProtocol.apply(
@@ -224,6 +296,11 @@ class StudyProtocolTest {
   }
 
   private static ConfigurationTemplate caps(Supplier<Map<Integer, Duration>> callback) {
+    return caps(config -> callback.get());
+  }
+
+  private static ConfigurationTemplate caps(
+      Function<SolverConfig, Map<Integer, Duration>> callback) {
     return new ConfigurationTemplate() {
       @Override
       public ComponentIdentity identity() {
@@ -251,7 +328,7 @@ class StudyProtocolTest {
       @Override
       public Map<Integer, Duration> approvedSearchPhaseLimits(
           SolverConfig materialized, Duration horizon, ParameterAssignment assignment) {
-        return callback.get();
+        return callback.apply(materialized);
       }
     };
   }

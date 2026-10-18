@@ -175,29 +175,17 @@ class DefaultGreybayStudyTest {
               .findFirst()
               .orElseThrow()
               .payload();
-      var proposalCheckpoint =
-          records.stream()
-              .filter(record -> record.kind().equals(StudyStore.CHECKPOINT_KIND))
-              .map(record -> record.payload())
-              .filter(
-                  payload -> {
-                    var trials = (List<Map<String, Object>>) payload.get("trials");
-                    return trials.size() == 2 && "PROPOSED".equals(trials.get(1).get("status"));
-                  })
-              .findFirst()
-              .orElseThrow();
-      assertThat((List<String>) proposalCheckpoint.get("reservedIdentities"))
-          .contains((String) proposal.get("candidateIdentity"))
-          .isSorted();
-      assertThat(proposalCheckpoint.get("samplerState")).isEqualTo(proposal.get("samplerState"));
-      var proposedTrial = ((List<Map<String, Object>>) proposalCheckpoint.get("trials")).get(1);
-      assertThat(proposedTrial)
-          .containsEntry("assignment", proposal.get("assignment"))
-          .containsEntry("config", proposal.get("config"))
-          .containsEntry("objective", null);
-
       var checkpoint = store.checkpoint().orElseThrow();
       var state = checkpoint.state();
+      assertThat((List<String>) state.get("reservedIdentities"))
+          .contains((String) proposal.get("candidateIdentity"))
+          .isSorted();
+      assertThat(state.get("samplerState")).isEqualTo(proposal.get("samplerState"));
+      var selectedTrial = ((List<Map<String, Object>>) state.get("trials")).get(1);
+      assertThat(selectedTrial)
+          .containsEntry("assignment", proposal.get("assignment"))
+          .containsEntry("config", proposal.get("config"));
+
       assertThat(state)
           .containsEntry("projectionVersion", "1")
           .containsEntry("recoveryAuthority", "journal")
@@ -235,15 +223,23 @@ class DefaultGreybayStudyTest {
                         (String) reference.get("digest"), (String) reference.get("suffix"))))
             .isNotEmpty();
       }
+      var selection =
+          records.stream()
+              .filter(record -> record.kind().equals("SELECTION_FROZEN"))
+              .findFirst()
+              .orElseThrow();
+      assertThat(selection.payload()).containsEntry("trialId", Long.toString(selected));
+      assertThat(selection.sequence()).isLessThan(checkpoint.sequence());
+      assertThat(
+              records.stream().filter(record -> record.kind().equals(StudyStore.CHECKPOINT_KIND)))
+          .isEmpty();
       assertThat(
               records.stream()
-                  .filter(record -> record.kind().equals(StudyStore.CHECKPOINT_KIND))
-                  .map(record -> record.payload())
-                  .anyMatch(
-                      payload ->
-                          payload.get("frozenSelectionTrialId") != null
-                              && Boolean.FALSE.equals(payload.get("qualificationTerminal"))))
-          .isTrue();
+                  .filter(record -> record.kind().equals(StudyStore.CHECKPOINT_MARKER_KIND)))
+          .isNotEmpty()
+          .allSatisfy(record -> assertThat(record.payload()).containsOnlyKeys("stateDigest"));
+      assertThat(records.getLast().kind()).isEqualTo("ACTIVE_COMPLETED");
+      assertThat(records.getLast().sequence()).isGreaterThan(checkpoint.sequence());
     }
   }
 

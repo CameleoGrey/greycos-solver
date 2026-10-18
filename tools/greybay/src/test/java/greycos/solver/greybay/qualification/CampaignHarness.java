@@ -245,6 +245,11 @@ public final class CampaignHarness {
     var writer = new StringWriter();
     definition.baseSolverConfig().writeXml(writer);
     result.put("baselineXml", writer.toString());
+    result.put(
+        "baselineCandidateAssignment",
+        definition.baselineCandidateAssignment() == null
+            ? null
+            : definition.baselineCandidateAssignment().toMap());
     result.put("adapter", component(definition.problemAdapter().identity()));
     result.put(
         "verifier",
@@ -254,6 +259,7 @@ public final class CampaignHarness {
             .map(verifier -> component(verifier.identity()))
             .orElse(null));
     result.put("objective", component(definition.objective().identity()));
+    result.put("scoreAdapter", component(definition.objective().scoreAdapter().identity()));
     result.put(
         "reconstruction",
         definition.runtimeReconstructionProvider() == null

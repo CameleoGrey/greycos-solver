@@ -7,9 +7,11 @@ import java.nio.channels.FileLock;
 import java.nio.channels.OverlappingFileLockException;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HexFormat;
@@ -24,14 +26,17 @@ import java.util.UUID;
 /**
  * Single-writer local study journal. All state-changing writes are forced before returning.
  *
- * <p>Checkpoints are caches: their complete state is also journaled as {@code STORE_CHECKPOINT}.
- * Replay clients must ignore that reserved record kind when reducing application transitions.
- * Artifact references must use {@link ArtifactReference#toMap()} so append and recovery validate
- * their existence and content. Process-crash recovery requires a local filesystem providing locks
- * and atomic replacement. No universal power-loss guarantee is made.
+ * <p>Checkpoints are replaceable caches anchored by {@code STORE_CHECKPOINT_MARKER} state digests.
+ * Legacy {@code STORE_CHECKPOINT} records retain their complete journaled state. Replay clients
+ * must ignore both reserved record kinds when reducing application transitions and rebuild a
+ * missing cache from those transitions. Journaled artifact references must use {@link
+ * ArtifactReference#toMap()} so append and recovery validate their existence and content.
+ * Process-crash recovery requires a local filesystem providing locks and atomic replacement. No
+ * universal power-loss guarantee is made.
  */
 public final class StudyStore implements AutoCloseable {
   public static final String CHECKPOINT_KIND = "STORE_CHECKPOINT";
+  public static final String CHECKPOINT_MARKER_KIND = "STORE_CHECKPOINT_MARKER";
   private static final int MAGIC = 0x47424a31;
   private static final int HEADER_BYTES = Integer.BYTES * 3;
   private static final int DIGEST_BYTES = 32;
@@ -164,6 +169,7 @@ public final class StudyStore implements AutoCloseable {
       throw new IllegalArgumentException("Invalid journal record kind (" + kind + ").");
     }
     var immutablePayload = StoreJson.immutableObject(payload);
+    validateCheckpointMarker(kind, immutablePayload);
     validateReferences(immutablePayload);
     long sequence = records.size() + 1L;
     var previousHash = records.isEmpty() ? GENESIS : records.getLast().hash();
@@ -197,6 +203,7 @@ public final class StudyStore implements AutoCloseable {
     }
     var record = new JournalRecord(sequence, kind, immutablePayload, previousHash, hash);
     records.add(record);
+    if (CHECKPOINT_MARKER_KIND.equals(kind)) checkpoint = null;
     return record;
   }
 
@@ -237,9 +244,15 @@ public final class StudyStore implements AutoCloseable {
 
   public synchronized void checkpoint(Map<String, Object> state) throws IOException {
     requireOpen();
-    var record = append(CHECKPOINT_KIND, state);
-    checkpoint = new Checkpoint(record.sequence(), record.hash(), record.payload());
-    writeCheckpoint(checkpoint);
+    var immutableState = StoreJson.immutableObject(state);
+    validateReferences(immutableState);
+    var record =
+        append(
+            CHECKPOINT_MARKER_KIND,
+            Map.of("stateDigest", StoreJson.sha256(StoreJson.canonicalBytes(immutableState))));
+    var replacement = new Checkpoint(record.sequence(), record.hash(), immutableState);
+    writeCheckpoint(replacement);
+    checkpoint = replacement;
   }
 
   private void verifyManifest(Map<String, Object> expected) throws IOException {
@@ -310,6 +323,7 @@ public final class StudyStore implements AutoCloseable {
         throw new IOException("Invalid journal record kind (" + kind + ").");
       }
       var payload = object(envelope.get("payload"), "journal payload");
+      validateCheckpointMarker(kind, payload);
       validateReferences(payload);
       records.add(new JournalRecord(sequence, kind, payload, previous, hash));
       position += frameLength;
@@ -318,34 +332,72 @@ public final class StudyStore implements AutoCloseable {
   }
 
   private void restoreCheckpoint() throws IOException {
+    JournalRecord latest = null;
     for (var record : records) {
-      if (CHECKPOINT_KIND.equals(record.kind())) {
-        checkpoint = new Checkpoint(record.sequence(), record.hash(), record.payload());
+      if (CHECKPOINT_KIND.equals(record.kind()) || CHECKPOINT_MARKER_KIND.equals(record.kind())) {
+        latest = record;
       }
     }
+    var legacy =
+        latest != null && CHECKPOINT_KIND.equals(latest.kind())
+            ? new Checkpoint(latest.sequence(), latest.hash(), latest.payload())
+            : null;
     var path = directory.resolve("checkpoint.json");
-    if (Files.exists(path, LinkOption.NOFOLLOW_LINKS)) {
-      var bytes = readRegularFile(path);
-      boolean matches = false;
+    var bytes = readOptionalCheckpoint(path);
+    if (bytes != null) {
       try {
         var document = StoreJson.readObject(bytes);
-        if (checkpoint != null) {
-          matches = checkpointDocument(checkpoint).equals(document);
+        if (latest != null) {
+          var content = object(document.get("content"), "checkpoint content");
+          var state = object(content.get("state"), "checkpoint state");
+          var candidate = new Checkpoint(latest.sequence(), latest.hash(), state);
+          boolean stateMatches =
+              legacy != null
+                  ? legacy.state().equals(state)
+                  : latest
+                      .payload()
+                      .get("stateDigest")
+                      .equals(StoreJson.sha256(StoreJson.canonicalBytes(state)));
+          if (stateMatches && checkpointDocument(candidate).equals(document)) {
+            checkpoint = candidate;
+            return;
+          }
         }
       } catch (IOException ignored) {
-        // The full checkpoint state must be recovered from a valid journal record below.
-      }
-      if (matches) {
-        return;
-      }
-      if (checkpoint == null) {
-        throw new IOException(
-            "Checkpoint has no independently recoverable journal state (" + path + ").");
+        // Only disposable cache content is ignored; file access and journal validation are fatal.
       }
       preserveDiagnostic("checkpoint", bytes);
+      Files.delete(path);
+      forceDirectory(directory);
     }
-    if (checkpoint != null) {
-      writeCheckpoint(checkpoint);
+    // A marker never falls back to an older legacy projection. The application must replay its
+    // authoritative transitions when the latest digest has no matching cache.
+    if (legacy != null) {
+      writeCheckpoint(legacy);
+      checkpoint = legacy;
+    }
+  }
+
+  private static byte[] readOptionalCheckpoint(Path path) throws IOException {
+    try {
+      var attributes =
+          Files.readAttributes(path, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS);
+      if (!attributes.isRegularFile()) {
+        throw new IOException("Checkpoint must be an ordinary file (" + path + ").");
+      }
+    } catch (NoSuchFileException missing) {
+      return null;
+    }
+    return readRegularFile(path);
+  }
+
+  private static void validateCheckpointMarker(String kind, Map<String, Object> payload)
+      throws IOException {
+    if (CHECKPOINT_MARKER_KIND.equals(kind)
+        && (!payload.keySet().equals(Set.of("stateDigest"))
+            || !(payload.get("stateDigest") instanceof String digest)
+            || !digest.matches("sha256:[0-9a-f]{64}"))) {
+      throw new IOException("Malformed checkpoint marker (" + payload + ").");
     }
   }
 

@@ -514,7 +514,6 @@ public final class DefaultGreybayStudy<Solution_, Score_ extends Score<Score_>>
               "samplerState",
               proposal.nextState().toMap()));
       setState(StudyState.SEARCH_FINISHED, proposal.stopReason().name());
-      checkpoint();
       return null;
     }
     manifest.searchSpace().validate(proposal.assignment());
@@ -541,7 +540,6 @@ public final class DefaultGreybayStudy<Solution_, Score_ extends Score<Score_>>
     payload.put("historySize", Integer.toString(history.size()));
     payload.put("samplerState", proposal.nextState().toMap());
     append("PROPOSED", payload);
-    checkpoint();
     return trials.get(id);
   }
 
@@ -652,7 +650,7 @@ public final class DefaultGreybayStudy<Solution_, Score_ extends Score<Score_>>
             Long.toString(currentMeasuredNanos()),
             "admissionChargedNanos",
             Long.toString(currentAdmissionNanos())));
-    checkpoint();
+    checkpointTerminalProgress();
   }
 
   private void terminateTrial(Trial trial, TrialStatus status, String failure) {
@@ -675,7 +673,7 @@ public final class DefaultGreybayStudy<Solution_, Score_ extends Score<Score_>>
             Long.toString(currentMeasuredNanos()),
             "admissionChargedNanos",
             Long.toString(currentAdmissionNanos())));
-    checkpoint();
+    checkpointTerminalProgress();
   }
 
   private EvaluationRecord<Score_> evaluateCell(
@@ -860,7 +858,6 @@ public final class DefaultGreybayStudy<Solution_, Score_ extends Score<Score_>>
                 StudyManifest.panel(definition.trainingPanel()),
                 "reason",
                 "Best complete training objective; baseline and earlier incumbent retain exact ties."));
-        checkpoint();
       }
       setState(StudyState.QUALIFYING, null);
       warmup();
@@ -1034,7 +1031,6 @@ public final class DefaultGreybayStudy<Solution_, Score_ extends Score<Score_>>
     payload.put("terminal", terminal);
     append("QUALIFICATION", payload);
     if (terminal) setState(StudyState.FINISHED, null);
-    checkpoint();
   }
 
   @Override
@@ -1186,26 +1182,42 @@ public final class DefaultGreybayStudy<Solution_, Score_ extends Score<Score_>>
     synchronized (lifecycle) {
       try {
         if (activeOperationId != null) {
-          long elapsed = Math.max(0, nanoClock.getAsLong() - activeOperationStarted);
-          append(
-              "ACTIVE_COMPLETED",
-              Map.of(
-                  "operationId",
-                  activeOperationId,
-                  "elapsedNanos",
-                  Long.toString(elapsed),
-                  "admissionNanos",
-                  Long.toString(elapsed),
-                  "unknownCost",
-                  false));
-          activeOperationId = null;
-          updateSnapshot();
-          if (state == StudyState.PAUSED) checkpoint();
+          Throwable finalizationFailure = null;
+          try {
+            // The cache describes this journal position. The trailing accounting commit remains
+            // authoritative and charges projection construction, validation and persistence too.
+            checkpoint();
+          } catch (RuntimeException | Error failure) {
+            finalizationFailure = failure;
+          }
+          try {
+            long elapsed = Math.max(0, nanoClock.getAsLong() - activeOperationStarted);
+            append(
+                "ACTIVE_COMPLETED",
+                Map.of(
+                    "operationId",
+                    activeOperationId,
+                    "elapsedNanos",
+                    Long.toString(elapsed),
+                    "admissionNanos",
+                    Long.toString(elapsed),
+                    "unknownCost",
+                    false));
+            activeOperationId = null;
+            updateSnapshot();
+          } catch (RuntimeException | Error failure) {
+            if (finalizationFailure == null) finalizationFailure = failure;
+            else if (finalizationFailure != failure) finalizationFailure.addSuppressed(failure);
+          }
+          if (finalizationFailure instanceof RuntimeException failure) throw failure;
+          if (finalizationFailure instanceof Error failure) throw failure;
         }
-      } catch (RuntimeException | Error accountingFailure) {
+      } catch (RuntimeException | Error finalizationFailure) {
         publishState(StudyState.FAILED);
-        if (operationFailure != null) operationFailure.addSuppressed(accountingFailure);
-        else throw accountingFailure;
+        if (operationFailure != null) {
+          if (operationFailure != finalizationFailure)
+            operationFailure.addSuppressed(finalizationFailure);
+        } else throw finalizationFailure;
       } finally {
         activeOperationId = null;
         operating = false;
@@ -1290,13 +1302,11 @@ public final class DefaultGreybayStudy<Solution_, Score_ extends Score<Score_>>
       }
     }
     setState(StudyState.PAUSED, stopReason == null ? "STOP_REQUESTED" : stopReason);
-    checkpoint();
   }
 
   private void fail(Throwable failure) {
     try {
       setState(StudyState.FAILED, failure.getClass().getName() + ": " + failure.getMessage());
-      checkpoint();
     } catch (RuntimeException persistenceFailure) {
       failure.addSuppressed(persistenceFailure);
     }
@@ -1307,6 +1317,15 @@ public final class DefaultGreybayStudy<Solution_, Score_ extends Score<Score_>>
     payload.put("state", next.name());
     payload.put("reason", reason);
     append("STATE", payload);
+  }
+
+  private void checkpointTerminalProgress() {
+    int terminalCount = progression.size();
+    // Recovery reduces all transitions before setup begins owning an operation. Its finalization
+    // writes the reconstructed cache; live search amortizes cumulative projections geometrically.
+    if (operating && terminalCount > 0 && (terminalCount & (terminalCount - 1)) == 0) {
+      checkpoint();
+    }
   }
 
   private void checkpoint() {

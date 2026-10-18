@@ -15,7 +15,6 @@ import greycos.solver.core.api.score.Score;
 import greycos.solver.greybay.api.EvaluationRecord;
 import greycos.solver.greybay.api.QualificationResult;
 import greycos.solver.greybay.api.TrialStatus;
-import greycos.solver.greybay.api.objective.ExactScoreAdapter;
 import greycos.solver.greybay.impl.persistence.StoreJson;
 
 /** Reports every predeclared run, including negative, incomplete and failed outcomes. */
@@ -282,7 +281,7 @@ final class CampaignReport {
     text.append("\n### ").append(label).append("\n\n");
     var pairs = new ArrayList<InstancePairedBootstrap.Pair>();
     var panel = frozen.requests().getFirst().definition().heldOutPanel();
-    var adapter = ExactScoreAdapter.<Score_>standard();
+    var adapter = frozen.requests().getFirst().definition().objective().scoreAdapter();
     for (long optimizerSeed : frozen.protocol().optimizerSeeds()) {
       var left = find(runs, leftMethod, optimizerSeed);
       var right = rightMethod == null ? left : find(runs, rightMethod, optimizerSeed);

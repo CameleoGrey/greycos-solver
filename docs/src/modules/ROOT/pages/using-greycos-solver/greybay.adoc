@@ -99,7 +99,12 @@ Candidate and active-time limits may increase, but consumed work never resets.
 Baseline calibration does not consume a candidate trial slot.
 Interrupted attempts are restarted with fresh solver instances and graphs, with uncertain interrupted cost labeled.
 The journal and its referenced artifacts support durable recovery.
-The checkpoint is a recovery cache; the coordinator currently reconstructs state by replaying the full authoritative journal.
+The checkpoint is a recovery cache; the coordinator reconstructs state by replaying the full authoritative journal.
+New checkpoints append only a digest marker and atomically replace the full cache.
+Checkpoint writes occur at geometrically spaced terminal-trial counts and at operation completion, and their work counts toward active cost.
+Missing, corrupt, or stale caches are rebuilt from the journal; a valid cache may precede later journal transitions.
+Legacy full checkpoint records remain readable without rewriting committed history.
+Artifact and environment identity checks still apply when resuming.
 Do not edit these files manually.
 Training cannot resume after selection is frozen or held-out evaluation begins.
 A saved solution or XML configuration does not restore adaptive algorithm state, clocks or RNGs.

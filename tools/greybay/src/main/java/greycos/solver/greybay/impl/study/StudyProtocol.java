@@ -34,23 +34,10 @@ final class StudyProtocol {
       ParameterAssignment assignment,
       long seed,
       Duration horizon) {
-    var base = definition.baseSolverConfig();
-    if (!invariantIdentity(base, definition.runtimeReconstructionProvider())
-        .equals(invariantIdentity(candidate, definition.runtimeReconstructionProvider()))) {
-      throw new StudyProtocolException(
-          "A template changed frozen solution/entity classes, scoring, business weights, "
-              + "initialization, preview policy, logging/monitoring or fixed configuration resources.");
-    }
-    if (Boolean.TRUE.equals(candidate.getDaemon())) {
-      throw new StudyProtocolException(
-          "Daemon solver mode is incompatible with finite study evaluations.");
-    }
-    validateResources(candidate.getPhaseConfigList(), definition);
-    var phases = candidate.getPhaseConfigList();
-    if (phases == null || phases.isEmpty()) {
-      throw new StudyProtocolException(
-          "Greybay requires an explicit phase list to freeze the initialization policy.");
-    }
+    String frozenIdentity =
+        invariantIdentity(
+            definition.baseSolverConfig(), definition.runtimeReconstructionProvider());
+    validateCandidate(definition, candidate, frozenIdentity);
     Map<Integer, Duration> supplied;
     try {
       supplied =
@@ -62,6 +49,10 @@ final class StudyProtocol {
     } catch (RuntimeException failure) {
       throw new CandidateMaterializationException(failure);
     }
+    // The callback receives a mutable configuration and may replace its phase list.
+    // Validate its final state before interpreting caps or applying protocol-owned settings.
+    if (template != null) validateCandidate(definition, candidate, frozenIdentity);
+    var phases = candidate.getPhaseConfigList();
     Map<Integer, Duration> approved = Map.copyOf(supplied);
     long allocated = 0;
     int finalSearch = -1;
@@ -110,6 +101,26 @@ final class StudyProtocol {
     candidate.setMoveThreadCount(definition.resourcePolicy().moveThreadCount());
     candidate.setTerminationConfig(new TerminationConfig().withSpentLimit(horizon));
     return candidate;
+  }
+
+  private static void validateCandidate(
+      GreybayStudyDefinition<?, ?> definition, SolverConfig candidate, String frozenIdentity) {
+    if (!frozenIdentity.equals(
+        invariantIdentity(candidate, definition.runtimeReconstructionProvider()))) {
+      throw new StudyProtocolException(
+          "A template changed frozen solution/entity classes, scoring, business weights, "
+              + "initialization, preview policy, logging/monitoring or fixed configuration resources.");
+    }
+    if (Boolean.TRUE.equals(candidate.getDaemon())) {
+      throw new StudyProtocolException(
+          "Daemon solver mode is incompatible with finite study evaluations.");
+    }
+    validateResources(candidate.getPhaseConfigList(), definition);
+    var phases = candidate.getPhaseConfigList();
+    if (phases == null || phases.isEmpty()) {
+      throw new StudyProtocolException(
+          "Greybay requires an explicit phase list to freeze the initialization policy.");
+    }
   }
 
   private static boolean isInitialization(PhaseConfig phase) {
