@@ -1,15 +1,29 @@
 package greycos.solver.core.impl.score.stream.common.inliner;
 
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.IdentityHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.function.Supplier;
 
 import greycos.solver.core.api.score.Score;
+import greycos.solver.core.api.score.analysis.MatchOccurrenceAnalysis;
 import greycos.solver.core.api.score.stream.Constraint;
 import greycos.solver.core.api.score.stream.ConstraintRef;
+import greycos.solver.core.api.solver.IndictmentFetchPolicy;
+import greycos.solver.core.impl.bavet.common.provenance.LineageHandle;
+import greycos.solver.core.impl.bavet.common.provenance.LineageResolver;
+import greycos.solver.core.impl.score.analysis.AnalysisDetails;
+import greycos.solver.core.impl.score.analysis.DefaultMatchOccurrenceAnalysis;
+import greycos.solver.core.impl.score.analysis.DefaultRawScoreAnalysis;
+import greycos.solver.core.impl.score.analysis.IndictmentAnalysisBuilder;
+import greycos.solver.core.impl.score.analysis.IndictmentMaps;
 import greycos.solver.core.impl.score.constraint.ConstraintMatch;
 import greycos.solver.core.impl.score.constraint.ConstraintMatchPolicy;
 import greycos.solver.core.impl.score.constraint.ConstraintMatchTotal;
@@ -142,7 +156,10 @@ public abstract class AbstractScoreInliner<Score_ extends Score<Score_>> {
      */
     var entry =
         constraintMatchList.add(
-            new ConstraintMatchCarrier<>(constraintMatchSupplier, constraint, scoreImpact));
+            constraintMatchPolicy.getIndictmentFetchPolicy() == IndictmentFetchPolicy.NONE
+                ? new ConstraintMatchCarrier<>(constraintMatchSupplier, constraint, scoreImpact)
+                : new IndictmentConstraintMatchCarrier<>(
+                    constraintMatchSupplier, constraint, scoreImpact));
     clearMaps();
     return new WrappingScoreImpact<>(this, scoreImpact, entry);
   }
@@ -200,6 +217,76 @@ public abstract class AbstractScoreInliner<Score_ extends Score<Score_>> {
     return constraintIdToConstraintMatchTotalMap;
   }
 
+  /** Attaches live lineage to the raw occurrence, independently of its cached justification. */
+  public static void bindOriginalIndictment(ScoreImpact<?> impact, LineageHandle lineage) {
+    if (!(impact instanceof WrappingScoreImpact<?> wrapping)
+        || !(wrapping.entry().element() instanceof IndictmentConstraintMatchCarrier<?> carrier)) {
+      throw new IllegalStateException(
+          "Original-source lineage requires indictment-aware constraint matching.");
+    }
+    carrier.originalLineage = Objects.requireNonNull(lineage);
+  }
+
+  public final IndictmentMaps<Score_> getIndictmentMaps() {
+    return extractAnalysisDetails(false).indictments();
+  }
+
+  public final AnalysisDetails<Score_> getAnalysisDetails() {
+    return extractAnalysisDetails(constraintMatchPolicy.isMatchOccurrenceEnabled());
+  }
+
+  private AnalysisDetails<Score_> extractAnalysisDetails(boolean includeMatchOccurrences) {
+    var policy = constraintMatchPolicy.getIndictmentFetchPolicy();
+    if (policy == IndictmentFetchPolicy.NONE) {
+      return AnalysisDetails.unavailable();
+    }
+    var zero = extractScore().zero();
+    var terminal = new IndictmentAnalysisBuilder<>(zero);
+    var original =
+        policy == IndictmentFetchPolicy.TERMINAL_AND_ORIGINAL
+            ? new IndictmentAnalysisBuilder<>(zero)
+            : null;
+    List<MatchOccurrenceAnalysis<Score_>> occurrences =
+        includeMatchOccurrences ? new ArrayList<>() : null;
+    // Provenance handles are live. Memoization must never cross extraction boundaries.
+    var resolver = original == null ? null : new LineageResolver();
+    var constraints = new ArrayList<>(constraintMatchMap.keySet());
+    constraints.sort(Comparator.comparing(Constraint::getConstraintRef));
+    for (var constraint : constraints) {
+      for (var rawCarrier : constraintMatchMap.get(constraint)) {
+        var carrier = (IndictmentConstraintMatchCarrier<Score_>) rawCarrier;
+        var match = carrier.get();
+        var terminalObjects = carrier.getTerminalObjects();
+        var originalObjects =
+            original == null
+                ? null
+                : resolver.resolve(
+                    Objects.requireNonNull(
+                        carrier.originalLineage,
+                        "Original-source lineage was not bound for "
+                            + constraint.getConstraintRef()
+                            + "."));
+        if (occurrences != null) {
+          occurrences.add(
+              new DefaultMatchOccurrenceAnalysis<>(
+                  match.getConstraintRef(),
+                  match.getScore(),
+                  Objects.requireNonNull(match.getJustification()),
+                  1,
+                  List.copyOf(terminalObjects),
+                  originalObjects));
+        }
+        terminal.add(match, terminalObjects);
+        if (original != null) {
+          original.add(match, originalObjects);
+        }
+      }
+    }
+    return new AnalysisDetails<>(
+        new IndictmentMaps<>(terminal.build(), original == null ? null : original.build()),
+        occurrences == null ? null : new DefaultRawScoreAnalysis<>(occurrences, original != null));
+  }
+
   private void rebuildConstraintMatchTotals() {
     var constraintIdToConstraintMatchTotalMap =
         new TreeMap<ConstraintRef, ConstraintMatchTotal<Score_>>();
@@ -223,11 +310,11 @@ public abstract class AbstractScoreInliner<Score_ extends Score<Score_>> {
     return constraintWeightMap.keySet();
   }
 
-  private static final class ConstraintMatchCarrier<Score_ extends Score<Score_>>
+  private static class ConstraintMatchCarrier<Score_ extends Score<Score_>>
       implements Supplier<ConstraintMatch<Score_>> {
 
-    private final Constraint constraint;
-    private final ConstraintMatchSupplier<Score_> constraintMatchSupplier;
+    protected final Constraint constraint;
+    protected final ConstraintMatchSupplier<Score_> constraintMatchSupplier;
     private final ScoreImpact<Score_> scoreImpact;
     private @Nullable ConstraintMatch<Score_> constraintMatch;
 
@@ -257,6 +344,26 @@ public abstract class AbstractScoreInliner<Score_ extends Score<Score_>> {
         }
       }
       return constraintMatch;
+    }
+  }
+
+  private static final class IndictmentConstraintMatchCarrier<Score_ extends Score<Score_>>
+      extends ConstraintMatchCarrier<Score_> {
+    private @Nullable Collection<?> terminalObjects;
+    private @Nullable LineageHandle originalLineage;
+
+    private IndictmentConstraintMatchCarrier(
+        ConstraintMatchSupplier<Score_> supplier,
+        Constraint constraint,
+        ScoreImpact<Score_> scoreImpact) {
+      super(supplier, constraint, scoreImpact);
+    }
+
+    private Collection<?> getTerminalObjects() {
+      if (terminalObjects == null) {
+        terminalObjects = constraintMatchSupplier.getIndictedObjects(constraint);
+      }
+      return terminalObjects;
     }
   }
 }

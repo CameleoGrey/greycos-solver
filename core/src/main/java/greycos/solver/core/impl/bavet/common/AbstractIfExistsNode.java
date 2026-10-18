@@ -1,5 +1,10 @@
 package greycos.solver.core.impl.bavet.common;
 
+import java.util.IdentityHashMap;
+import java.util.Objects;
+
+import greycos.solver.core.impl.bavet.common.provenance.ProvenanceNode;
+import greycos.solver.core.impl.bavet.common.provenance.TupleProvenance;
 import greycos.solver.core.impl.bavet.common.tuple.InTupleStorePositionTracker;
 import greycos.solver.core.impl.bavet.common.tuple.Tuple;
 import greycos.solver.core.impl.bavet.common.tuple.TupleLifecycle;
@@ -19,9 +24,10 @@ import org.jspecify.annotations.Nullable;
  * @param <Right_>
  */
 public abstract class AbstractIfExistsNode<LeftTuple_ extends Tuple, Right_>
-    extends AbstractCrossMatchNode<LeftTuple_, Right_> {
+    extends AbstractCrossMatchNode<LeftTuple_, Right_> implements ProvenanceNode {
 
   protected final boolean shouldExist;
+  protected @Nullable TupleProvenance provenance;
 
   // When isFiltering, these slots hold the head FilteringTracker of a hidden intrusive
   // doubly-linked list
@@ -45,6 +51,74 @@ public abstract class AbstractIfExistsNode<LeftTuple_ extends Tuple, Right_>
     this.inputStoreIndexRightTrackerList =
         isFiltering ? tupleStorePositionTracker.reserveNextRight() : -1;
     this.propagationQueue = new DynamicPropagationQueue<>(nextNodesTupleLifecycle);
+  }
+
+  @Override
+  public final void setProvenance(TupleProvenance provenance) {
+    if (this.provenance != null) {
+      throw new IllegalStateException("Existence provenance was already configured.");
+    }
+    Objects.requireNonNull(provenance.left());
+    if (shouldExist) {
+      Objects.requireNonNull(provenance.right());
+    }
+    this.provenance = provenance;
+    initializeProvenance();
+  }
+
+  protected void initializeProvenance() {
+    // Subclasses may share witness unions when all left tuples have the same witnesses.
+  }
+
+  protected final boolean tracksWitnesses() {
+    return provenance != null && shouldExist;
+  }
+
+  protected final ExistsCounter<LeftTuple_> createCounter(LeftTuple_ leftTuple) {
+    var counter = new ExistsCounter<>(leftTuple);
+    if (provenance != null) {
+      counter.provenance =
+          new ExistsCounter.Provenance(provenance.left().get(leftTuple), shouldExist);
+      // ifExists passes the physical left tuple through, but this slot belongs to its own branch.
+      provenance.output().set(leftTuple, counter.provenance.output);
+    }
+    return counter;
+  }
+
+  protected final void addWitness(ExistsCounter<LeftTuple_> counter, Tuple rightTuple) {
+    if (!tracksWitnesses()) {
+      return;
+    }
+    var counterProvenance = counter.provenance;
+    if (counterProvenance.witnessHandles == null) {
+      counterProvenance.witnessHandles = new IdentityHashMap<>();
+    }
+    var handle = provenance.right().get(rightTuple);
+    if (counterProvenance.witnessHandles.putIfAbsent(rightTuple, handle) != null) {
+      throw new IllegalStateException("The existence witness was already recorded.");
+    }
+    counterProvenance.witnesses.add(handle);
+  }
+
+  protected final void removeWitness(ExistsCounter<LeftTuple_> counter, Tuple rightTuple) {
+    if (!tracksWitnesses()) {
+      return;
+    }
+    var counterProvenance = counter.provenance;
+    // Capture handles on insertion: the upstream slot may already belong to a new occurrence.
+    var handle = Objects.requireNonNull(counterProvenance.witnessHandles.remove(rightTuple));
+    counterProvenance.witnesses.remove(handle);
+  }
+
+  protected final void clearWitnesses(ExistsCounter<LeftTuple_> counter) {
+    if (tracksWitnesses()) {
+      var counterProvenance = counter.provenance;
+      counterProvenance.witnesses.clear();
+      if (counterProvenance.witnessHandles != null) {
+        counterProvenance.witnessHandles.clear();
+      }
+    }
+    // Keep the output binding alive for queued downstream retracts; do not clear shared parents.
   }
 
   /**
@@ -164,6 +238,7 @@ public abstract class AbstractIfExistsNode<LeftTuple_ extends Tuple, Right_>
     FilteringTracker<LeftTuple_> tracker = leftTuple.removeStore(inputStoreIndexLeftTrackerList);
     while (tracker != null) {
       var next = tracker.leftNext;
+      removeWitness(tracker.counter, tracker.rightTuple);
       removeRight(tracker);
       tracker = next;
     }
@@ -199,6 +274,7 @@ public abstract class AbstractIfExistsNode<LeftTuple_ extends Tuple, Right_>
     FilteringTracker<LeftTuple_> tracker = rightTuple.removeStore(inputStoreIndexRightTrackerList);
     while (tracker != null) {
       var next = tracker.rightNext;
+      removeWitness(tracker.counter, rightTuple);
       decrementCounterRight(tracker.counter);
       removeLeft(tracker);
       tracker = next;
@@ -235,6 +311,7 @@ public abstract class AbstractIfExistsNode<LeftTuple_ extends Tuple, Right_>
       return;
     }
     if (testFiltering(counter.leftTuple, rightTuple)) {
+      addWitness(counter, rightTuple);
       counter.countRight++;
       var tracker = new FilteringTracker<>(counter, rightTuple);
       linkLeft(tracker);
@@ -304,6 +381,7 @@ public abstract class AbstractIfExistsNode<LeftTuple_ extends Tuple, Right_>
       return;
     }
     if (testFiltering(leftTuple, rightTuple)) {
+      addWitness(counter, rightTuple);
       incrementCounterRight(counter);
       var tracker = new FilteringTracker<>(counter, rightTuple);
       linkLeft(tracker);

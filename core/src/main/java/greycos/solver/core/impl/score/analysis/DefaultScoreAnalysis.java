@@ -12,6 +12,8 @@ import java.util.stream.Stream;
 
 import greycos.solver.core.api.score.Score;
 import greycos.solver.core.api.score.analysis.ConstraintAnalysis;
+import greycos.solver.core.api.score.analysis.IndictmentAnalysis;
+import greycos.solver.core.api.score.analysis.RawScoreAnalysis;
 import greycos.solver.core.api.score.analysis.ScoreAnalysis;
 import greycos.solver.core.api.score.analysis.StructuralFlawAnalysis;
 import greycos.solver.core.api.score.analysis.VariableLoop;
@@ -25,6 +27,7 @@ public final class DefaultScoreAnalysis<Score_ extends Score<Score_>>
     implements ScoreAnalysis<Score_> {
 
   static final int DEFAULT_SUMMARY_MATCH_LIMIT = 3;
+  private static final int DEFAULT_SUMMARY_INDICTMENT_LIMIT = 5;
 
   @SuppressWarnings({"unchecked", "rawtypes"})
   private static final Comparator<ConstraintAnalysis<?>> REVERSED_WEIGHT_COMPARATOR =
@@ -37,6 +40,8 @@ public final class DefaultScoreAnalysis<Score_ extends Score<Score_>>
   private final SequencedMap<ConstraintRef, ConstraintAnalysis<Score_>> constraintMap;
   private final boolean solutionInitialized;
   private final @Nullable StructuralFlawAnalysis structuralFlawAnalysis;
+  private final IndictmentMaps<Score_> indictmentMaps;
+  private final @Nullable RawScoreAnalysis<Score_> rawAnalysis;
 
   public DefaultScoreAnalysis(
       Score_ score, Map<ConstraintRef, ConstraintAnalysis<Score_>> constraintMap) {
@@ -55,7 +60,28 @@ public final class DefaultScoreAnalysis<Score_ extends Score<Score_>>
       Map<ConstraintRef, ConstraintAnalysis<Score_>> constraintMap,
       boolean solutionInitialized,
       List<VariableLoop> variableLoops) {
+    this(score, constraintMap, solutionInitialized, variableLoops, IndictmentMaps.unavailable());
+  }
+
+  public DefaultScoreAnalysis(
+      Score_ score,
+      Map<ConstraintRef, ConstraintAnalysis<Score_>> constraintMap,
+      boolean solutionInitialized,
+      List<VariableLoop> variableLoops,
+      IndictmentMaps<Score_> indictmentMaps) {
+    this(score, constraintMap, solutionInitialized, variableLoops, indictmentMaps, null);
+  }
+
+  public DefaultScoreAnalysis(
+      Score_ score,
+      Map<ConstraintRef, ConstraintAnalysis<Score_>> constraintMap,
+      boolean solutionInitialized,
+      List<VariableLoop> variableLoops,
+      IndictmentMaps<Score_> indictmentMaps,
+      @Nullable RawScoreAnalysis<Score_> rawAnalysis) {
     this.score = Objects.requireNonNull(score, "score");
+    this.indictmentMaps = Objects.requireNonNull(indictmentMaps, "indictmentMaps");
+    this.rawAnalysis = rawAnalysis;
     var loops = List.copyOf(variableLoops);
     this.structuralFlawAnalysis =
         score.structuralScore() < 0 || !loops.isEmpty()
@@ -79,6 +105,21 @@ public final class DefaultScoreAnalysis<Score_ extends Score<Score_>>
   @Override
   public SequencedMap<ConstraintRef, ConstraintAnalysis<Score_>> constraintMap() {
     return constraintMap;
+  }
+
+  @Override
+  public @Nullable RawScoreAnalysis<Score_> rawAnalysis() {
+    return rawAnalysis;
+  }
+
+  @Override
+  public @Nullable SequencedMap<Object, IndictmentAnalysis<Score_>> indictmentMap() {
+    return indictmentMaps.terminal();
+  }
+
+  @Override
+  public @Nullable SequencedMap<Object, IndictmentAnalysis<Score_>> originalIndictmentMap() {
+    return indictmentMaps.original();
   }
 
   @Override
@@ -112,6 +153,10 @@ public final class DefaultScoreAnalysis<Score_ extends Score<Score_>>
   @Override
   public ScoreAnalysis<Score_> diff(ScoreAnalysis<Score_> other) {
     Objects.requireNonNull(other, "other");
+    var rawDifference = DefaultRawScoreAnalysis.diff(rawAnalysis, other.rawAnalysis());
+    var indictmentDifference =
+        indictmentMaps.diff(
+            new IndictmentMaps<>(other.indictmentMap(), other.originalIndictmentMap()));
     var result = new LinkedHashMap<ConstraintRef, ConstraintAnalysis<Score_>>();
     Stream.concat(constraintMap.keySet().stream(), other.constraintMap().keySet().stream())
         .distinct()
@@ -122,13 +167,31 @@ public final class DefaultScoreAnalysis<Score_ extends Score<Score_>>
                       constraintRef,
                       getConstraintAnalysis(constraintRef),
                       other.getConstraintAnalysis(constraintRef));
+              if (rawDifference != null) {
+                long rawCount =
+                    rawDifference.constraintMap().getOrDefault(constraintRef, List.of()).stream()
+                        .mapToLong(occurrence -> occurrence.occurrenceSign())
+                        .sum();
+                difference =
+                    new DefaultConstraintAnalysis<>(
+                        difference.constraintRef(),
+                        difference.weight(),
+                        difference.score(),
+                        difference.matches(),
+                        difference.matchCount(),
+                        rawCount,
+                        difference.isMatchCountAvailable());
+              }
               if (!difference.weight().isZero() || !difference.score().isZero()) {
                 result.put(constraintRef, difference);
               } else if (difference.matches() == null) {
-                if (difference.matchCount() != 0) {
+                if (difference.isMatchCountAvailable() && difference.matchCount() != 0) {
                   result.put(constraintRef, difference);
                 }
               } else if (!difference.matches().isEmpty()) {
+                result.put(constraintRef, difference);
+              } else if (rawDifference != null
+                  && rawDifference.constraintMap().containsKey(constraintRef)) {
                 result.put(constraintRef, difference);
               }
             });
@@ -136,7 +199,9 @@ public final class DefaultScoreAnalysis<Score_ extends Score<Score_>>
         score.subtract(other.score()),
         result,
         solutionInitialized,
-        structuralFlawAnalysis == null ? List.of() : structuralFlawAnalysis.getVariableLoops());
+        structuralFlawAnalysis == null ? List.of() : structuralFlawAnalysis.getVariableLoops(),
+        indictmentDifference,
+        rawDifference);
   }
 
   @Override
@@ -155,57 +220,12 @@ public final class DefaultScoreAnalysis<Score_ extends Score<Score_>>
       throw new IllegalArgumentException(
           "The topLimit (%d) must be at least 1.".formatted(topLimit));
     }
-    var summary = new StringBuilder();
-    summary.append(
-        """
-            Explanation of score (%s):
-                Constraint matches:
-            """
-            .formatted(score));
-    if (structuralFlawAnalysis != null) {
-      summary.append("    Structural flaws:\n");
-      structuralFlawAnalysis
-          .getVariableLoops()
-          .forEach(loop -> summary.append("        ").append(loop).append('\n'));
-    }
-    constraintAnalyses().stream()
-        .sorted(Comparator.comparing(ConstraintAnalysis::score))
-        .forEach(
-            constraint -> {
-              var matches = constraint.matches();
-              if (matches == null) {
-                throw new IllegalStateException(
-                    "Constraint matches are unavailable. Request ScoreAnalysisFetchPolicy.FETCH_ALL.");
-              }
-              if (matches.isEmpty()) {
-                summary.append(
-                    "%8s%s: constraint (%s) has no matches.\n"
-                        .formatted(
-                            " ", constraint.score().toShortString(), constraint.constraintId()));
-              } else {
-                summary.append(
-                    "%8s%s: constraint (%s) has %d matches:\n"
-                        .formatted(
-                            " ",
-                            constraint.score().toShortString(),
-                            constraint.constraintId(),
-                            matches.size()));
-              }
-              matches.stream()
-                  .sorted(Comparator.comparing(match -> match.score()))
-                  .limit(topLimit)
-                  .forEach(
-                      match ->
-                          summary.append(
-                              "%12s%s: justified with (%s)\n"
-                                  .formatted(
-                                      " ", match.score().toShortString(), match.justification())));
-              if (matches.size() > topLimit) {
-                summary.append(
-                    "%12s... and %d more matches\n".formatted(" ", matches.size() - topLimit));
-              }
-            });
-    return summary.toString();
+    return summarize(topLimit, DEFAULT_SUMMARY_INDICTMENT_LIMIT);
+  }
+
+  @Override
+  public String summarize(int matchLimit, int indictmentLimit) {
+    return ScoreAnalysisSummary.summarize(this, matchLimit, indictmentLimit);
   }
 
   @Override
@@ -214,12 +234,20 @@ public final class DefaultScoreAnalysis<Score_ extends Score<Score_>>
         && score.equals(analysis.score)
         && constraintMap.equals(analysis.constraintMap)
         && solutionInitialized == analysis.solutionInitialized
-        && Objects.equals(structuralFlawAnalysis, analysis.structuralFlawAnalysis);
+        && Objects.equals(structuralFlawAnalysis, analysis.structuralFlawAnalysis)
+        && indictmentMaps.equals(analysis.indictmentMaps)
+        && Objects.equals(rawAnalysis, analysis.rawAnalysis);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(score, constraintMap, solutionInitialized, structuralFlawAnalysis);
+    return Objects.hash(
+        score,
+        constraintMap,
+        solutionInitialized,
+        structuralFlawAnalysis,
+        indictmentMaps,
+        rawAnalysis);
   }
 
   @Override

@@ -36,4 +36,17 @@ record TriLongImpactHandler<A, B, C>(ToLongTriFunction<A, B, C> matchWeigher)
         matchWeigher.applyAsLong(a, b, c),
         ConstraintMatchSupplier.of(constraint.getJustificationMapping(), a, b, c));
   }
+
+  @Override
+  public ScoreImpact<?> impactWithIndictments(
+      WeightedScoreImpacter<?, ?> impacter, TriTuple<A, B, C> tuple) {
+    var a = tuple.getA();
+    var b = tuple.getB();
+    var c = tuple.getC();
+    var constraint = impacter.getContext().getConstraint();
+    return impacter.impactScore(
+        matchWeigher.applyAsLong(a, b, c),
+        ConstraintMatchSupplier.withIndictments(
+            constraint.getJustificationMapping(), constraint.getIndictmentMapping(), a, b, c));
+  }
 }

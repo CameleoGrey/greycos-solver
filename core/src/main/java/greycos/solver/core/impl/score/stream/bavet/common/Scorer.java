@@ -4,12 +4,15 @@ import java.util.Objects;
 
 import greycos.solver.core.api.score.Score;
 import greycos.solver.core.api.score.stream.ConstraintRef;
+import greycos.solver.core.impl.bavet.common.provenance.ProvenanceAccessor;
 import greycos.solver.core.impl.bavet.common.tuple.Tuple;
 import greycos.solver.core.impl.bavet.common.tuple.TupleLifecycle;
+import greycos.solver.core.impl.score.stream.common.inliner.AbstractScoreInliner;
 import greycos.solver.core.impl.score.stream.common.inliner.ScoreImpact;
 import greycos.solver.core.impl.score.stream.common.inliner.WeightedScoreImpacter;
 
 import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 
 @NullMarked
 public final class Scorer<Tuple_ extends Tuple> implements TupleLifecycle<Tuple_> {
@@ -17,12 +20,22 @@ public final class Scorer<Tuple_ extends Tuple> implements TupleLifecycle<Tuple_
   private final ScoreImpacter<Tuple_> scoreImpacter;
   private final WeightedScoreImpacter<?, ?> weightedScoreImpacter;
   private final int inputStoreIndex;
+  private final @Nullable ProvenanceAccessor provenanceAccessor;
   private boolean isActive = true;
 
   public Scorer(
       ScoreImpacter<Tuple_> scoreImpacter,
       WeightedScoreImpacter<?, ?> weightedScoreImpacter,
       int inputStoreIndex) {
+    this(scoreImpacter, weightedScoreImpacter, inputStoreIndex, null);
+  }
+
+  public Scorer(
+      ScoreImpacter<Tuple_> scoreImpacter,
+      WeightedScoreImpacter<?, ?> weightedScoreImpacter,
+      int inputStoreIndex,
+      @Nullable ProvenanceAccessor provenanceAccessor) {
+    this.provenanceAccessor = provenanceAccessor;
     this.scoreImpacter = Objects.requireNonNull(scoreImpacter);
     this.weightedScoreImpacter = Objects.requireNonNull(weightedScoreImpacter);
     this.inputStoreIndex = inputStoreIndex;
@@ -63,7 +76,13 @@ public final class Scorer<Tuple_ extends Tuple> implements TupleLifecycle<Tuple_
 
   public ScoreImpact<?> impact(Tuple_ tuple) {
     try {
-      return scoreImpacter.apply(weightedScoreImpacter, tuple);
+      if (provenanceAccessor == null) {
+        return scoreImpacter.apply(weightedScoreImpacter, tuple);
+      }
+      var lineage = provenanceAccessor.get(tuple);
+      var impact = scoreImpacter.apply(weightedScoreImpacter, tuple);
+      AbstractScoreInliner.bindOriginalIndictment(impact, lineage);
+      return impact;
     } catch (Exception e) {
       // Helps with debugging exceptions thrown by user code during impact calls.
       throw new IllegalStateException(

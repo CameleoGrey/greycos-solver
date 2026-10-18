@@ -11,6 +11,9 @@ import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
 import greycos.solver.core.impl.bavet.AbstractBavetNodeNetwork;
+import greycos.solver.core.impl.bavet.common.provenance.LineageHandle;
+import greycos.solver.core.impl.bavet.common.provenance.LineageResolver;
+import greycos.solver.core.impl.bavet.common.provenance.ProvenanceAccessor;
 import greycos.solver.core.impl.bavet.common.tuple.RecordingTupleLifecycle;
 import greycos.solver.core.impl.bavet.common.tuple.Tuple;
 import greycos.solver.core.impl.bavet.common.tuple.TupleLifecycle;
@@ -19,6 +22,7 @@ import greycos.solver.core.impl.score.stream.bavet.common.BavetPrecomputeBuildHe
 import greycos.solver.core.impl.util.CollectionUtils;
 
 import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 
 /**
  * The implementation records the tuples each object affects inside an internal {@link
@@ -52,6 +56,11 @@ public final class RecordAndReplayPropagator<Tuple_ extends Tuple> implements Pr
 
   private final StaticPropagationQueue<Tuple_> propagationQueue;
   private long updateEpoch = 0;
+  private @Nullable ProvenanceAccessor provenanceOutput;
+
+  public void setProvenanceOutput(ProvenanceAccessor provenanceOutput) {
+    this.provenanceOutput = provenanceOutput;
+  }
 
   public RecordAndReplayPropagator(
       Supplier<BavetPrecomputeBuildHelper<Tuple_>> precomputeBuildHelperSupplier,
@@ -164,7 +173,11 @@ public final class RecordAndReplayPropagator<Tuple_ extends Tuple> implements Pr
       // settle the inner node network, so the inserts/retracts do not interfere
       // with the recording of the first object's tuples
       internalNodeNetwork.settle();
-      recalculateTuples(internalNodeNetwork, rootNodesByClassScratch, recordingTupleLifecycle);
+      recalculateTuples(
+          internalNodeNetwork,
+          rootNodesByClassScratch,
+          recordingTupleLifecycle,
+          precomputeBuildHelper.getRecordingProvenanceAccessor());
 
       propagationQueue.propagateRetracts();
     }
@@ -236,7 +249,8 @@ public final class RecordAndReplayPropagator<Tuple_ extends Tuple> implements Pr
   private void recalculateTuples(
       AbstractBavetNodeNetwork internalNodeNetwork,
       Map<Class<?>, List<AbstractRootNode<?>>> classToRootNodeList,
-      RecordingTupleLifecycle<Tuple_> recordingTupleLifecycle) {
+      RecordingTupleLifecycle<Tuple_> recordingTupleLifecycle,
+      @Nullable ProvenanceAccessor recordingProvenanceAccessor) {
     internalTupleToOutputTupleMapScratch.clear();
     for (var invalidated : seenEntitySet) {
       var mappedTuples = borrowTupleList();
@@ -284,7 +298,27 @@ public final class RecordAndReplayPropagator<Tuple_ extends Tuple> implements Pr
         insertIfAbsent(factOutputTupleList.get(i));
       }
     }
+    exportProvenance(recordingProvenanceAccessor);
     internalTupleToOutputTupleMapScratch.clear();
+  }
+
+  private void exportProvenance(@Nullable ProvenanceAccessor recordingProvenanceAccessor) {
+    if (provenanceOutput == null) {
+      return;
+    }
+    if (recordingProvenanceAccessor == null) {
+      throw new IllegalStateException(
+          "The precompute network did not retain original-source lineage.");
+    }
+    // Recording uses fake updates and a temporary graph. Freeze only after the last inner settle,
+    // before any outer insert propagates, sharing one extraction memo across recorded tuples.
+    var resolver = new LineageResolver();
+    internalTupleToOutputTupleMapScratch.forEach(
+        (internalTuple, outputTuple) ->
+            provenanceOutput.set(
+                outputTuple,
+                LineageHandle.frozen(
+                    resolver.resolve(recordingProvenanceAccessor.get(internalTuple)))));
   }
 
   private RecordedTupleList<Tuple_> borrowTupleList() {

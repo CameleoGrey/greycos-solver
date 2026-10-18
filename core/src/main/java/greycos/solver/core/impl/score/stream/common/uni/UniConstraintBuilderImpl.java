@@ -1,7 +1,9 @@
 package greycos.solver.core.impl.score.stream.common.uni;
 
+import java.util.Collection;
 import java.util.Objects;
 import java.util.function.BiFunction;
+import java.util.function.Function;
 
 import greycos.solver.core.api.score.Score;
 import greycos.solver.core.api.score.stream.ConstraintJustification;
@@ -17,6 +19,8 @@ public final class UniConstraintBuilderImpl<A, Score_ extends Score<Score_>>
     extends AbstractConstraintBuilder<Score_> implements UniConstraintBuilder<A, Score_> {
 
   private @Nullable BiFunction<A, Score_, ConstraintJustification> justificationMapping;
+
+  private @Nullable Function<A, ? extends Collection<?>> indictmentMapping;
 
   public UniConstraintBuilderImpl(
       UniConstraintConstructor<A, Score_> constraintConstructor,
@@ -45,6 +49,23 @@ public final class UniConstraintBuilderImpl<A, Score_ extends Score<Score_>>
     this.justificationMapping =
         (BiFunction<A, Score_, ConstraintJustification>)
             Objects.requireNonNull(justificationMapping);
+    return this;
+  }
+
+  @Override
+  protected @Nullable Object getIndictmentMapping() {
+    return indictmentMapping;
+  }
+
+  @Override
+  public UniConstraintBuilder<A, Score_> indictWith(
+      Function<A, ? extends Collection<?>> indictmentMapping) {
+    Objects.requireNonNull(indictmentMapping, "The indictment mapping must not be null.");
+    if (this.indictmentMapping != null) {
+      throw new IllegalStateException(
+          "Indictment mapping already set; indictWith() may only be called once.");
+    }
+    this.indictmentMapping = indictmentMapping;
     return this;
   }
 }

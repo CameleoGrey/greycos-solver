@@ -341,7 +341,7 @@ class GeneralMethodDeleteInvocationMigrationRecipeTest implements RewriteTest {
   }
 
   @Test
-  void removeIndictmentCalls() {
+  void preserveIndictmentCalls() {
     rewriteRun(
         java(
             """
@@ -366,24 +366,6 @@ class GeneralMethodDeleteInvocationMigrationRecipeTest implements RewriteTest {
                                     quad.indictWith(null);
                                     assertion.indictsWith(null);
                                     assertion.indictsWithExactly(null);
-                                }
-                        }""",
-            """
-                        package greycos;
-
-                        import greycos.solver.core.api.score.stream.uni.UniConstraintBuilder;
-                        import greycos.solver.core.api.score.stream.bi.BiConstraintBuilder;
-                        import greycos.solver.core.api.score.stream.tri.TriConstraintBuilder;
-                        import greycos.solver.core.api.score.stream.quad.QuadConstraintBuilder;
-                        import greycos.solver.test.api.score.stream.SingleConstraintAssertion;
-
-                        public class Test {
-                                UniConstraintBuilder<Object, ?> uni;
-                                BiConstraintBuilder<Object, Object, ?> bi;
-                                TriConstraintBuilder<Object, Object, Object, ?> tri;
-                                QuadConstraintBuilder<Object, Object, Object, Object, ?> quad;
-                                SingleConstraintAssertion assertion;
-                                public void test() {
                                 }
                         }"""));
   }

@@ -23,7 +23,9 @@ public record DefaultConstraintAnalysis<Score_ extends Score<Score_>>(
     Score_ weight,
     Score_ score,
     @Nullable List<MatchAnalysis<Score_>> matches,
-    int matchCount)
+    int matchCount,
+    @Nullable Long rawMatchCount,
+    boolean isMatchCountAvailable)
     implements ConstraintAnalysis<Score_> {
 
   public DefaultConstraintAnalysis(
@@ -34,18 +36,56 @@ public record DefaultConstraintAnalysis<Score_ extends Score<Score_>>(
     this(constraintRef, weight, score, matches, matches == null ? -1 : matches.size());
   }
 
+  public DefaultConstraintAnalysis(
+      ConstraintRef constraintRef,
+      Score_ weight,
+      Score_ score,
+      @Nullable List<MatchAnalysis<Score_>> matches,
+      int matchCount) {
+    this(constraintRef, weight, score, matches, matchCount, null);
+  }
+
+  public DefaultConstraintAnalysis(
+      ConstraintRef constraintRef,
+      Score_ weight,
+      Score_ score,
+      @Nullable List<MatchAnalysis<Score_>> matches,
+      int matchCount,
+      @Nullable Long rawMatchCount) {
+    this(
+        constraintRef,
+        weight,
+        score,
+        matches,
+        matchCount,
+        rawMatchCount,
+        matches != null || matchCount != -1);
+  }
+
   public DefaultConstraintAnalysis {
     Objects.requireNonNull(constraintRef, "constraintRef");
     Objects.requireNonNull(weight, "weight");
     Objects.requireNonNull(score, "score");
     matches = matches == null ? null : List.copyOf(matches);
+    if (!isMatchCountAvailable && (matches != null || matchCount != -1)) {
+      throw new IllegalArgumentException(
+          "The constraint (%s) has an unavailable match count, but matches (%s) must be null and matchCount (%d) must be -1."
+              .formatted(constraintRef, matches, matchCount));
+    }
   }
 
   DefaultConstraintAnalysis<Score_> negate() {
-    var negatedMatchCount = matchCount < 0 ? matchCount : -matchCount;
+    var negatedMatchCount = isMatchCountAvailable ? Math.negateExact(matchCount) : -1;
+    Long negatedRawMatchCount = rawMatchCount == null ? null : Math.negateExact(rawMatchCount);
     if (matches == null) {
       return new DefaultConstraintAnalysis<>(
-          constraintRef, weight.negate(), score.negate(), null, negatedMatchCount);
+          constraintRef,
+          weight.negate(),
+          score.negate(),
+          null,
+          negatedMatchCount,
+          negatedRawMatchCount,
+          isMatchCountAvailable);
     }
     var negatedMatches =
         matches.stream()
@@ -56,7 +96,13 @@ public record DefaultConstraintAnalysis<Score_ extends Score<Score_>>(
             .map(match -> (MatchAnalysis<Score_>) match)
             .toList();
     return new DefaultConstraintAnalysis<>(
-        constraintRef, weight.negate(), score.negate(), negatedMatches, negatedMatchCount);
+        constraintRef,
+        weight.negate(),
+        score.negate(),
+        negatedMatches,
+        negatedMatchCount,
+        negatedRawMatchCount,
+        isMatchCountAvailable);
   }
 
   static <Score_ extends Score<Score_>> DefaultConstraintAnalysis<Score_> diff(
@@ -81,23 +127,30 @@ public record DefaultConstraintAnalysis<Score_ extends Score<Score_>>(
           "One score analysis provides matches for constraint (%s), while the other does not."
               .formatted(constraintRef));
     }
+    var hasCount = analysis.isMatchCountAvailable();
+    if (hasCount != otherAnalysis.isMatchCountAvailable()) {
+      throw new IllegalStateException(
+          "One score analysis provides a match count for constraint (%s), while the other does not."
+              .formatted(constraintRef));
+    }
+    var countDifference =
+        hasCount ? Math.subtractExact(analysis.matchCount(), otherAnalysis.matchCount()) : -1;
 
     var weightDifference = analysis.weight().subtract(otherAnalysis.weight());
     var scoreDifference = analysis.score().subtract(otherAnalysis.score());
+    Long rawCountDifference =
+        analysis.rawMatchCount() == null || otherAnalysis.rawMatchCount() == null
+            ? null
+            : Math.subtractExact(analysis.rawMatchCount(), otherAnalysis.rawMatchCount());
     if (matches == null) {
-      var leftHasCount = analysis.matchCount() >= 0;
-      var rightHasCount = otherAnalysis.matchCount() >= 0;
-      if (leftHasCount != rightHasCount) {
-        throw new IllegalStateException(
-            "One score analysis provides a match count for constraint (%s), while the other does not."
-                .formatted(constraintRef));
-      }
       return new DefaultConstraintAnalysis<>(
           constraintRef,
           weightDifference,
           scoreDifference,
           null,
-          analysis.matchCount() - otherAnalysis.matchCount());
+          countDifference,
+          rawCountDifference,
+          hasCount);
     }
 
     var matchMap = mapMatchesToJustifications(matches);
@@ -132,7 +185,9 @@ public record DefaultConstraintAnalysis<Score_ extends Score<Score_>>(
         weightDifference,
         scoreDifference,
         matchDifference,
-        analysis.matchCount() - otherAnalysis.matchCount());
+        countDifference,
+        rawCountDifference,
+        hasCount);
   }
 
   @SuppressWarnings("unchecked")
@@ -146,7 +201,9 @@ public record DefaultConstraintAnalysis<Score_ extends Score<Score_>>(
         analysis.weight(),
         analysis.score(),
         analysis.matches(),
-        analysis.matchCount());
+        analysis.matchCount(),
+        analysis.rawMatchCount(),
+        analysis.isMatchCountAvailable());
   }
 
   private static <Score_ extends Score<Score_>> DefaultConstraintAnalysis<Score_> negate(
@@ -220,7 +277,7 @@ public record DefaultConstraintAnalysis<Score_ extends Score<Score_>>(
   @Override
   public String toString() {
     if (matches == null) {
-      return matchCount == -1
+      return !isMatchCountAvailable
           ? "(%s at %s, constraint matching disabled)".formatted(score, weight)
           : "(%s at %s, %d matches, justifications disabled)".formatted(score, weight, matchCount);
     }

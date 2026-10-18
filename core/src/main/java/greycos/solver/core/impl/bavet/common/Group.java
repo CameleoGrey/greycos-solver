@@ -1,7 +1,14 @@
 package greycos.solver.core.impl.bavet.common;
 
+import java.util.IdentityHashMap;
+import java.util.Map;
+import java.util.Objects;
+
+import greycos.solver.core.impl.bavet.common.provenance.LineageHandle;
 import greycos.solver.core.impl.bavet.common.tuple.Tuple;
 import greycos.solver.core.impl.bavet.common.tuple.TupleState;
+
+import org.jspecify.annotations.Nullable;
 
 final class Group<OutTuple_ extends Tuple, ResultContainer_>
     extends AbstractPropagationMetadataCarrier<OutTuple_> {
@@ -30,10 +37,13 @@ final class Group<OutTuple_ extends Tuple, ResultContainer_>
 
   /**
    * How many input tuples are currently mapped into this group. The only thing this backs is {@link
-   * #isEmpty()} (a group's sole liveness answer) so a plain counter is enough; nothing ever needs
-   * to walk or even retain the individual contributors.
+   * #isEmpty()} (a group's sole liveness answer) so a plain counter is enough. Individual
+   * contributors are retained only when provenance is enabled.
    */
   private int contributorCount;
+
+  private @Nullable LineageHandle lineage;
+  private @Nullable Map<Tuple, LineageHandle> contributorLineage;
 
   private Group(Object groupKey, ResultContainer_ resultContainer, OutTuple_ outTuple) {
     this.groupKey = groupKey;
@@ -74,5 +84,32 @@ final class Group<OutTuple_ extends Tuple, ResultContainer_>
 
   public boolean isEmpty() {
     return contributorCount == 0;
+  }
+
+  public LineageHandle initializeLineage() {
+    lineage = LineageHandle.mutable();
+    contributorLineage = new IdentityHashMap<>();
+    return lineage;
+  }
+
+  public void setContributorLineage(Tuple tuple, LineageHandle handle) {
+    var oldHandle = Objects.requireNonNull(contributorLineage).put(tuple, handle);
+    if (oldHandle == handle) {
+      return;
+    }
+    var groupLineage = Objects.requireNonNull(lineage);
+    if (oldHandle != null) {
+      groupLineage.remove(oldHandle);
+    }
+    groupLineage.add(handle);
+  }
+
+  public void removeContributorLineage(Tuple tuple) {
+    var oldHandle = Objects.requireNonNull(contributorLineage).remove(tuple);
+    if (oldHandle == null) {
+      throw new IllegalStateException(
+          "The tuple (%s) has no provenance contribution in group (%s).".formatted(tuple, this));
+    }
+    Objects.requireNonNull(lineage).remove(oldHandle);
   }
 }

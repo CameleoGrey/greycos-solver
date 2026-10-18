@@ -13,15 +13,15 @@ public final class DefaultSingleConstraintAssertion<Solution_, Score_ extends Sc
 
   DefaultSingleConstraintAssertion(
       AbstractConstraintStreamScoreDirectorFactory<Solution_, Score_, ?> scoreDirectorFactory,
+      Object[] facts,
       Score_ score,
       Map<ConstraintRef, ConstraintMatchTotal<Score_>> constraintMatchTotalMap) {
-    super(scoreDirectorFactory);
+    super(scoreDirectorFactory, facts);
     update(InnerScore.fullyAssigned(score), constraintMatchTotalMap);
   }
 
   @Override
   Solution_ getSolution() {
-    throw new IllegalStateException(
-        "Impossible state as the solution is initialized at the constructor.");
+    return null;
   }
 }

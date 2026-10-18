@@ -32,16 +32,39 @@ public interface ConstraintAnalysis<Score_ extends Score<Score_>> {
   /**
    * @return
    *     <ul>
-   *       <li>For regular constraint analysis: -1 if analysis not available, 0 if constraint has no
-   *           matches, positive if constraint has matches. Equal to the size of the {@link
-   *           #matches} list.
+   *       <li>For regular constraint analysis: -1 if the count is unavailable, 0 if constraint has
+   *           no matches, positive if constraint has matches. Equal to the size of the {@link
+   *           #matches} list when that list is available.
    *       <li>For a {@link ScoreAnalysis#diff(ScoreAnalysis) diff of constraint analyses}: positive
    *           if the constraint has more matches in the new analysis, zero if the number of matches
    *           is the same in both, negative otherwise. Need not be equal to the size of the {@link
-   *           #matches} list.
+   *           #matches} list. An unavailable count remains -1; use {@link #isMatchCountAvailable()}
+   *           to distinguish it from a signed count difference of -1.
    *     </ul>
    */
   int matchCount();
+
+  /**
+   * Whether {@link #matchCount()} is available, independently of its sign. A fetched count remains
+   * available in a diff even when its value is -1.
+   *
+   * <p>The default preserves the legacy unavailable sentinel when matches are unavailable and the
+   * count is -1. Custom implementations with an available count-only difference of -1 must override
+   * this method to return true.
+   */
+  default boolean isMatchCountAvailable() {
+    return matches() != null || matchCount() != -1;
+  }
+
+  /**
+   * Number of original scoring occurrences, available only when raw analysis was requested. Unlike
+   * {@link #matchCount()}, this counts value-equal duplicate occurrences separately even with full
+   * grouped matches. In a diff it is the signed count difference, including {@code -1}; null
+   * denotes unavailable information.
+   */
+  default @Nullable Long rawMatchCount() {
+    return null;
+  }
 
   /**
    * Return id of the constraint that this analysis is for.

@@ -40,9 +40,11 @@ public class BavetPrecomputeTriConstraintStream<Solution_, A, B, C>
   @Override
   public <Score_ extends Score<Score_>> void buildNode(
       ConstraintNodeBuildHelper<Solution_, Score_> buildHelper) {
+    var originalContributorTracking = buildHelper.isOriginalContributorTrackingEnabled();
     Supplier<BavetPrecomputeBuildHelper<TriTuple<A, B, C>>> precomputeBuildHelperSupplier =
         () ->
-            new BavetPrecomputeBuildHelper<>(recordingPrecomputedConstraintStream, entityClassSet);
+            new BavetPrecomputeBuildHelper<>(
+                recordingPrecomputedConstraintStream, entityClassSet, originalContributorTracking);
     var outputStoreSize = buildHelper.extractTupleStoreSize(aftStream);
 
     buildHelper.addNode(

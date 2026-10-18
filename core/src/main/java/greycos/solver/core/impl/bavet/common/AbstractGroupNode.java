@@ -8,13 +8,17 @@ import java.util.function.IntSupplier;
 import java.util.function.Supplier;
 
 import greycos.solver.core.config.solver.EnvironmentMode;
+import greycos.solver.core.impl.bavet.common.provenance.ProvenanceNode;
+import greycos.solver.core.impl.bavet.common.provenance.TupleProvenance;
 import greycos.solver.core.impl.bavet.common.tuple.Tuple;
 import greycos.solver.core.impl.bavet.common.tuple.TupleLifecycle;
 import greycos.solver.core.impl.bavet.common.tuple.TupleState;
 
+import org.jspecify.annotations.Nullable;
+
 public abstract class AbstractGroupNode<
         InTuple_ extends Tuple, OutTuple_ extends Tuple, GroupKey_, ResultContainer_, Result_>
-    extends AbstractSingleInputNode<InTuple_> {
+    extends AbstractSingleInputNode<InTuple_> implements ProvenanceNode {
 
   private final int groupStoreIndex;
 
@@ -54,6 +58,7 @@ public abstract class AbstractGroupNode<
   private final DynamicPropagationQueue<OutTuple_, Group<OutTuple_, ResultContainer_>>
       propagationQueue;
   private final boolean useAssertingGroupKey;
+  private @Nullable TupleProvenance provenance;
 
   protected AbstractGroupNode(
       IntSupplier storeIndexReserver,
@@ -105,6 +110,11 @@ public abstract class AbstractGroupNode<
   }
 
   @Override
+  public void setProvenance(TupleProvenance provenance) {
+    this.provenance = Objects.requireNonNull(provenance);
+  }
+
+  @Override
   public final void insert(InTuple_ tuple) {
     if (tuple.getStore(groupStoreIndex) != null) {
       throw new IllegalStateException(
@@ -119,6 +129,9 @@ public abstract class AbstractGroupNode<
     var group = getOrCreateGroup(userSuppliedKey);
     if (hasCollector) {
       groupInsert(group.getResultContainer(), tuple);
+    }
+    if (provenance != null) {
+      group.setContributorLineage(tuple, Objects.requireNonNull(provenance.left()).get(tuple));
     }
     tuple.setStore(groupStoreIndex, group);
     var outTuple = group.getTuple();
@@ -163,6 +176,9 @@ public abstract class AbstractGroupNode<
         hasCollector
             ? Group.create(groupMapKey, supplier.get(), outTuple)
             : Group.<OutTuple_, ResultContainer_>createWithoutAccumulate(groupMapKey, outTuple);
+    if (provenance != null) {
+      provenance.output().set(outTuple, group.initializeLineage());
+    }
     propagationQueue.insert(group);
     return group;
   }
@@ -175,6 +191,9 @@ public abstract class AbstractGroupNode<
               .formatted(this));
     }
     var group = Group.createWithoutGroupKey(supplier.get(), outTuple);
+    if (provenance != null) {
+      provenance.output().set(outTuple, group.initializeLineage());
+    }
     propagationQueue.insert(group);
     return group;
   }
@@ -211,6 +230,9 @@ public abstract class AbstractGroupNode<
       if (hasCollector) {
         groupRetract(tuple);
       }
+      if (provenance != null) {
+        oldGroup.removeContributorLineage(tuple);
+      }
       oldGroup.removeContributor();
       killOutTuple(oldGroup);
       createTuple(tuple, newUserSuppliedGroupKey);
@@ -219,6 +241,9 @@ public abstract class AbstractGroupNode<
 
   private void updateGroup(InTuple_ tuple, Group<OutTuple_, ResultContainer_> oldGroup) {
     // No need to change contributors because it is the same group.
+    if (provenance != null) {
+      oldGroup.setContributorLineage(tuple, Objects.requireNonNull(provenance.left()).get(tuple));
+    }
     if (hasCollector) {
       groupUpdate(oldGroup.getResultContainer(), tuple);
     }
@@ -298,6 +323,9 @@ public abstract class AbstractGroupNode<
     }
     if (hasCollector) {
       groupRetract(tuple);
+    }
+    if (provenance != null) {
+      group.removeContributorLineage(tuple);
     }
     group.removeContributor();
     killOutTuple(group);

@@ -32,4 +32,15 @@ record UniBigDecimalImpactHandler<A>(Function<A, BigDecimal> matchWeigher)
     return impacter.impactScore(
         matchWeigher.apply(a), ConstraintMatchSupplier.of(constraint.getJustificationMapping(), a));
   }
+
+  @Override
+  public ScoreImpact<?> impactWithIndictments(
+      WeightedScoreImpacter<?, ?> impacter, UniTuple<A> tuple) {
+    var a = tuple.getA();
+    var constraint = impacter.getContext().getConstraint();
+    return impacter.impactScore(
+        matchWeigher.apply(a),
+        ConstraintMatchSupplier.withIndictments(
+            constraint.getJustificationMapping(), constraint.getIndictmentMapping(), a));
+  }
 }

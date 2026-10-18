@@ -14,6 +14,7 @@ import greycos.solver.core.api.score.stream.PrecomputeFactory;
 import greycos.solver.core.impl.bavet.AbstractBavetNodeNetwork;
 import greycos.solver.core.impl.bavet.common.AbstractRootNode;
 import greycos.solver.core.impl.bavet.common.BavetAbstractConstraintStream;
+import greycos.solver.core.impl.bavet.common.provenance.ProvenanceAccessor;
 import greycos.solver.core.impl.bavet.common.tuple.RecordingTupleLifecycle;
 import greycos.solver.core.impl.bavet.common.tuple.Tuple;
 import greycos.solver.core.impl.cotwin.variable.declarative.ConsistencyTracker;
@@ -22,15 +23,25 @@ import greycos.solver.core.impl.score.definition.SimpleScoreDefinition;
 import greycos.solver.core.impl.score.stream.common.RetrievalSemantics;
 import greycos.solver.core.impl.score.stream.common.inliner.AbstractScoreInliner;
 
+import org.jspecify.annotations.Nullable;
+
 public final class BavetPrecomputeBuildHelper<Tuple_ extends Tuple> {
   private final AbstractBavetNodeNetwork nodeNetwork;
   private final RecordingTupleLifecycle<Tuple_> recordingTupleLifecycle;
   private final Class<?>[] sourceClasses;
   private final Set<Class<?>> entityClassSet;
+  private final @Nullable ProvenanceAccessor recordingProvenanceAccessor;
 
   public <Solution_> BavetPrecomputeBuildHelper(
       BavetAbstractConstraintStream<Solution_> recordingPrecomputeConstraintStream,
       Set<Class<?>> entityClassSet) {
+    this(recordingPrecomputeConstraintStream, entityClassSet, false);
+  }
+
+  public <Solution_> BavetPrecomputeBuildHelper(
+      BavetAbstractConstraintStream<Solution_> recordingPrecomputeConstraintStream,
+      Set<Class<?>> entityClassSet,
+      boolean originalContributorTracking) {
     if (recordingPrecomputeConstraintStream.getRetrievalSemantics()
         != RetrievalSemantics.PRECOMPUTE) {
       throw new IllegalStateException(
@@ -72,7 +83,8 @@ public final class BavetPrecomputeBuildHelper<Tuple_ extends Tuple> {
                 new SimpleScoreDefinition(),
                 Collections.emptyMap(),
                 ConstraintMatchPolicy.DISABLED),
-            null);
+            null,
+            originalContributorTracking);
 
     var declaredClassToNodeMap = new LinkedHashMap<Class<?>, List<AbstractRootNode<?>>>();
     var nodeList =
@@ -97,6 +109,8 @@ public final class BavetPrecomputeBuildHelper<Tuple_ extends Tuple> {
     this.recordingTupleLifecycle =
         (RecordingTupleLifecycle<Tuple_>)
             buildHelper.getAggregatedTupleLifecycle(List.of(recordingPrecomputeConstraintStream));
+    this.recordingProvenanceAccessor =
+        buildHelper.getProvenanceAccessor(recordingPrecomputeConstraintStream);
     this.sourceClasses = declaredClassToNodeMap.keySet().toArray(new Class<?>[0]);
   }
 
@@ -106,6 +120,10 @@ public final class BavetPrecomputeBuildHelper<Tuple_ extends Tuple> {
 
   public RecordingTupleLifecycle<Tuple_> getRecordingTupleLifecycle() {
     return recordingTupleLifecycle;
+  }
+
+  public @Nullable ProvenanceAccessor getRecordingProvenanceAccessor() {
+    return recordingProvenanceAccessor;
   }
 
   public Class<?>[] getSourceClasses() {

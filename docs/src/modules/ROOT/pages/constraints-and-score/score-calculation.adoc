@@ -466,6 +466,60 @@ If you choose to decorate it with the proper annotations,
 you will be able to send it over HTTP or store it in a database.
 The only limitation is that it must implement the `greycos.solver.core.api.score.stream.ConstraintJustification` marker interface.
 
+Equal justifications are grouped within each constraint in a full `ScoreAnalysis`.
+Choose stable equality for the meaning you want to group, and keep the equality and hash code stable while an analysis is in use.
+Several occurrences can therefore share one justification even when their score impacts differ.
+Use xref:constraints-and-score/understanding-the-score.adoc#scoreAnalysisRawOccurrences[raw occurrence analysis] to retain each original impact and its object associations alongside the grouped explanation.
+
+[#constraintStreamsCustomizingIndictments]
+==== Selecting indicted objects
+
+An indictment collects the constraint matches and score impacts associated with one object.
+Request it explicitly through xref:constraints-and-score/understanding-the-score.adoc#scoreAnalysisIndictments[indictment analysis].
+The default terminal view indicts every non-null object in the scoring tuple.
+For the capacity constraint above, that means the vehicle and the aggregated demand number.
+Use `indictWith(...)` after the score impact operation to select only the objects useful to your application:
+
+[source,java,options="nowrap"]
+----
+return factory.forEach(Customer.class)
+        .groupBy(Customer::getVehicle, sum(Customer::getDemand))
+        .filter((vehicle, demand) -> demand > vehicle.getCapacity())
+        .penalize(HardSoftScore.ONE_HARD,
+                (vehicle, demand) -> demand - vehicle.getCapacity())
+        .indictWith((vehicle, demand) -> List.of(vehicle))
+        .asConstraint("vehicleCapacity");
+----
+
+The function has the same tuple arguments as the match weigher, without a score argument.
+It is independent of `justifyWith(...)` and replaces the terminal selection only.
+It does not change the separate original-contributor view: in this example, that view identifies the customers contributing to the group.
+You may return stable domain IDs instead of solver objects.
+
+An empty collection selects no terminal objects.
+Duplicate objects according to `equals`/`hashCode` are charged once per match; separate match occurrences still count separately.
+A null function, null returned collection, null custom element, or repeated `indictWith(...)` call is rejected.
+Default null tuple slots are simply omitted.
+A tuple element which is itself a collection is one object; its contents are not recursively selected.
+Mapping functions must be pure and are evaluated only when an indictment view is requested.
+
+Raw occurrence collection also requests terminal indictments and uses the same mapping.
+Its `indictedObjects()` lists preserve duplicate selections and equal-but-distinct references, while grouped indictments and raw object indexes count an occurrence only once per equal object key.
+The separate original selection retains actual source references through transformations.
+Use `ScoreAnalysisOptions(FETCH_ALL, TERMINAL_AND_ORIGINAL, true)` with `SolutionManager.analyzeWithOptions(...)` when individual occurrences and both selections are needed.
+The xref:constraints-and-score/understanding-the-score.adoc#scoreAnalysisRawExample[shift checklist example] demonstrates equal justifications with different impacts and changes that only a raw association diff exposes.
+
+`ConstraintVerifier` supports `indictsWith(...)` and `indictsWithExactly(...)` for terminal selections,
+and `originallyIndictsWith(...)` and `originallyIndictsWithExactly(...)` for original contributors.
+These assertions compare object membership by equality.
+Every argument to these four methods is an expected object, including String arguments.
+For an assertion message, use the separately named `indictsWithMessage(message, objects...)`,
+`indictsExactlyWithMessage(message, objects...)`, `originallyIndictsWithMessage(message, objects...)`,
+or `originallyIndictsExactlyWithMessage(message, objects...)`.
+For example, `indictsWithExactly("alice", "bob")` expects both IDs, while
+`indictsExactlyWithMessage("assigned employees", "alice", "bob")` adds a failure description.
+The testing API migration recipe rewrites legacy message overloads to these separate names.
+They may be chained after justification assertions without rerunning shadow-variable initialization.
 
 [#constraintStreamsFilter]
 === Filtering

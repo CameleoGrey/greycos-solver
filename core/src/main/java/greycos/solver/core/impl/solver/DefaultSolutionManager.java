@@ -11,8 +11,10 @@ import greycos.solver.core.api.cotwin.variable.InconsistentSolutionException;
 import greycos.solver.core.api.score.Score;
 import greycos.solver.core.api.score.analysis.ScoreAnalysis;
 import greycos.solver.core.api.score.analysis.VariableLoop;
+import greycos.solver.core.api.solver.IndictmentFetchPolicy;
 import greycos.solver.core.api.solver.RecommendedAssignment;
 import greycos.solver.core.api.solver.ScoreAnalysisFetchPolicy;
+import greycos.solver.core.api.solver.ScoreAnalysisOptions;
 import greycos.solver.core.api.solver.SolutionManager;
 import greycos.solver.core.api.solver.SolutionUpdatePolicy;
 import greycos.solver.core.api.solver.SolverFactory;
@@ -170,13 +172,42 @@ public final class DefaultSolutionManager<Solution_, Score_ extends Score<Score_
     }
   }
 
-  @SuppressWarnings("unchecked")
   @Override
   public ScoreAnalysis<Score_> analyze(
       Solution_ solution,
       ScoreAnalysisFetchPolicy fetchPolicy,
       SolutionUpdatePolicy solutionUpdatePolicy) {
+    return analyze(solution, fetchPolicy, solutionUpdatePolicy, IndictmentFetchPolicy.NONE);
+  }
+
+  @Override
+  public ScoreAnalysis<Score_> analyze(
+      Solution_ solution,
+      ScoreAnalysisFetchPolicy fetchPolicy,
+      SolutionUpdatePolicy solutionUpdatePolicy,
+      IndictmentFetchPolicy indictmentFetchPolicy) {
     Objects.requireNonNull(fetchPolicy, "fetchPolicy");
+    var constraintMatchPolicy = ConstraintMatchPolicy.match(fetchPolicy, indictmentFetchPolicy);
+    return analyzeWithPolicy(solution, fetchPolicy, solutionUpdatePolicy, constraintMatchPolicy);
+  }
+
+  @Override
+  public ScoreAnalysis<Score_> analyzeWithOptions(
+      Solution_ solution, ScoreAnalysisOptions options, SolutionUpdatePolicy solutionUpdatePolicy) {
+    Objects.requireNonNull(options, "options");
+    return analyzeWithPolicy(
+        solution,
+        options.fetchPolicy(),
+        solutionUpdatePolicy,
+        ConstraintMatchPolicy.match(options));
+  }
+
+  @SuppressWarnings("unchecked")
+  private ScoreAnalysis<Score_> analyzeWithPolicy(
+      Solution_ solution,
+      ScoreAnalysisFetchPolicy fetchPolicy,
+      SolutionUpdatePolicy solutionUpdatePolicy,
+      ConstraintMatchPolicy constraintMatchPolicy) {
     var currentScore = (Score_) scoreDirectorFactory.getSolutionDescriptor().getScore(solution);
     var analysis =
         callScoreDirector(
@@ -184,7 +215,7 @@ public final class DefaultSolutionManager<Solution_, Score_ extends Score<Score_
             solution,
             solutionUpdatePolicy,
             (scoreDirector, inconsistentEntities) -> scoreDirector.buildScoreAnalysis(fetchPolicy),
-            ConstraintMatchPolicy.match(fetchPolicy),
+            constraintMatchPolicy,
             false,
             true);
     assertFreshScore(solution, currentScore, analysis.score(), solutionUpdatePolicy);
@@ -203,6 +234,51 @@ public final class DefaultSolutionManager<Solution_, Score_ extends Score<Score_
       In_ evaluatedEntityOrElement,
       Function<In_, @Nullable Out_> propositionFunction,
       ScoreAnalysisFetchPolicy fetchPolicy) {
+    return recommendAssignment(
+        solution,
+        evaluatedEntityOrElement,
+        propositionFunction,
+        fetchPolicy,
+        IndictmentFetchPolicy.NONE);
+  }
+
+  @Override
+  public <In_, Out_> List<RecommendedAssignment<Out_, Score_>> recommendAssignment(
+      Solution_ solution,
+      In_ evaluatedEntityOrElement,
+      Function<In_, @Nullable Out_> propositionFunction,
+      ScoreAnalysisFetchPolicy fetchPolicy,
+      IndictmentFetchPolicy indictmentFetchPolicy) {
+    var constraintMatchPolicy = ConstraintMatchPolicy.match(fetchPolicy, indictmentFetchPolicy);
+    return recommendAssignmentWithPolicy(
+        solution,
+        evaluatedEntityOrElement,
+        propositionFunction,
+        fetchPolicy,
+        constraintMatchPolicy);
+  }
+
+  @Override
+  public <In_, Out_> List<RecommendedAssignment<Out_, Score_>> recommendAssignmentWithOptions(
+      Solution_ solution,
+      In_ evaluatedEntityOrElement,
+      Function<In_, @Nullable Out_> propositionFunction,
+      ScoreAnalysisOptions options) {
+    Objects.requireNonNull(options, "options");
+    return recommendAssignmentWithPolicy(
+        solution,
+        evaluatedEntityOrElement,
+        propositionFunction,
+        options.fetchPolicy(),
+        ConstraintMatchPolicy.match(options));
+  }
+
+  private <In_, Out_> List<RecommendedAssignment<Out_, Score_>> recommendAssignmentWithPolicy(
+      Solution_ solution,
+      In_ evaluatedEntityOrElement,
+      Function<In_, @Nullable Out_> propositionFunction,
+      ScoreAnalysisFetchPolicy fetchPolicy,
+      ConstraintMatchPolicy constraintMatchPolicy) {
     var assigner =
         new Assigner<Solution_, Score_, RecommendedAssignment<Out_, Score_>, In_, Out_>(
             solverFactory,
@@ -216,7 +292,7 @@ public final class DefaultSolutionManager<Solution_, Score_ extends Score<Score_
         solution,
         SolutionUpdatePolicy.UPDATE_ALL,
         (scoreDirector, inconsistentEntities) -> assigner.apply(scoreDirector),
-        ConstraintMatchPolicy.match(fetchPolicy),
+        constraintMatchPolicy,
         true,
         false);
   }

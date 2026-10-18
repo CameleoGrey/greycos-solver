@@ -27,6 +27,17 @@ record UniLongImpactHandler<A>(ToLongFunction<A> matchWeigher) implements UniImp
   }
 
   @Override
+  public ScoreImpact<?> impactWithIndictments(
+      WeightedScoreImpacter<?, ?> impacter, UniTuple<A> tuple) {
+    var a = tuple.getA();
+    var constraint = impacter.getContext().getConstraint();
+    return impacter.impactScore(
+        matchWeigher.applyAsLong(a),
+        ConstraintMatchSupplier.withIndictments(
+            constraint.getJustificationMapping(), constraint.getIndictmentMapping(), a));
+  }
+
+  @Override
   public ScoreImpact<?> impactWithoutJustification(
       WeightedScoreImpacter<?, ?> impacter, UniTuple<A> tuple) {
     return impacter.impactScore(

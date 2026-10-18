@@ -1,5 +1,9 @@
 package greycos.solver.core.impl.bavet.common;
 
+import java.util.IdentityHashMap;
+import java.util.Objects;
+
+import greycos.solver.core.impl.bavet.common.provenance.LineageHandle;
 import greycos.solver.core.impl.bavet.common.tuple.InTupleStorePositionTracker;
 import greycos.solver.core.impl.bavet.common.tuple.LeftTupleLifecycle;
 import greycos.solver.core.impl.bavet.common.tuple.RightTupleLifecycle;
@@ -7,6 +11,8 @@ import greycos.solver.core.impl.bavet.common.tuple.Tuple;
 import greycos.solver.core.impl.bavet.common.tuple.TupleLifecycle;
 import greycos.solver.core.impl.bavet.common.tuple.UniTuple;
 import greycos.solver.core.impl.util.ElementAwareLinkedList;
+
+import org.jspecify.annotations.Nullable;
 
 /**
  * There is a strong likelihood that any change made to this class should also be made to {@link
@@ -28,6 +34,8 @@ public abstract class AbstractUnindexedIfExistsNode<LeftTuple_ extends Tuple, Ri
       new ElementAwareLinkedList<>();
   private final ElementAwareLinkedList<UniTuple<Right_>> rightTupleList =
       new ElementAwareLinkedList<>();
+  private @Nullable LineageHandle sharedWitnesses;
+  private @Nullable IdentityHashMap<Tuple, LineageHandle> sharedWitnessHandles;
 
   protected AbstractUnindexedIfExistsNode(
       boolean shouldExist,
@@ -40,13 +48,24 @@ public abstract class AbstractUnindexedIfExistsNode<LeftTuple_ extends Tuple, Ri
   }
 
   @Override
+  protected void initializeProvenance() {
+    if (shouldExist && !isFiltering) {
+      sharedWitnesses = LineageHandle.mutable();
+      sharedWitnessHandles = new IdentityHashMap<>();
+    }
+  }
+
+  @Override
   public final void insertLeft(LeftTuple_ leftTuple) {
     if (leftTuple.getStore(inputStoreIndexLeftCounterEntry) != null) {
       throw new IllegalStateException(
           "Impossible state: the input for the tuple (%s) was already added in the tupleStore."
               .formatted(leftTuple));
     }
-    var counter = new ExistsCounter<>(leftTuple);
+    var counter = createCounter(leftTuple);
+    if (sharedWitnesses != null) {
+      counter.provenance.witnesses.add(sharedWitnesses);
+    }
     leftTuple.setStore(inputStoreIndexLeftCounterEntry, counterList.add(counter));
 
     if (!isFiltering) {
@@ -99,6 +118,7 @@ public abstract class AbstractUnindexedIfExistsNode<LeftTuple_ extends Tuple, Ri
     counterEntry.remove();
     clearLeftTrackerList(leftTuple);
     killCounterLeft(counter);
+    clearWitnesses(counter);
   }
 
   @Override
@@ -109,6 +129,11 @@ public abstract class AbstractUnindexedIfExistsNode<LeftTuple_ extends Tuple, Ri
               .formatted(rightTuple));
     }
     rightTuple.setStore(inputStoreIndexRightEntry, rightTupleList.add(rightTuple));
+    if (sharedWitnesses != null) {
+      var handle = provenance.right().get(rightTuple);
+      sharedWitnessHandles.put(rightTuple, handle);
+      sharedWitnesses.add(handle);
+    }
     if (!isFiltering) {
       counterList.forEach(this::incrementCounterRight);
     } else {
@@ -150,6 +175,9 @@ public abstract class AbstractUnindexedIfExistsNode<LeftTuple_ extends Tuple, Ri
       return;
     }
     rightEntry.remove();
+    if (sharedWitnesses != null) {
+      sharedWitnesses.remove(Objects.requireNonNull(sharedWitnessHandles.remove(rightTuple)));
+    }
     if (!isFiltering) {
       counterList.forEach(this::decrementCounterRight);
     } else {

@@ -1,8 +1,12 @@
 package greycos.solver.core.impl.bavet.common;
 
+import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
+import greycos.solver.core.impl.bavet.common.provenance.LineageHandle;
+import greycos.solver.core.impl.bavet.common.provenance.ProvenanceNode;
+import greycos.solver.core.impl.bavet.common.provenance.TupleProvenance;
 import greycos.solver.core.impl.bavet.common.tuple.InOutTupleStorePositionTracker;
 import greycos.solver.core.impl.bavet.common.tuple.OutTupleStorePositionTracker;
 import greycos.solver.core.impl.bavet.common.tuple.Tuple;
@@ -23,7 +27,7 @@ import org.jspecify.annotations.Nullable;
  * @param <Right_>
  */
 public abstract class AbstractJoinNode<LeftTuple_ extends Tuple, Right_, OutTuple_ extends Tuple>
-    extends AbstractCrossMatchNode<LeftTuple_, Right_> {
+    extends AbstractCrossMatchNode<LeftTuple_, Right_> implements ProvenanceNode {
 
   protected final int inputStoreIndexLeftOutTupleList;
   protected final int inputStoreIndexRightOutTupleList;
@@ -32,6 +36,7 @@ public abstract class AbstractJoinNode<LeftTuple_ extends Tuple, Right_, OutTupl
   protected final OutTupleStorePositionTracker outputStoreSizeTracker;
   private final StaticPropagationQueue<OutTuple_> propagationQueue;
   private long markVersion = 0;
+  private @Nullable TupleProvenance provenance;
 
   protected final Supplier<TupleList<OutTuple_>> leftOutTupleListBuilder;
   protected final Supplier<TupleList<OutTuple_>> rightOutTupleListBuilder;
@@ -79,6 +84,11 @@ public abstract class AbstractJoinNode<LeftTuple_ extends Tuple, Right_, OutTupl
     return StreamKind.JOIN;
   }
 
+  @Override
+  public void setProvenance(TupleProvenance provenance) {
+    this.provenance = Objects.requireNonNull(provenance);
+  }
+
   protected abstract OutTuple_ createOutTuple(LeftTuple_ leftTuple, UniTuple<Right_> rightTuple);
 
   protected abstract void setOutTupleLeftFacts(OutTuple_ outTuple, LeftTuple_ leftTuple);
@@ -101,6 +111,15 @@ public abstract class AbstractJoinNode<LeftTuple_ extends Tuple, Right_, OutTupl
 
   private void insertOutTuple(LeftTuple_ leftTuple, UniTuple<Right_> rightTuple) {
     var outTuple = createOutTuple(leftTuple, rightTuple);
+    if (provenance != null) {
+      provenance
+          .output()
+          .set(
+              outTuple,
+              LineageHandle.union(
+                  Objects.requireNonNull(provenance.left()).get(leftTuple),
+                  Objects.requireNonNull(provenance.right()).get(rightTuple)));
+    }
     TupleList<OutTuple_> outTupleListLeft = leftTuple.getStore(inputStoreIndexLeftOutTupleList);
     outTupleListLeft.add(outTuple);
     outTuple.setStore(outputStoreIndexLeftOutTupleList, outTupleListLeft);

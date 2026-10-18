@@ -28,6 +28,18 @@ record BiFloatImpactHandler<A, B>(ToFloatBiFunction<A, B> matchWeigher)
   }
 
   @Override
+  public ScoreImpact<?> impactWithIndictments(
+      WeightedScoreImpacter<?, ?> impacter, BiTuple<A, B> tuple) {
+    var a = tuple.getA();
+    var b = tuple.getB();
+    var constraint = impacter.getContext().getConstraint();
+    return impacter.impactScore(
+        matchWeigher.applyAsFloat(a, b),
+        ConstraintMatchSupplier.withIndictments(
+            constraint.getJustificationMapping(), constraint.getIndictmentMapping(), a, b));
+  }
+
+  @Override
   public ScoreImpact<?> impactWithoutJustification(
       WeightedScoreImpacter<?, ?> impacter, BiTuple<A, B> tuple) {
     return impacter.impactScore(

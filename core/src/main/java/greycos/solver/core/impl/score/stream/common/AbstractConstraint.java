@@ -28,6 +28,7 @@ public abstract class AbstractConstraint<
   private final ScoreImpactType scoreImpactType;
   // Constraint is not generic in uni/bi/..., therefore these can not be typed.
   private final @Nullable Object justificationMapping;
+  private @Nullable Object indictmentMapping;
 
   /**
    * @param constraintFactory never null
@@ -162,6 +163,20 @@ public abstract class AbstractConstraint<
   public <JustificationMapping_> @Nullable JustificationMapping_ getJustificationMapping() {
     // It is the job of the code constructing the constraint to ensure that this cast is correct.
     return (JustificationMapping_) justificationMapping;
+  }
+
+  /** Set once by the builder immediately after constructing the constraint. */
+  public final void setIndictmentMapping(Object indictmentMapping) {
+    if (this.indictmentMapping != null) {
+      throw new IllegalStateException(
+          "The indictment mapping is already set for " + constraintRef + ".");
+    }
+    this.indictmentMapping = Objects.requireNonNull(indictmentMapping);
+  }
+
+  @SuppressWarnings("unchecked")
+  public final <IndictmentMapping_> @Nullable IndictmentMapping_ getIndictmentMapping() {
+    return (IndictmentMapping_) indictmentMapping;
   }
 
   public static <Solution_, Score_ extends Score<Score_>> void validateWeight(

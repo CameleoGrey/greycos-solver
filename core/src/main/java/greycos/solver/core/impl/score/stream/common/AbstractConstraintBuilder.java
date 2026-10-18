@@ -34,8 +34,21 @@ public abstract class AbstractConstraintBuilder<Score_ extends Score<Score_>>
   @SuppressWarnings("unchecked")
   @Override
   public final Constraint asConstraint(ConstraintMetadata metadata) {
-    return constraintConstructor.apply(
-        metadata, constraintWeight, impactType, getJustificationMapping());
+    var constraint =
+        constraintConstructor.apply(
+            metadata, constraintWeight, impactType, getJustificationMapping());
+    var indictmentMapping = getIndictmentMapping();
+    if (indictmentMapping != null) {
+      if (!(constraint instanceof AbstractConstraint<?, ?, ?> innerConstraint)) {
+        throw new UnsupportedOperationException("The constraint does not support indictWith().");
+      }
+      innerConstraint.setIndictmentMapping(indictmentMapping);
+    }
+    return constraint;
+  }
+
+  protected @Nullable Object getIndictmentMapping() {
+    return null;
   }
 
   public static String sanitize(String fieldName, String fieldValue) {

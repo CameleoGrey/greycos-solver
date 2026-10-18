@@ -159,6 +159,70 @@ public interface SolutionManager<Solution_, Score_ extends Score<Score_>> {
       SolutionUpdatePolicy solutionUpdatePolicy);
 
   /**
+   * Analyzes a solution with the explicitly requested object attribution. Enabled indictment modes
+   * require {@link ScoreAnalysisFetchPolicy#FETCH_ALL}; existing overloads do not collect
+   * indictments.
+   *
+   * <p>Implementations predating indictment support continue to support {@link
+   * IndictmentFetchPolicy#NONE}. Other modes require an implementation that supports indictments.
+   */
+  default ScoreAnalysis<Score_> analyze(
+      Solution_ solution,
+      ScoreAnalysisFetchPolicy fetchPolicy,
+      SolutionUpdatePolicy solutionUpdatePolicy,
+      IndictmentFetchPolicy indictmentFetchPolicy) {
+    if (Objects.requireNonNull(indictmentFetchPolicy, "indictmentFetchPolicy")
+        == IndictmentFetchPolicy.NONE) {
+      return analyze(solution, fetchPolicy, solutionUpdatePolicy);
+    }
+    throw new UnsupportedOperationException(
+        "This SolutionManager does not support indictment analysis ("
+            + indictmentFetchPolicy
+            + ").");
+  }
+
+  /**
+   * Analyzes with full matches and the requested indictment views, updating the solution first.
+   * Equivalent to {@link #analyze(Object, ScoreAnalysisFetchPolicy, SolutionUpdatePolicy,
+   * IndictmentFetchPolicy)} with {@link ScoreAnalysisFetchPolicy#FETCH_ALL} and {@link
+   * SolutionUpdatePolicy#UPDATE_ALL}.
+   */
+  default ScoreAnalysis<Score_> analyzeWithIndictments(
+      Solution_ solution, IndictmentFetchPolicy indictmentFetchPolicy) {
+    return analyze(solution, FETCH_ALL, UPDATE_ALL, indictmentFetchPolicy);
+  }
+
+  /**
+   * Analyzes with the explicitly selected grouped, object-centric and raw occurrence views,
+   * updating the solution first. Equivalent to {@link #analyzeWithOptions(Object,
+   * ScoreAnalysisOptions, SolutionUpdatePolicy)} with {@link SolutionUpdatePolicy#UPDATE_ALL}.
+   */
+  default ScoreAnalysis<Score_> analyzeWithOptions(
+      Solution_ solution, ScoreAnalysisOptions options) {
+    return analyzeWithOptions(solution, options, UPDATE_ALL);
+  }
+
+  /**
+   * Analyzes with explicit collection options and update control. Raw occurrences retain each
+   * match's individual impact and object associations before justification grouping. They add
+   * materialization and memory costs and are collected only when requested.
+   *
+   * <p>Older implementations continue to support options with raw collection disabled through their
+   * existing analysis methods. Implementations that do not support requested raw analysis fail
+   * clearly.
+   */
+  default ScoreAnalysis<Score_> analyzeWithOptions(
+      Solution_ solution, ScoreAnalysisOptions options, SolutionUpdatePolicy solutionUpdatePolicy) {
+    Objects.requireNonNull(options, "options");
+    if (!options.includeMatchOccurrences()) {
+      return analyze(
+          solution, options.fetchPolicy(), solutionUpdatePolicy, options.indictmentPolicy());
+    }
+    throw new UnsupportedOperationException(
+        "This SolutionManager does not support raw score analysis.");
+  }
+
+  /**
    * Compute a difference between two solutions. The difference will contain information about which
    * entities's variables have changed, which entities were added and which were removed.
    *
@@ -274,4 +338,52 @@ public interface SolutionManager<Solution_, Score_ extends Score<Score_>> {
           EntityOrElement_ evaluatedEntityOrElement,
           Function<EntityOrElement_, @Nullable Proposition_> propositionFunction,
           ScoreAnalysisFetchPolicy fetchPolicy);
+
+  /**
+   * Computes recommendations with the requested indictment views included in each analysis diff.
+   * Enabled modes require {@link ScoreAnalysisFetchPolicy#FETCH_ALL}. Object references follow the
+   * same restoration and defensive-copy rules as the existing recommendation overloads.
+   */
+  default <EntityOrElement_, Proposition_>
+      List<RecommendedAssignment<Proposition_, Score_>> recommendAssignment(
+          Solution_ solution,
+          EntityOrElement_ evaluatedEntityOrElement,
+          Function<EntityOrElement_, @Nullable Proposition_> propositionFunction,
+          ScoreAnalysisFetchPolicy fetchPolicy,
+          IndictmentFetchPolicy indictmentFetchPolicy) {
+    if (Objects.requireNonNull(indictmentFetchPolicy, "indictmentFetchPolicy")
+        == IndictmentFetchPolicy.NONE) {
+      return recommendAssignment(
+          solution, evaluatedEntityOrElement, propositionFunction, fetchPolicy);
+    }
+    throw new UnsupportedOperationException(
+        "This SolutionManager does not support indictment recommendations ("
+            + indictmentFetchPolicy
+            + ").");
+  }
+
+  /**
+   * Computes recommendations using the same explicit analysis options for the original and each
+   * proposed assignment. When raw occurrences are requested, each analysis diff includes the
+   * uncanceled individual additions and removals, including changes to object associations. Object
+   * references follow the restoration and defensive-copy rules of the existing overloads.
+   */
+  default <EntityOrElement_, Proposition_>
+      List<RecommendedAssignment<Proposition_, Score_>> recommendAssignmentWithOptions(
+          Solution_ solution,
+          EntityOrElement_ evaluatedEntityOrElement,
+          Function<EntityOrElement_, @Nullable Proposition_> propositionFunction,
+          ScoreAnalysisOptions options) {
+    Objects.requireNonNull(options, "options");
+    if (!options.includeMatchOccurrences()) {
+      return recommendAssignment(
+          solution,
+          evaluatedEntityOrElement,
+          propositionFunction,
+          options.fetchPolicy(),
+          options.indictmentPolicy());
+    }
+    throw new UnsupportedOperationException(
+        "This SolutionManager does not support raw score analysis in recommendations.");
+  }
 }

@@ -4,6 +4,7 @@ import java.util.Collection;
 import java.util.List;
 
 import greycos.solver.core.api.function.QuadFunction;
+import greycos.solver.core.api.function.TriFunction;
 import greycos.solver.core.api.score.Score;
 import greycos.solver.core.api.score.stream.Constraint;
 import greycos.solver.core.api.score.stream.ConstraintBuilder;
@@ -33,4 +34,19 @@ public interface TriConstraintBuilder<A, B, C, Score_ extends Score<Score_>>
   <ConstraintJustification_ extends ConstraintJustification>
       TriConstraintBuilder<A, B, C, Score_> justifyWith(
           QuadFunction<A, B, C, Score_, ConstraintJustification_> justificationMapping);
+
+  /**
+   * Selects the terminal objects indicted by each match, replacing the default non-null tuple
+   * objects. An empty collection is valid; the mapping, its result and its elements must not be
+   * null. Equal objects are counted once per match. The function is called lazily only when
+   * terminal indictments are requested; it does not change justifications or original objects.
+   *
+   * @return this
+   */
+  default TriConstraintBuilder<A, B, C, Score_> indictWith(
+      TriFunction<A, B, C, ? extends Collection<?>> indictmentMapping) {
+    java.util.Objects.requireNonNull(indictmentMapping, "The indictment mapping must not be null.");
+    throw new UnsupportedOperationException(
+        "This constraint builder does not support indictWith().");
+  }
 }

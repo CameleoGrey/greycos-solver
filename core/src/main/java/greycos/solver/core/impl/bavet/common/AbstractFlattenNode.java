@@ -9,6 +9,8 @@ import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
+import greycos.solver.core.impl.bavet.common.provenance.ProvenanceNode;
+import greycos.solver.core.impl.bavet.common.provenance.TupleProvenance;
 import greycos.solver.core.impl.bavet.common.tuple.Tuple;
 import greycos.solver.core.impl.bavet.common.tuple.TupleLifecycle;
 import greycos.solver.core.impl.bavet.common.tuple.TupleState;
@@ -17,13 +19,19 @@ import org.jspecify.annotations.Nullable;
 
 public abstract class AbstractFlattenNode<
         InTuple_ extends Tuple, OutTuple_ extends Tuple, FlattenedItem_>
-    extends AbstractSingleInputNode<InTuple_> {
+    extends AbstractSingleInputNode<InTuple_> implements ProvenanceNode {
 
   private final int flattenStoreIndex;
   private final StaticPropagationQueue<OutTuple_> propagationQueue;
   private final Consumer<OutTuple_> removeTupleConsumer = this::removeTuple;
   private final Predicate<FlattenItemBag<FlattenedItem_, OutTuple_>> removeExtrasPredicate =
       bag -> bag.removeExtras(removeTupleConsumer);
+  private @Nullable TupleProvenance provenance;
+
+  @Override
+  public final void setProvenance(TupleProvenance provenance) {
+    this.provenance = provenance;
+  }
 
   protected AbstractFlattenNode(
       int flattenStoreIndex, TupleLifecycle<OutTuple_> nextNodesTupleLifecycle) {
@@ -77,9 +85,15 @@ public abstract class AbstractFlattenNode<
     var reuse = bag.reuseOrAdvance();
     if (reuse == null) {
       var created = createTuple(originalTuple, bag.value);
+      if (provenance != null) {
+        provenance.output().set(created, provenance.left().get(originalTuple));
+      }
       bag.append(created);
       propagationQueue.insert(created);
     } else {
+      if (provenance != null) {
+        provenance.output().set(reuse, provenance.left().get(originalTuple));
+      }
       propagationQueue.update(reuse);
     }
   }

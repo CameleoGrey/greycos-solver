@@ -14,6 +14,70 @@ import org.jspecify.annotations.Nullable;
 public interface SingleConstraintAssertion {
 
   /**
+   * Asserts that the terminal indictment view contains the given objects, using their {@link
+   * Object#equals(Object)} and {@link Object#hashCode()} methods. The view uses the custom
+   * indictment mapping when configured, or the final constraint tuple otherwise.
+   *
+   * <p>Indictments are collected only when an indictment assertion is requested. Passing no objects
+   * asserts that the view is empty. This assertion does not update shadow variables.
+   */
+  default SingleConstraintAssertion indictsWith(Object... indictedObjects) {
+    return indictsWithMessage(null, indictedObjects);
+  }
+
+  /** As defined by {@link #indictsWith(Object...)}, with an assertion message. */
+  default SingleConstraintAssertion indictsWithMessage(
+      @Nullable String message, Object... indictedObjects) {
+    throw new UnsupportedOperationException("This assertion does not support indictments.");
+  }
+
+  /** As defined by {@link #indictsWith(Object...)}, allowing no additional indicted objects. */
+  default SingleConstraintAssertion indictsWithExactly(Object... indictedObjects) {
+    return indictsExactlyWithMessage(null, indictedObjects);
+  }
+
+  /** As defined by {@link #indictsWithExactly(Object...)}, with an assertion message. */
+  default SingleConstraintAssertion indictsExactlyWithMessage(
+      @Nullable String message, Object... indictedObjects) {
+    throw new UnsupportedOperationException("This assertion does not support indictments.");
+  }
+
+  /**
+   * Asserts that the original indictment view contains the given source objects, using their {@link
+   * Object#equals(Object)} and {@link Object#hashCode()} methods. This view tracks source objects
+   * through stream transformations and is independent of custom indictment mappings.
+   *
+   * <p>Original indictments are collected only when an original indictment assertion is requested.
+   * Passing no objects asserts that the view is empty. This assertion does not update shadow
+   * variables.
+   */
+  default SingleConstraintAssertion originallyIndictsWith(Object... indictedObjects) {
+    return originallyIndictsWithMessage(null, indictedObjects);
+  }
+
+  /** As defined by {@link #originallyIndictsWith(Object...)}, with an assertion message. */
+  default SingleConstraintAssertion originallyIndictsWithMessage(
+      @Nullable String message, Object... indictedObjects) {
+    throw new UnsupportedOperationException(
+        "This assertion does not support original indictments.");
+  }
+
+  /**
+   * As defined by {@link #originallyIndictsWith(Object...)}, allowing no additional indicted
+   * objects.
+   */
+  default SingleConstraintAssertion originallyIndictsWithExactly(Object... indictedObjects) {
+    return originallyIndictsExactlyWithMessage(null, indictedObjects);
+  }
+
+  /** As defined by {@link #originallyIndictsWithExactly(Object...)}, with an assertion message. */
+  default SingleConstraintAssertion originallyIndictsExactlyWithMessage(
+      @Nullable String message, Object... indictedObjects) {
+    throw new UnsupportedOperationException(
+        "This assertion does not support original indictments.");
+  }
+
+  /**
    * As defined by {@link #justifiesWith(ConstraintJustification...)}.
    *
    * @param justifications the expected justification.

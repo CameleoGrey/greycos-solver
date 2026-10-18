@@ -157,15 +157,352 @@ constraintAnalysis.matches().forEach(matchAnalysis -> {
 ----
 ====
 
-Each match is accompanied by the score difference it caused, and a justification object (see above).
-For float and double scores, each match carries its rounded contribution.
-The total score and each constraint or justification subtotal independently round their exact sums.
+Under `FETCH_ALL`, matches with equal justifications are grouped within each constraint.
+Each grouped match carries the subtotal of its contributing score impacts and its justification.
+Use `ConstraintAnalysis.isMatchCountAvailable()` to distinguish an unavailable count from a signed count difference.
+`FETCH_SHALLOW` leaves the count unavailable; `FETCH_MATCH_COUNT` and `FETCH_ALL` provide it.
+In a difference, an available count of `-1` means one fewer match and remains available through subsequent differences.
+Custom `ConstraintAnalysis` implementations representing count-only differences of `-1` must override `isMatchCountAvailable()`;
+the default preserves the legacy interpretation of `matches() == null` with `matchCount() == -1` as unavailable.
+Use <<scoreAnalysisRawOccurrences,raw occurrence analysis>> when you need the individual contributions before grouping.
+For float and double scores, the total score and each constraint or justification subtotal independently round their exact sums.
 Adding already-rounded subtotals may therefore differ from the total score.
-To independently reconstruct a floating score, sum the individual match contributions with
+To independently reconstruct a floating score, sum the individual raw contributions with
 `FloatingScoreAccumulator`; do not repeatedly add rounded subtotals.
 Typically, the scoring engine creates justification objects automatically.
 Use xref:constraints-and-score/score-calculation.adoc#constraintStreamsCustomizingJustifications[Constraint Streams' `justifyWith(...)` call]
 when the analysis must carry domain-specific information.
+
+[#scoreAnalysisIndictments]
+=== Finding each object's constraint participation
+
+Indictment analysis provides two independent views:
+
+* `indictmentMap()` attributes each match to its non-null terminal tuple objects, or to the objects chosen by `indictWith(...)`.
+* `originalIndictmentMap()` attributes each match to the original entities and facts that contributed through the stream network.
+
+Both views are opt-in. Existing `analyze(...)` calls and all existing `ScoreAnalysisFetchPolicy` values retain their fetch behavior and do not collect terminal selections or original-source lineage.
+Use the separate `IndictmentFetchPolicy` to select the additional work:
+
+[source,java,options="nowrap"]
+----
+var analysis = solutionManager.analyzeWithIndictments(
+        solution, IndictmentFetchPolicy.TERMINAL_AND_ORIGINAL);
+analysis.indictmentMap().forEach((object, indictment) -> {
+    var impact = indictment.score();
+    long occurrenceCount = indictment.matchCount();
+    indictment.matches().forEach(match -> {
+        var constraintId = match.constraintRef().id();
+        var justification = match.justification();
+        long groupOccurrenceCount = match.matchCount();
+    });
+});
+----
+
+`TERMINAL` collects only the terminal/custom view; `TERMINAL_AND_ORIGINAL` collects both; `NONE` collects neither.
+For explicit update control, call `analyze(solution, FETCH_ALL, updatePolicy, indictmentPolicy)`.
+Enabled indictment modes require `FETCH_ALL`.
+The five-argument `recommendAssignment(...)` overload accepts the same indictment policy and includes the requested views in each recommendation's analysis diff.
+
+An unfetched map is `null`; a fetched map with no selected objects is empty.
+The lookup methods reject an unfetched view and return `null` for an absent object in a fetched view.
+Entries merge using `equals` and `hashCode`, so distinct but equal objects intentionally share one indictment.
+Use stable equality while an analysis is in use; immutable ID records are useful for terminal selections and cross-solution comparisons.
+
+Each raw match contributes its entire score once to each selected object.
+Consequently, adding every object's indictment score generally does not reproduce the solution score: the same match may involve several objects.
+Matches within one indictment are grouped by constraint and justification, with a separate occurrence count for each group.
+The indictment's count is the number of raw contributing occurrences, not the number of groups.
+Totals are accumulated directly from raw match contributions; floating totals and displayed group subtotals round independently.
+Structural flaws remain in `structuralFlawAnalysis()` and are not assigned artificial object-level constraint matches.
+
+`IndictmentAnalysis.justifications()` returns distinct justifications by equality, across that object's constraint groups.
+Its `justifications(MyJustification.class)` overload filters by the requested type, including subclasses.
+These helpers use the grouped indictment view and do not require raw occurrence collection.
+
+`ScoreAnalysis.summarize()` appends separate terminal and original indictment sections for views that were fetched.
+Use `summarize(matchLimit, objectLimit)` to bound both the displayed matches per entry and the displayed objects per view; the defaults are three matches and five objects.
+An individual indictment also supports `summarize()` and `summarize(matchLimit)`.
+These summaries are diagnostic text, not a serialization format.
+
+Original contributors describe stream participation, with these rules:
+
+[cols="1,3",options="header"]
+|===
+|Operation |Original contributors
+|`forEach` |The inserted entity or fact.
+|Filter, `map`, `expand`, flattening |The input's original contributors. A new mapped object appears in the terminal view but is not automatically an original source.
+|Join |Both matching inputs' original contributors.
+|`groupBy`, `distinct` |All current contributing inputs, including inputs not selected by a minimum or similar collector.
+|`ifExists` |The left input and every currently satisfying right witness.
+|`ifNotExists` |The left input only; absent objects are not invented.
+|Concat, complement |The originating branch; added complementary tuples originate from the complementary root. Padding does not introduce original sources.
+|Precompute |The original sources of the actual recorded inner tuple, preserved through outer replay.
+|===
+
+The maps, membership, scores, counts, and match lists are detached snapshots.
+Domain objects and custom justification objects remain references; GreyCOS does not deep-clone arbitrary application objects.
+Later solver updates cannot change the recorded attribution, but may change the fields of referenced objects.
+Original tracking is confined to the requested session and adds no provenance state to ordinary solving sessions.
+For large groups, joins, and existence relations, the complete attribution can be large; use `TERMINAL` when original sources are not needed.
+
+Diff compares each fetched view independently, including ownership-only and count-only changes when the total score is unchanged.
+Counts in a diff may be negative.
+Comparing a fetched view with an unfetched view fails, including the fetched-empty case.
+Fetch the same views for both analyses.
+
+Analyzable incremental calculators can provide explicit collections through `registerConstraintMatchWithIndictments(...)`.
+The registry's `indictmentFetchPolicy()` allows them to avoid preparing unused metadata.
+Legacy default justifications can supply terminal objects; arbitrary custom justifications do not reveal their owners automatically.
+Original contributors require explicit registration metadata in these calculators.
+A requested view fails clearly if active registrations lack the required metadata instead of returning partial attribution.
+
+Jackson serializes fetched views as `indictments` and `originalIndictments` arrays, avoiding domain objects as JSON object keys.
+Unfetched properties are omitted, and fetched-empty views are `[]`.
+For nonempty views, extend `AbstractScoreAnalysisJacksonDeserializer` and implement `deserializeIndictedObject(...)` to reconstruct your domain or ID type.
+Existing deserializer subclasses continue to read the existing payload format.
+The original-object type and its JSON representation are the application's responsibility.
+
+[#scoreAnalysisIndictmentExample]
+==== Example: explain an employee workload
+
+An employee has a maximum number of shifts. The constraint groups assigned shifts by employee, maps the group to a workload, and penalizes assignments above the limit.
+The terminal view selects an immutable employee ID. The original view identifies every contributing shift.
+The complete workforce model and the following executable checks are in `IndictmentDocumentationTest` in the core test suite.
+The checks use AssertJ.
+
+Use stable IDs for object equality and stable justifications for matching the same employee across analyses.
+
+[source,java,options="nowrap"]
+----
+public record EmployeeId(String value) {}
+
+public record Employee(EmployeeId id, long maximumShifts) {}
+
+public record Workload(EmployeeId employeeId, long shiftCount, long maximumShifts) {}
+
+// A stable justification lets the diff align the same employee's grouped match.
+public record EmployeeWorkload(EmployeeId employeeId) implements ConstraintJustification {}
+----
+
+Select the employee ID independently of the workload object created by `map`.
+
+[source,java,options="nowrap"]
+----
+Constraint employeeShiftLimit(ConstraintFactory factory) {
+  return factory.forEach(Shift.class)
+      .groupBy(Shift::getEmployee, ConstraintCollectors.count())
+      .map((employee, count) -> new Workload(employee.id(), count, employee.maximumShifts()))
+      .filter(workload -> workload.shiftCount() > workload.maximumShifts())
+      .penalize(SimpleScore.ONE, workload -> workload.shiftCount() - workload.maximumShifts())
+      .justifyWith((workload, score) -> new EmployeeWorkload(workload.employeeId()))
+      .indictWith(workload -> List.of(workload.employeeId()))
+      .asConstraint("Employee shift limit");
+}
+----
+
+With three shifts and a limit of two, Alice has one constraint match of score -1. Each contributing shift receives that full impact.
+
+[source,java,options="nowrap"]
+----
+var before =
+    solutionManager.analyzeWithIndictments(
+        schedule, IndictmentFetchPolicy.TERMINAL_AND_ORIGINAL);
+var aliceImpact = before.indictmentMap().get(new EmployeeId("alice"));
+var mondayImpact = before.originalIndictmentMap().get(monday);
+// Alice has three shifts and a limit of two: one grouped match with score -1.
+assertThat(before.score()).isEqualTo(SimpleScore.of(-1));
+assertThat(aliceImpact.score()).isEqualTo(SimpleScore.of(-1));
+assertThat(aliceImpact.matchCount()).isOne();
+// Every contributing shift receives the full match impact, not a fraction of it.
+assertThat(mondayImpact.score()).isEqualTo(SimpleScore.of(-1));
+assertThat(mondayImpact.matchCount()).isOne();
+----
+
+Assigning one more shift to Alice worsens that same grouped match. Its count delta is zero, while the newly contributing shift receives a new original indictment.
+
+[source,java,options="nowrap"]
+----
+friday.setEmployee(alice);
+var after =
+    solutionManager.analyzeWithIndictments(
+        schedule, IndictmentFetchPolicy.TERMINAL_AND_ORIGINAL);
+var change = after.diff(before); // New analysis minus old analysis.
+var aliceChange = change.indictmentMap().get(aliceId);
+assertThat(after.score()).isEqualTo(SimpleScore.of(-2));
+assertThat(change.score()).isEqualTo(SimpleScore.of(-1));
+assertThat(aliceChange.score()).isEqualTo(SimpleScore.of(-1));
+assertThat(aliceChange.matchCount()).isZero(); // The same one grouped match became worse.
+assertThat(change.originalIndictmentMap().get(friday).score()).isEqualTo(SimpleScore.of(-2));
+assertThat(change.originalIndictmentMap().get(friday).matchCount()).isOne();
+----
+
+[#scoreAnalysisRawOccurrences]
+=== Inspecting individual match occurrences
+
+Grouped explanations answer how much each constraint, justification or object contributed.
+Different occurrences may share a justification while having different impacts or object associations.
+Request raw occurrences when the application needs to inspect those individual contributions.
+Existing analysis overloads, including `analyzeWithIndictments(...)`, do not collect them.
+
+`ScoreAnalysisOptions` selects the grouped fetch depth, indictment views and raw occurrence collection independently, subject to two requirements:
+raw collection requires `FETCH_ALL` and either `TERMINAL` or `TERMINAL_AND_ORIGINAL`.
+Use `analyzeWithOptions(solution, options)` to update the solution and analyze it, or `analyzeWithOptions(solution, options, updatePolicy)` for explicit update control.
+`recommendAssignmentWithOptions(solution, entityOrElement, propositionFunction, options)` applies the same options to the original and proposed assignments, including their analysis diffs.
+Raw collection materializes each occurrence and its associations; request it only when that additional detail is needed.
+
+`ScoreAnalysis.rawAnalysis()` is `null` when raw occurrences were not requested.
+A requested view with no occurrences is a non-null `RawScoreAnalysis` with an empty `matchOccurrences()` list.
+It exposes one canonical list and three indexes:
+
+[cols="1,3",options="header"]
+|===
+|Accessor |Contents
+|`matchOccurrences()` |One row per scoring occurrence; equal rows remain separate occurrences.
+|`constraintMap()` |Rows indexed by constraint reference.
+|`indictmentMap()` |Rows indexed by terminal or custom selected objects, using object equality.
+|`originalIndictmentMap()` |Rows indexed by original contributing objects; `null` when originals were not fetched.
+|===
+
+Every index contains references to the same row instances in `matchOccurrences()`.
+An occurrence appears once per equal object key in an index, even if its terminal selection contains that object several times.
+Empty index entries are omitted. `originalsFetched()` distinguishes an unfetched original view from a fetched empty one.
+
+Each `MatchOccurrenceAnalysis` exposes its constraint and justification, together with:
+
+* `matchScore()`: the original weighted score contribution, including its penalty or reward sign.
+* `occurrenceSign()`: `+1` in an ordinary snapshot; `+1` for an addition or `-1` for a removal in a diff.
+* `score()`: the contribution after applying `occurrenceSign()` to `matchScore()`.
+* `indictedObjects()`: the terminal selection, preserving its iteration order, duplicate entries and equal-but-distinct references.
+* `originalIndictedObjects()`: the original contributing references, distinct by identity; `null` means originals were not fetched.
+
+All row lists, index memberships, impacts and counts are immutable snapshots.
+The referenced application objects and justification objects are not deep copies.
+Their equality and hash codes must remain stable while snapshots are used, even if planning variables change.
+Snapshot row identities and serialized object indexes are local to that snapshot, not persistent match identifiers.
+
+The existing count APIs keep their meanings.
+Under `FETCH_ALL`, `ConstraintAnalysis.matchCount()` counts grouped matches; `ConstraintAnalysis.rawMatchCount()` is a nullable `Long` that counts individual occurrences only when raw analysis was fetched.
+`IndictmentAnalysis.matchCount()` and `IndictmentMatchAnalysis.matchCount()` already count contributing occurrences and do not require raw rows.
+In diffs, available raw counts are signed differences.
+
+[#scoreAnalysisRawExample]
+==== Example: inspect unresolved shift checks
+
+Each unresolved checklist item incurs a penalty based on its shift.
+The application uses one equal justification for the rule and selects the assigned employee's immutable ID.
+The original source is the shift; checklist values reached through its properties are not separate stream roots.
+The complete model and the checks below are compiled in `RawScoreAnalysisDocumentationTest` in the core test suite.
+They use AssertJ.
+The justification's equality is determined only by its rule name:
+
+[source,java,options="nowrap"]
+----
+public record RuleJustification(String rule) implements ConstraintJustification {}
+----
+
+[source,java,options="nowrap"]
+----
+Constraint openChecks(ConstraintFactory factory) {
+  return factory.forEach(Shift.class)
+      .expand(Shift::getOpenChecks)
+      .flattenLast(checks -> checks)
+      .penalize(SimpleScore.ONE, (shift, check) -> shift.getPenaltyPoints())
+      .justifyWith((shift, check, score) -> new RuleJustification("Open shift check"))
+      .indictWith((shift, check) -> List.of(shift.getEmployee().id()))
+      .asConstraint("Open shift checks");
+}
+----
+
+Suppose Monday has one open check worth two penalty points and Tuesday has one worth five, both assigned to Alice.
+The grouped explanation has one justification with score `-7`, while the raw view retains `-2` and `-5` separately.
+
+[source,java,options="nowrap"]
+----
+var options = new ScoreAnalysisOptions(
+    ScoreAnalysisFetchPolicy.FETCH_ALL,
+    IndictmentFetchPolicy.TERMINAL_AND_ORIGINAL,
+    true);
+var analysis = solutionManager.analyzeWithOptions(schedule, options);
+var raw = analysis.rawAnalysis();
+var constraint = analysis.constraintMap().values().iterator().next();
+// The two equal justifications form one group, containing two original occurrences.
+assertThat(constraint.matchCount()).isOne();
+assertThat(constraint.rawMatchCount()).isEqualTo(2L);
+assertThat(constraint.matches()).singleElement()
+    .satisfies(match -> assertThat(match.score()).isEqualTo(SimpleScore.of(-7)));
+assertThat(raw.matchOccurrences()).extracting(MatchOccurrenceAnalysis::matchScore)
+    .containsExactlyInAnyOrder(SimpleScore.of(-2), SimpleScore.of(-5));
+----
+
+`ScoreAnalysis.justifications()` and its typed overload require raw analysis and return one justification per occurrence, preserving duplicates.
+The same helpers on `RawScoreAnalysis` always have that occurrence data available.
+The indictment helpers instead return distinct justifications:
+
+[source,java,options="nowrap"]
+----
+var expectedJustification = new RuleJustification("Open shift check");
+assertThat(analysis.justifications(RuleJustification.class))
+    .containsExactly(expectedJustification, expectedJustification);
+assertThat(raw.justifications()).containsExactly(expectedJustification, expectedJustification);
+assertThat(analysis.indictmentMap().get(aliceId).justifications(RuleJustification.class))
+    .containsExactly(expectedJustification);
+----
+
+[#scoreAnalysisRawDiff]
+==== Comparing occurrences and their associations
+
+`after.diff(before)` cancels equal occurrence signatures with their multiplicities.
+The signature uses the constraint, original `matchScore()`, justification equality, and both object-association collections as bags compared by equality.
+Association order and snapshot-local row identities are ignored; duplicate associations and duplicate occurrences still matter.
+A changed impact or association produces a removal and an addition, preserving both original rows.
+Zero-impact rows are retained when their occurrence or association changes.
+Both analyses must have the same raw and original-view availability, including fetched-empty views.
+
+Consider two shifts with equal penalties and equal justifications, initially assigned to different employees.
+Swapping their employees leaves all grouped object totals and counts unchanged.
+The raw diff still identifies the changed employee-to-shift associations.
+In the following comparisons, `RAW_OPTIONS` is the options instance configured above, and `before` was captured before the change:
+
+[source,java,options="nowrap"]
+----
+monday.setEmployee(bob);
+tuesday.setEmployee(alice);
+var after = solutionManager.analyzeWithOptions(
+    schedule, RAW_OPTIONS, SolutionUpdatePolicy.UPDATE_ALL);
+var change = after.diff(before);
+// Each employee and each shift still has one penalty of -2.
+assertThat(change.score()).isEqualTo(SimpleScore.ZERO);
+assertThat(change.indictmentMap()).isEmpty();
+assertThat(change.originalIndictmentMap()).isEmpty();
+// The employee-to-shift associations changed: two removals and two additions remain.
+assertThat(change.rawAnalysis().matchOccurrences()).hasSize(4);
+assertThat(change.rawAnalysis().matchOccurrences())
+    .extracting(MatchOccurrenceAnalysis::occurrenceSign)
+    .containsExactlyInAnyOrder(-1, -1, 1, 1);
+----
+
+Two open checks on one shift may have equal justifications, impacts and selected/original objects.
+Removing one check cancels one occurrence and leaves exactly one removal:
+
+[source,java,options="nowrap"]
+----
+// Both checks had the same justification, impact and selected/original objects.
+monday.setOpenChecks(List.of(Check.HANDOVER));
+var after = solutionManager.analyzeWithOptions(schedule, RAW_OPTIONS);
+var change = after.diff(before);
+assertThat(change.score()).isEqualTo(SimpleScore.of(2));
+assertThat(change.rawAnalysis().matchOccurrences()).singleElement().satisfies(removed -> {
+  assertThat(removed.matchScore()).isEqualTo(SimpleScore.of(-2));
+  assertThat(removed.occurrenceSign()).isEqualTo(-1);
+  assertThat(removed.score()).isEqualTo(SimpleScore.of(2));
+});
+assertThat(change.constraintMap().values()).singleElement()
+    .satisfies(constraint -> assertThat(constraint.rawMatchCount()).isEqualTo(-1L));
+----
+
+A removed penalty keeps its original negative `matchScore()` and has a positive signed `score()`.
+For floating scores, the score difference subtracts independently rounded snapshot totals; summing raw signed contributions may round differently.
 
 [#scoreAnalysisDiff]
 === Identifying changes between two solutions
@@ -232,6 +569,44 @@ With large datasets, you may choose to use `ScoreAnalysis` without justification
 In that case, use `ScoreAnalysisFetchPolicy.FETCH_MATCH_COUNT` instead of the default `ScoreAnalysisFetchPolicy.FETCH_ALL` when calling `SolutionManager.analyze(...)`.
 
 
+[#scoreAnalysisRawSerialization]
+==== Preserving raw references in JSON
+
+When raw analysis is requested, Jackson adds a `rawAnalysis` payload with an object table and occurrence rows.
+It uses table indexes for selected objects, original objects and grouped indictment keys, then reconstructs the raw indexes from the canonical rows.
+The table distinguishes equal-but-distinct object instances and reuses the same restored reference wherever an index is repeated.
+Object-table indexes are local to one payload.
+
+`DefaultConstraintJustification` uses the same table for its facts and retains its original impact, including in removal rows.
+Null default fact slots are preserved.
+Application object types are still reconstructed through `deserializeIndictedObject(...)` on `AbstractScoreAnalysisJacksonDeserializer`.
+
+In raw mode, structural-flaw variable pairs use `entityIndex` and `variableName`.
+The entity index points into the same object table, so an entity shared by a variable loop and a raw occurrence is reconstructed once through `deserializeIndictedObject(...)`.
+Entities used only by structural flaws are listed in the optional `rawAnalysis.structuralObjectIndexes` array and reconstructed through `deserializeStructuralFlawEntity(...)` instead.
+Both hooks must restore the corresponding application types; indexed references reuse the restored object without calling a hook again.
+Valid older structural-flaw payloads containing inline `entity` values remain readable.
+
+The `matchCount` JSON property is present exactly when the constraint count is available, including an available signed value of `-1`.
+An absent property denotes unavailable information.
+Older serializers omitted count-only differences of `-1`; a value lost from such a payload cannot be recovered during deserialization.
+
+Custom justification JSON remains application-defined.
+If a custom justification contains nested objects that must share references with selected objects, original objects or indictment keys, use both reference-aware hooks:
+
+* With Jackson 3, override `ScoreAnalysisJacksonSerializer.serializeConstraintJustification(ConstraintRef, ConstraintJustification, tools.jackson.databind.SerializationContext, Score_, ToIntFunction<Object> registerObject)`.
+With Quarkus Jackson 2, the corresponding parameter is `com.fasterxml.jackson.databind.SerializerProvider`.
+Encode each such nested reference by calling `registerObject.applyAsInt(object)` and storing the returned index in the custom payload.
+* Override `AbstractScoreAnalysisJacksonDeserializer.deserializeConstraintJustification(ConstraintRef, JsonNode, DeserializationContext, Score_, IntFunction<Object> resolveObject)`.
+The `JsonNode` and `DeserializationContext` types come from `tools.jackson.databind` for Jackson 3 and `com.fasterxml.jackson.databind` for Quarkus Jackson 2.
+Resolve each encoded index with `resolveObject.apply(index)` when rebuilding the custom justification.
+
+These callbacks are scoped to the current analysis; do not retain them.
+Arbitrary nested custom object graphs are not traversed or reconstructed automatically.
+The default serializer hook preserves the custom object's normal Jackson representation, and the new deserializer hook delegates to the existing four-argument method.
+Existing payloads without raw analysis retain their existing format and deserialization behavior.
+
+
 [#solutionDiff]
 == Solution Diff: What changed between now and then?
 
@@ -272,9 +647,10 @@ Do not attempt to parse this string or expose it in services, its format is not 
 [#scoreHeatMap]
 == Heat map: Visualize the hot planning entities
 
-Build heat maps from domain-specific `ConstraintJustification` implementations.
-Include the relevant planning entity or its stable ID in each justification,
-iterate over `ScoreAnalysis.constraintAnalyses()`, and aggregate each match's `score()` by that key.
-This keeps presentation concerns explicit and avoids exposing solver-internal match objects.
+Build heat maps from <<scoreAnalysisIndictments,indictment analysis>>.
+Use terminal indictments with `indictWith(...)` for application-selected entities or stable IDs,
+or the original-contributor view to show which source entities and facts participated through transformations.
+Each entry provides its accumulated score and matching explanations.
+Keep in mind that a match can contribute its full impact to several objects.
 
 image::constraints-and-score/understanding-the-score/scoreVisualization.png[align="center"]

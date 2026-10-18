@@ -27,6 +27,17 @@ record UniDoubleImpactHandler<A>(ToDoubleFunction<A> matchWeigher) implements Un
   }
 
   @Override
+  public ScoreImpact<?> impactWithIndictments(
+      WeightedScoreImpacter<?, ?> impacter, UniTuple<A> tuple) {
+    var a = tuple.getA();
+    var constraint = impacter.getContext().getConstraint();
+    return impacter.impactScore(
+        matchWeigher.applyAsDouble(a),
+        ConstraintMatchSupplier.withIndictments(
+            constraint.getJustificationMapping(), constraint.getIndictmentMapping(), a));
+  }
+
+  @Override
   public ScoreImpact<?> impactWithoutJustification(
       WeightedScoreImpacter<?, ?> impacter, UniTuple<A> tuple) {
     return impacter.impactScore(

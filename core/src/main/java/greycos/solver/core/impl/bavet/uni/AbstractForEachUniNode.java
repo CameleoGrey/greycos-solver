@@ -1,6 +1,7 @@
 package greycos.solver.core.impl.bavet.uni;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import greycos.solver.core.api.cotwin.solution.PlanningSolution;
@@ -8,6 +9,9 @@ import greycos.solver.core.impl.bavet.common.AbstractRootNode;
 import greycos.solver.core.impl.bavet.common.Propagator;
 import greycos.solver.core.impl.bavet.common.StaticPropagationQueue;
 import greycos.solver.core.impl.bavet.common.StreamKind;
+import greycos.solver.core.impl.bavet.common.provenance.LineageHandle;
+import greycos.solver.core.impl.bavet.common.provenance.ProvenanceNode;
+import greycos.solver.core.impl.bavet.common.provenance.TupleProvenance;
 import greycos.solver.core.impl.bavet.common.tuple.TupleLifecycle;
 import greycos.solver.core.impl.bavet.common.tuple.TupleState;
 import greycos.solver.core.impl.bavet.common.tuple.UniTuple;
@@ -25,12 +29,18 @@ import org.jspecify.annotations.Nullable;
  */
 @NullMarked
 public abstract sealed class AbstractForEachUniNode<A> extends AbstractRootNode<A>
-    permits ForEachFilteredUniNode, ForEachUnfilteredUniNode {
+    implements ProvenanceNode permits ForEachFilteredUniNode, ForEachUnfilteredUniNode {
 
   private final Class<A> forEachClass;
   private final int outputStoreSize;
   private final StaticPropagationQueue<UniTuple<A>> propagationQueue;
   protected final Map<A, UniTuple<A>> tupleMap = HashMap.newHashMap(1000);
+  private @Nullable TupleProvenance provenance;
+
+  @Override
+  public final void setProvenance(TupleProvenance provenance) {
+    this.provenance = provenance;
+  }
 
   protected AbstractForEachUniNode(
       Class<A> forEachClass,
@@ -59,6 +69,11 @@ public abstract sealed class AbstractForEachUniNode<A> extends AbstractRootNode<
   @Override
   public void insert(@Nullable A a) {
     var tuple = UniTuple.of(a, outputStoreSize);
+    if (provenance != null) {
+      provenance
+          .output()
+          .set(tuple, a == null ? LineageHandle.frozen(List.of()) : LineageHandle.source(a));
+    }
     var old = tupleMap.put(a, tuple);
     if (old != null) {
       throw new IllegalStateException(

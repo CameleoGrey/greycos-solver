@@ -31,6 +31,19 @@ record TriBigDecimalImpactHandler<A, B, C>(TriFunction<A, B, C, BigDecimal> matc
   }
 
   @Override
+  public ScoreImpact<?> impactWithIndictments(
+      WeightedScoreImpacter<?, ?> impacter, TriTuple<A, B, C> tuple) {
+    var a = tuple.getA();
+    var b = tuple.getB();
+    var c = tuple.getC();
+    var constraint = impacter.getContext().getConstraint();
+    return impacter.impactScore(
+        matchWeigher.apply(a, b, c),
+        ConstraintMatchSupplier.withIndictments(
+            constraint.getJustificationMapping(), constraint.getIndictmentMapping(), a, b, c));
+  }
+
+  @Override
   public ScoreImpact<?> impactWithoutJustification(
       WeightedScoreImpacter<?, ?> impacter, TriTuple<A, B, C> tuple) {
     return impacter.impactScore(

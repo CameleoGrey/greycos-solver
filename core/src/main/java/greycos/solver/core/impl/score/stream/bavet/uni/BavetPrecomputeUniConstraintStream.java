@@ -40,9 +40,11 @@ public class BavetPrecomputeUniConstraintStream<Solution_, A>
   @Override
   public <Score_ extends Score<Score_>> void buildNode(
       ConstraintNodeBuildHelper<Solution_, Score_> buildHelper) {
+    var originalContributorTracking = buildHelper.isOriginalContributorTrackingEnabled();
     Supplier<BavetPrecomputeBuildHelper<UniTuple<A>>> precomputeBuildHelperSupplier =
         () ->
-            new BavetPrecomputeBuildHelper<>(recordingPrecomputedConstraintStream, entityClassSet);
+            new BavetPrecomputeBuildHelper<>(
+                recordingPrecomputedConstraintStream, entityClassSet, originalContributorTracking);
     var outputStoreSize = buildHelper.extractTupleStoreSize(aftStream);
 
     buildHelper.addNode(

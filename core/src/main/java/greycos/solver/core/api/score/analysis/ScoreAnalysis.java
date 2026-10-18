@@ -1,6 +1,8 @@
 package greycos.solver.core.api.score.analysis;
 
 import java.util.Collection;
+import java.util.List;
+import java.util.Objects;
 import java.util.SequencedMap;
 
 import greycos.solver.core.api.score.Score;
@@ -9,6 +11,7 @@ import greycos.solver.core.api.score.stream.ConstraintJustification;
 import greycos.solver.core.api.score.stream.ConstraintRef;
 import greycos.solver.core.api.solver.ScoreAnalysisFetchPolicy;
 import greycos.solver.core.api.solver.SolutionManager;
+import greycos.solver.core.impl.score.analysis.ScoreAnalysisSummary;
 
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
@@ -60,16 +63,92 @@ public interface ScoreAnalysis<Score_ extends Score<Score_>> {
    *       ScoreAnalysisFetchPolicy#FETCH_MATCH_COUNT}), constraint diff will only be included if it
    *       has a non-zero match count diff.
    *   <li>Otherwise (when constraint matching is fully enabled with {@link
-   *       ScoreAnalysisFetchPolicy#FETCH_ALL}) the constraint diff will not be included if the diff
-   *       of its constraint matches is empty. (In other words: when diffing, the analysis for a
-   *       particular constraint won't be available if we can guarantee that the constraint matches
-   *       are identical in both analyses.)
+   *       ScoreAnalysisFetchPolicy#FETCH_ALL}) the constraint diff is omitted only when its grouped
+   *       match diff is empty and its raw occurrence diff is either empty or unavailable. Raw
+   *       occurrence changes, including object-association changes whose grouped effects cancel,
+   *       therefore keep the constraint in the result.
    * </ul>
    *
    * @return Entries have a stable iteration order; items are ordered first by {@link
    *     ConstraintAnalysis#weight()}, then by {@link ConstraintAnalysis#constraintRef()}.
    */
   SequencedMap<ConstraintRef, ConstraintAnalysis<Score_>> constraintMap();
+
+  /**
+   * Individual scoring occurrences and their shared indexes, or null when not requested. An empty
+   * fetched container differs from unavailable data. Raw data is explicitly enabled through score
+   * analysis options; existing analysis calls do not retain it.
+   */
+  default @Nullable RawScoreAnalysis<Score_> rawAnalysis() {
+    return null;
+  }
+
+  /**
+   * Returns one justification per raw occurrence, retaining duplicates. Requires {@link
+   * #rawAnalysis()} to be available. A diff includes the justifications of both added and removed
+   * occurrences; inspect their signs through the raw view when the distinction matters.
+   */
+  default List<ConstraintJustification> justifications() {
+    var raw = rawAnalysis();
+    if (raw == null) {
+      throw new IllegalStateException(
+          "Raw match occurrences were not fetched. Enable includeMatchOccurrences in the analysis options.");
+    }
+    return raw.justifications();
+  }
+
+  /** Filters {@link #justifications()} by type, including subclasses, preserving duplicates. */
+  default <Justification_ extends ConstraintJustification> List<Justification_> justifications(
+      Class<Justification_> justificationClass) {
+    Objects.requireNonNull(justificationClass, "justificationClass");
+    return justifications().stream()
+        .filter(justificationClass::isInstance)
+        .map(justificationClass::cast)
+        .toList();
+  }
+
+  /**
+   * Terminal tuple objects, or the selection supplied by {@code indictWith(...)}, grouped using
+   * object equality. Null means this view was not fetched; an empty map means it was fetched and
+   * contains no indictments. The map preserves encounter order and is immutable, but does not
+   * deep-copy object or justification references. Their equality and hash codes must remain stable.
+   */
+  default @Nullable SequencedMap<Object, IndictmentAnalysis<Score_>> indictmentMap() {
+    return null;
+  }
+
+  /**
+   * Original contributing objects, independently of terminal {@code indictWith(...)} selection.
+   * Availability, equality, ordering and snapshot semantics are as defined by {@link
+   * #indictmentMap()}.
+   */
+  default @Nullable SequencedMap<Object, IndictmentAnalysis<Score_>> originalIndictmentMap() {
+    return null;
+  }
+
+  /**
+   * Looks up an object in {@link #indictmentMap()}; returns null if the fetched view has no such
+   * object. Throws if this view was not fetched.
+   */
+  default @Nullable IndictmentAnalysis<Score_> getIndictmentAnalysis(Object indictedObject) {
+    Objects.requireNonNull(indictedObject, "indictedObject");
+    var map = indictmentMap();
+    if (map == null) {
+      throw new IllegalStateException("Terminal indictments were not fetched.");
+    }
+    return map.get(indictedObject);
+  }
+
+  /** As defined by {@link #getIndictmentAnalysis(Object)}, for original contributing objects. */
+  default @Nullable IndictmentAnalysis<Score_> getOriginalIndictmentAnalysis(
+      Object indictedObject) {
+    Objects.requireNonNull(indictedObject, "indictedObject");
+    var map = originalIndictmentMap();
+    if (map == null) {
+      throw new IllegalStateException("Original indictments were not fetched.");
+    }
+    return map.get(indictedObject);
+  }
 
   /**
    * Indicates whether the solution was fully initialized at the time of analysis.
@@ -129,7 +208,15 @@ public interface ScoreAnalysis<Score_ extends Score<Score_>> {
    * to be consistent with equals.
    *
    * <p>If one {@link ScoreAnalysis} provides {@link MatchAnalysis} and the other doesn't, exception
-   * is thrown. Such {@link ScoreAnalysis} instances are mutually incompatible.
+   * is thrown. Such {@link ScoreAnalysis} instances are mutually incompatible. The same applies
+   * independently to each indictment view, including fetched empty views. Indictment differences
+   * retain changes to either scores or original occurrence counts. Raw availability must also
+   * match. Raw occurrences are compared by constraint, justification, original match score and
+   * equals-based association multisets; selection order is ignored, duplicates are retained, and
+   * changed values produce a removal and an addition. Raw-only changed constraints remain present
+   * even when their grouped effects cancel. The raw indexes remain independent of grouped
+   * indictment omissions. Signed raw diffs may themselves be diffed. For floating scores, raw delta
+   * sums may differ from subtraction of rounded analysis totals.
    *
    * <p>If {@code this} came from a fully initialized solution, {@link #isSolutionInitialized} will
    * be true. False otherwise.
@@ -169,4 +256,13 @@ public interface ScoreAnalysis<Score_ extends Score<Score_>> {
    *     Integer#MAX_VALUE} to show all matches.
    */
   String summarize(int topLimit);
+
+  /**
+   * Summarizes at most {@code matchLimit} groups per constraint or indictment, and at most {@code
+   * indictmentLimit} objects in each fetched indictment view. Both limits must be positive; use
+   * {@link Integer#MAX_VALUE} for no limit. The other overloads default to five indicted objects.
+   */
+  default String summarize(int matchLimit, int indictmentLimit) {
+    return ScoreAnalysisSummary.summarize(this, matchLimit, indictmentLimit);
+  }
 }

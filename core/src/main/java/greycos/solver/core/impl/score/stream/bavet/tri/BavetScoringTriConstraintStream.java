@@ -74,7 +74,8 @@ final class BavetScoringTriConstraintStream<Solution_, A, B, C>
         new Scorer<>(
             scoreImpacter,
             weightedScoreImpacter,
-            buildHelper.reserveTupleStoreIndex(parent.getTupleSource()));
+            buildHelper.reserveTupleStoreIndex(parent.getTupleSource()),
+            buildHelper.getProvenanceAccessor(parent));
     buildHelper.putInsertUpdateRetract(this, scorer);
   }
 
@@ -83,6 +84,11 @@ final class BavetScoringTriConstraintStream<Solution_, A, B, C>
     return switch (constraintMatchPolicy) {
       case DISABLED -> scoreImpact::impactNaked;
       case ENABLED -> scoreImpact::impactFull;
+      case ENABLED_WITH_INDICTMENTS,
+          ENABLED_WITH_ORIGINAL_INDICTMENTS,
+          ENABLED_WITH_RAW_INDICTMENTS,
+          ENABLED_WITH_RAW_ORIGINAL_INDICTMENTS ->
+          scoreImpact::impactWithIndictments;
       case ENABLED_WITHOUT_JUSTIFICATIONS -> scoreImpact::impactWithoutJustification;
     };
   }

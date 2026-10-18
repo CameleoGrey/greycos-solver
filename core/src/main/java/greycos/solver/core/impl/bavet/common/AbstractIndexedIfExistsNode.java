@@ -1,13 +1,19 @@
 package greycos.solver.core.impl.bavet.common;
 
+import java.util.HashMap;
+import java.util.IdentityHashMap;
+import java.util.Map;
+import java.util.Objects;
 import java.util.function.Consumer;
 
+import greycos.solver.core.impl.bavet.common.ExistsCounter.WitnessGroup;
 import greycos.solver.core.impl.bavet.common.index.FusedEqualIndex;
 import greycos.solver.core.impl.bavet.common.index.FusedEqualIndex.Bucket;
 import greycos.solver.core.impl.bavet.common.index.Indexer;
 import greycos.solver.core.impl.bavet.common.index.IndexerFactory;
 import greycos.solver.core.impl.bavet.common.index.IndexerFactory.KeysExtractor;
 import greycos.solver.core.impl.bavet.common.index.IndexerFactory.UniKeysExtractor;
+import greycos.solver.core.impl.bavet.common.provenance.LineageHandle;
 import greycos.solver.core.impl.bavet.common.tuple.InTupleStorePositionTracker;
 import greycos.solver.core.impl.bavet.common.tuple.LeftTupleLifecycle;
 import greycos.solver.core.impl.bavet.common.tuple.RightTupleLifecycle;
@@ -57,6 +63,8 @@ public abstract class AbstractIndexedIfExistsNode<LeftTuple_ extends Tuple, Righ
   // cached bucket. Pure-equal nodes are false, so the dominant path never even evaluates
   // isSameBucket.
   private final boolean reuseBucketEligible;
+  private @Nullable Map<Object, WitnessGroup> sharedWitnessGroups;
+  private @Nullable IdentityHashMap<Tuple, SharedWitness> sharedWitnessHandles;
 
   protected AbstractIndexedIfExistsNode(
       boolean shouldExist,
@@ -90,6 +98,15 @@ public abstract class AbstractIndexedIfExistsNode<LeftTuple_ extends Tuple, Righ
   }
 
   @Override
+  protected void initializeProvenance() {
+    if (shouldExist && !isFiltering && useFusedEqualIndex && !fusedEqualIndex.hasSuffix()) {
+      // Every left occurrence with this complete equality key sees the same right occurrences.
+      sharedWitnessGroups = new HashMap<>();
+      sharedWitnessHandles = new IdentityHashMap<>();
+    }
+  }
+
+  @Override
   public final void insertLeft(LeftTuple_ leftTuple) {
     if (leftTuple.getStore(inputStoreIndexLefCompositeKey) != null) {
       throw new IllegalStateException(
@@ -99,9 +116,10 @@ public abstract class AbstractIndexedIfExistsNode<LeftTuple_ extends Tuple, Righ
     var compositeKey = keysExtractorLeft.apply(leftTuple);
     leftTuple.setStore(inputStoreIndexLefCompositeKey, compositeKey);
 
-    var counter = new ExistsCounter<>(leftTuple);
+    var counter = createCounter(leftTuple);
     var counterEntry = putLeftCounter(leftTuple, compositeKey, counter, false);
     leftTuple.setStore(inputStoreIndexLeftCounterEntry, counterEntry);
+    initializeCounterWitnesses(counter, leftTuple, compositeKey);
     if (!isFiltering) {
       counter.countRight = rightSize(leftTuple, compositeKey);
       initCounterLeft(counter);
@@ -156,6 +174,7 @@ public abstract class AbstractIndexedIfExistsNode<LeftTuple_ extends Tuple, Righ
       // drop/recreate).
       var sameBucket =
           reuseBucketEligible && fusedEqualIndex.isSameBucket(oldCompositeKey, newCompositeKey);
+      clearCounterWitnesses(counter);
       updateIndexerLeft(
           oldCompositeKey, counterEntry, leftTuple, sameBucket); // Also clears the tracker list.
       counter.countRight = 0;
@@ -163,6 +182,7 @@ public abstract class AbstractIndexedIfExistsNode<LeftTuple_ extends Tuple, Righ
       leftTuple.setStore(
           inputStoreIndexLeftCounterEntry,
           putLeftCounter(leftTuple, newCompositeKey, counter, sameBucket));
+      initializeCounterWitnesses(counter, leftTuple, newCompositeKey);
       if (isFiltering) {
         crossMatchLeft(leftTuple);
       } else {
@@ -188,6 +208,7 @@ public abstract class AbstractIndexedIfExistsNode<LeftTuple_ extends Tuple, Righ
     removeFromIndexerLeft(compositeKey, leftTuple, counterEntry, false);
     clearLeftTrackerList(leftTuple);
     killCounterLeft(element);
+    clearCounterWitnesses(element);
   }
 
   private void removeFromIndexerLeft(
@@ -229,12 +250,23 @@ public abstract class AbstractIndexedIfExistsNode<LeftTuple_ extends Tuple, Righ
     var compositeKey = keysExtractorRight.apply(rightTuple);
     rightTuple.setStore(inputStoreIndexRightCompositeKey, compositeKey);
     rightTuple.setStore(inputStoreIndexRightEntry, putRightTuple(rightTuple, compositeKey, false));
+    addSharedWitness(rightTuple, compositeKey);
     updateCounterLeft(rightTuple, compositeKey);
   }
 
   private void updateCounterLeft(UniTuple<Right_> rightTuple, Object compositeKey) {
     if (!isFiltering) {
-      forEachLeftCounter(rightTuple, compositeKey, this::incrementCounterRight);
+      if (tracksWitnesses() && sharedWitnessGroups == null) {
+        forEachLeftCounter(
+            rightTuple,
+            compositeKey,
+            counter -> {
+              addWitness(counter, rightTuple);
+              incrementCounterRight(counter);
+            });
+      } else {
+        forEachLeftCounter(rightTuple, compositeKey, this::incrementCounterRight);
+      }
     } else {
       // Defer the cross-match (the opposite-side read) to this node's own layer turn instead of
       // computing it now,
@@ -279,14 +311,23 @@ public abstract class AbstractIndexedIfExistsNode<LeftTuple_ extends Tuple, Righ
       } else {
         indexerRight.remove(oldCompositeKey, entry);
       }
+      removeSharedWitness(rightTuple);
       if (!isFiltering) {
-        forEachLeftCounter(rightTuple, oldCompositeKey, this::decrementCounterRight);
+        if (tracksWitnesses() && sharedWitnessGroups == null) {
+          forEachLeftCounter(
+              rightTuple,
+              oldCompositeKey,
+              counter -> removeWitnessAndDecrement(counter, rightTuple));
+        } else {
+          forEachLeftCounter(rightTuple, oldCompositeKey, this::decrementCounterRight);
+        }
       } else {
         clearRightTrackerList(rightTuple);
       }
       rightTuple.setStore(inputStoreIndexRightCompositeKey, newCompositeKey);
       rightTuple.setStore(
           inputStoreIndexRightEntry, putRightTuple(rightTuple, newCompositeKey, sameBucket));
+      addSharedWitness(rightTuple, newCompositeKey);
       updateCounterLeft(rightTuple, newCompositeKey);
     }
   }
@@ -302,25 +343,99 @@ public abstract class AbstractIndexedIfExistsNode<LeftTuple_ extends Tuple, Righ
       return;
     }
     ListEntry<UniTuple<Right_>> entry = rightTuple.removeStore(inputStoreIndexRightEntry);
+    removeSharedWitness(rightTuple);
     if (useFusedEqualIndex) {
       Bucket<ExistsCounter<LeftTuple_>, UniTuple<Right_>> bucket =
           rightTuple.removeStore(inputStoreIndexRightBucket);
       bucket.removeRight(compositeKey, entry);
       fusedEqualIndex.removeBucketIfEmpty(compositeKey, bucket);
       if (!isFiltering) {
-        bucket.forEachLeft(compositeKey, this::decrementCounterRight);
+        if (tracksWitnesses() && sharedWitnessGroups == null) {
+          bucket.forEachLeft(
+              compositeKey, counter -> removeWitnessAndDecrement(counter, rightTuple));
+        } else {
+          bucket.forEachLeft(compositeKey, this::decrementCounterRight);
+        }
       } else {
         clearRightTrackerList(rightTuple);
       }
     } else {
       indexerRight.remove(compositeKey, entry);
       if (!isFiltering) {
-        indexerLeft.forEach(compositeKey, this::decrementCounterRight);
+        if (tracksWitnesses() && sharedWitnessGroups == null) {
+          indexerLeft.forEach(
+              compositeKey, counter -> removeWitnessAndDecrement(counter, rightTuple));
+        } else {
+          indexerLeft.forEach(compositeKey, this::decrementCounterRight);
+        }
       } else {
         clearRightTrackerList(rightTuple);
       }
     }
   }
+
+  private void removeWitnessAndDecrement(
+      ExistsCounter<LeftTuple_> counter, UniTuple<Right_> rightTuple) {
+    removeWitness(counter, rightTuple);
+    decrementCounterRight(counter);
+  }
+
+  private void initializeCounterWitnesses(
+      ExistsCounter<LeftTuple_> counter, LeftTuple_ leftTuple, Object compositeKey) {
+    if (!tracksWitnesses() || isFiltering) {
+      return;
+    }
+    if (sharedWitnessGroups != null) {
+      var group = sharedWitnessGroups.computeIfAbsent(compositeKey, WitnessGroup::new);
+      group.leftCount++;
+      counter.provenance.group = group;
+      counter.provenance.witnesses.add(group.witnesses);
+    } else {
+      forEachRightFromLeft(leftTuple, compositeKey, rightTuple -> addWitness(counter, rightTuple));
+    }
+  }
+
+  private void clearCounterWitnesses(ExistsCounter<LeftTuple_> counter) {
+    if (!tracksWitnesses() || isFiltering) {
+      return;
+    }
+    var counterProvenance = counter.provenance;
+    if (counterProvenance.group != null) {
+      var group = counterProvenance.group;
+      counterProvenance.group = null;
+      group.leftCount--;
+      removeEmptyWitnessGroup(group);
+    }
+    clearWitnesses(counter);
+  }
+
+  private void addSharedWitness(UniTuple<Right_> rightTuple, Object compositeKey) {
+    if (sharedWitnessGroups != null) {
+      var group = sharedWitnessGroups.computeIfAbsent(compositeKey, WitnessGroup::new);
+      var handle = provenance.right().get(rightTuple);
+      group.rightCount++;
+      group.witnesses.add(handle);
+      sharedWitnessHandles.put(rightTuple, new SharedWitness(group, handle));
+    }
+  }
+
+  private void removeSharedWitness(UniTuple<Right_> rightTuple) {
+    if (sharedWitnessGroups != null) {
+      var member = Objects.requireNonNull(sharedWitnessHandles.remove(rightTuple));
+      var group = member.group();
+      group.witnesses.remove(member.handle());
+      group.rightCount--;
+      removeEmptyWitnessGroup(group);
+    }
+  }
+
+  private void removeEmptyWitnessGroup(WitnessGroup group) {
+    if (group.leftCount == 0 && group.rightCount == 0) {
+      sharedWitnessGroups.remove(group.key);
+    }
+  }
+
+  private record SharedWitness(WitnessGroup group, LineageHandle handle) {}
 
   /**
    * Adds a left counter to its side of the index, caching the resolved bucket on the left tuple

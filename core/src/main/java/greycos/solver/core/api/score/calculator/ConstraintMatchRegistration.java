@@ -1,11 +1,14 @@
 package greycos.solver.core.api.score.calculator;
 
+import java.util.List;
+
 import greycos.solver.core.api.score.Score;
 import greycos.solver.core.api.score.analysis.ScoreAnalysis;
 import greycos.solver.core.api.score.stream.ConstraintJustification;
 import greycos.solver.core.api.score.stream.ConstraintRef;
 
 import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 
 /**
  * A registration for a constraint match, which can be cancelled.
@@ -31,6 +34,16 @@ public interface ConstraintMatchRegistration<Score_ extends Score<Score_>> {
    * @return the justification of the match; the specific type depends on the user.
    */
   ConstraintJustification justification();
+
+  /** The immutable terminal selection, or null when not requested or not supplied. */
+  default @Nullable List<Object> indictedObjects() {
+    return null;
+  }
+
+  /** The immutable original-contributor selection, or null when not requested or not supplied. */
+  default @Nullable List<Object> originalIndictedObjects() {
+    return null;
+  }
 
   /**
    * Cancels the registration of this constraint match. Once canceled, the constraint match will no

@@ -33,6 +33,7 @@ final class SessionBasedAssertionBuilder<Solution_, Score_ extends Score<Score_>
     var scoreInliner = constraintStreamScoreDirectorFactory.fireAndForget(facts);
     return new DefaultSingleConstraintAssertion<>(
         constraintStreamScoreDirectorFactory,
+        facts,
         scoreInliner.extractScore(),
         scoreInliner.getConstraintMatchTotalMap());
   }

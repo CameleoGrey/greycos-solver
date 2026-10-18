@@ -9,11 +9,14 @@ import greycos.solver.core.api.cotwin.entity.PlanningEntity;
 import greycos.solver.core.api.cotwin.solution.PlanningSolution;
 import greycos.solver.core.api.score.Score;
 import greycos.solver.core.api.score.stream.ConstraintRef;
+import greycos.solver.core.api.solver.IndictmentFetchPolicy;
 import greycos.solver.core.config.solver.EnvironmentMode;
 import greycos.solver.core.impl.cotwin.entity.descriptor.EntityDescriptor;
 import greycos.solver.core.impl.cotwin.variable.declarative.ConsistencyTracker;
 import greycos.solver.core.impl.cotwin.variable.descriptor.ListVariableDescriptor;
 import greycos.solver.core.impl.cotwin.variable.descriptor.VariableDescriptor;
+import greycos.solver.core.impl.score.analysis.AnalysisDetails;
+import greycos.solver.core.impl.score.analysis.IndictmentMaps;
 import greycos.solver.core.impl.score.constraint.ConstraintMatchTotal;
 import greycos.solver.core.impl.score.director.AbstractScoreDirector;
 import greycos.solver.core.impl.score.director.InnerScore;
@@ -119,6 +122,37 @@ public final class BavetConstraintStreamScoreDirector<Solution_, Score_ extends 
               + " getConstraintMatchTotalMap().");
     }
     return session.getConstraintMatchTotalMap();
+  }
+
+  @Override
+  public IndictmentMaps<Score_> getIndictmentMaps() {
+    if (constraintMatchPolicy.getIndictmentFetchPolicy() == IndictmentFetchPolicy.NONE) {
+      return IndictmentMaps.unavailable();
+    }
+    ensureWorkingSolutionStateFresh();
+    if (workingSolution == null) {
+      throw new IllegalStateException(
+          "setWorkingSolution() must be called before getIndictmentMaps().");
+    }
+    session.settle();
+    return session.getScoreInliner().getIndictmentMaps();
+  }
+
+  @Override
+  public AnalysisDetails<Score_> getAnalysisDetails() {
+    if (constraintMatchPolicy.getIndictmentFetchPolicy() == IndictmentFetchPolicy.NONE) {
+      return AnalysisDetails.unavailable();
+    }
+    if (!constraintMatchPolicy.isMatchOccurrenceEnabled()) {
+      return new AnalysisDetails<>(getIndictmentMaps(), null);
+    }
+    ensureWorkingSolutionStateFresh();
+    if (workingSolution == null) {
+      throw new IllegalStateException(
+          "setWorkingSolution() must be called before getAnalysisDetails().");
+    }
+    session.settle();
+    return session.getScoreInliner().getAnalysisDetails();
   }
 
   @Override

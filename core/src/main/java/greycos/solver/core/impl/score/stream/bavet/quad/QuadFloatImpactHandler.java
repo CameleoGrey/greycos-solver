@@ -39,4 +39,18 @@ record QuadFloatImpactHandler<A, B, C, D>(ToFloatQuadFunction<A, B, C, D> matchW
         matchWeigher.applyAsFloat(a, b, c, d),
         ConstraintMatchSupplier.of(constraint.getJustificationMapping(), a, b, c, d));
   }
+
+  @Override
+  public ScoreImpact<?> impactWithIndictments(
+      WeightedScoreImpacter<?, ?> impacter, QuadTuple<A, B, C, D> tuple) {
+    var a = tuple.getA();
+    var b = tuple.getB();
+    var c = tuple.getC();
+    var d = tuple.getD();
+    var constraint = impacter.getContext().getConstraint();
+    return impacter.impactScore(
+        matchWeigher.applyAsFloat(a, b, c, d),
+        ConstraintMatchSupplier.withIndictments(
+            constraint.getJustificationMapping(), constraint.getIndictmentMapping(), a, b, c, d));
+  }
 }

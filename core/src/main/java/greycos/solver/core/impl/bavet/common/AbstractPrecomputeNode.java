@@ -2,6 +2,8 @@ package greycos.solver.core.impl.bavet.common;
 
 import java.util.function.Supplier;
 
+import greycos.solver.core.impl.bavet.common.provenance.ProvenanceNode;
+import greycos.solver.core.impl.bavet.common.provenance.TupleProvenance;
 import greycos.solver.core.impl.bavet.common.tuple.Tuple;
 import greycos.solver.core.impl.bavet.common.tuple.TupleLifecycle;
 import greycos.solver.core.impl.score.stream.bavet.common.BavetPrecomputeBuildHelper;
@@ -10,12 +12,17 @@ import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
 @NullMarked
-public abstract class AbstractPrecomputeNode<Tuple_ extends Tuple>
-    extends AbstractRootNode<Object> {
+public abstract class AbstractPrecomputeNode<Tuple_ extends Tuple> extends AbstractRootNode<Object>
+    implements ProvenanceNode {
 
   private final TupleLifecycle<Tuple_> downstreamTupleLifecycle;
   private final RecordAndReplayPropagator<Tuple_> recordAndReplayPropagator;
   private final Class<?>[] sourceClasses;
+
+  @Override
+  public final void setProvenance(TupleProvenance provenance) {
+    recordAndReplayPropagator.setProvenanceOutput(provenance.output());
+  }
 
   protected AbstractPrecomputeNode(
       Supplier<BavetPrecomputeBuildHelper<Tuple_>> precomputeBuildHelperSupplier,

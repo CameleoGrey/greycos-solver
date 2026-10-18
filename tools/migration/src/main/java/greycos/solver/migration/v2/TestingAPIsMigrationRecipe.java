@@ -5,6 +5,7 @@ import java.util.List;
 import greycos.solver.migration.AbstractRecipe;
 
 import org.openrewrite.Recipe;
+import org.openrewrite.java.ChangeMethodName;
 import org.openrewrite.java.ChangePackage;
 import org.openrewrite.java.ChangeType;
 import org.openrewrite.maven.RemoveDependency;
@@ -24,6 +25,18 @@ public class TestingAPIsMigrationRecipe extends AbstractRecipe {
   @Override
   public List<Recipe> getRecipeList() {
     return List.of(
+        new ChangeMethodName(
+            "greycos.solver.test.api.score.stream.SingleConstraintAssertion"
+                + " indictsWith(java.lang.String, java.lang.Object[])",
+            "indictsWithMessage",
+            true,
+            false),
+        new ChangeMethodName(
+            "greycos.solver.test.api.score.stream.SingleConstraintAssertion"
+                + " indictsWithExactly(java.lang.String, java.lang.Object[])",
+            "indictsExactlyWithMessage",
+            true,
+            false),
         new ChangePackage(
             "greycos.solver.test.api.score.stream",
             "greycos.solver.core.api.score.stream.test",

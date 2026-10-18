@@ -7,20 +7,27 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Stream;
 
 import greycos.solver.core.api.score.Score;
+import greycos.solver.core.api.score.analysis.IndictmentAnalysis;
 import greycos.solver.core.api.score.stream.ConstraintJustification;
 import greycos.solver.core.api.score.stream.ConstraintRef;
 import greycos.solver.core.api.score.stream.test.SingleConstraintAssertion;
+import greycos.solver.core.impl.cotwin.variable.declarative.ConsistencyTracker;
 import greycos.solver.core.impl.score.FloatingPointMath;
 import greycos.solver.core.impl.score.FloatingScoreSupport;
+import greycos.solver.core.impl.score.constraint.ConstraintMatchPolicy;
 import greycos.solver.core.impl.score.constraint.ConstraintMatchTotal;
 import greycos.solver.core.impl.score.definition.ScoreDefinition;
 import greycos.solver.core.impl.score.director.InnerScore;
+import greycos.solver.core.impl.score.director.stream.BavetConstraintStreamScoreDirectorFactory;
 import greycos.solver.core.impl.score.stream.common.AbstractConstraint;
 import greycos.solver.core.impl.score.stream.common.AbstractConstraintStreamScoreDirectorFactory;
 import greycos.solver.core.impl.score.stream.common.ScoreImpactType;
@@ -36,14 +43,27 @@ public abstract sealed class AbstractSingleConstraintAssertion<
 
   private final AbstractConstraint<Solution_, ?, ?> constraint;
   private final ScoreDefinition<Score_> scoreDefinition;
+  private final AbstractConstraintStreamScoreDirectorFactory<Solution_, Score_, ?>
+      scoreDirectorFactory;
+  private final Object @Nullable [] facts;
+  private @Nullable Map<Object, IndictmentAnalysis<Score_>> terminalIndictmentMap;
+  private @Nullable Map<Object, IndictmentAnalysis<Score_>> originalIndictmentMap;
   private InnerScore<Score_> actualScore;
   private Collection<ConstraintMatchTotal<Score_>> constraintMatchTotalCollection;
   private Collection<ConstraintJustification> justificationCollection;
 
-  @SuppressWarnings("unchecked")
   AbstractSingleConstraintAssertion(
       AbstractConstraintStreamScoreDirectorFactory<Solution_, Score_, ?> scoreDirectorFactory) {
+    this(scoreDirectorFactory, null);
+  }
+
+  @SuppressWarnings("unchecked")
+  AbstractSingleConstraintAssertion(
+      AbstractConstraintStreamScoreDirectorFactory<Solution_, Score_, ?> scoreDirectorFactory,
+      Object @Nullable [] facts) {
     super(scoreDirectorFactory);
+    this.scoreDirectorFactory = scoreDirectorFactory;
+    this.facts = facts == null ? null : facts.clone();
     this.constraint =
         (AbstractConstraint<Solution_, ?, ?>)
             scoreDirectorFactory.getConstraintMetaModel().getConstraints().stream()
@@ -57,6 +77,8 @@ public abstract sealed class AbstractSingleConstraintAssertion<
   final void update(
       InnerScore<Score_> innerScore,
       Map<ConstraintRef, ConstraintMatchTotal<Score_>> constraintMatchTotalMap) {
+    terminalIndictmentMap = null;
+    originalIndictmentMap = null;
     this.actualScore =
         InnerScore.fullyAssigned(
             requireNonNull(innerScore).raw()); // Strip initialization information.
@@ -69,6 +91,106 @@ public abstract sealed class AbstractSingleConstraintAssertion<
             .distinct()
             .toList();
     toggleInitialized();
+  }
+
+  @Override
+  public SingleConstraintAssertion indictsWithMessage(
+      @Nullable String message, Object... indictedObjects) {
+    assertIndictments(message, false, false, indictedObjects);
+    return this;
+  }
+
+  @Override
+  public SingleConstraintAssertion indictsExactlyWithMessage(
+      @Nullable String message, Object... indictedObjects) {
+    assertIndictments(message, true, false, indictedObjects);
+    return this;
+  }
+
+  @Override
+  public SingleConstraintAssertion originallyIndictsWithMessage(
+      @Nullable String message, Object... indictedObjects) {
+    assertIndictments(message, false, true, indictedObjects);
+    return this;
+  }
+
+  @Override
+  public SingleConstraintAssertion originallyIndictsExactlyWithMessage(
+      @Nullable String message, Object... indictedObjects) {
+    assertIndictments(message, true, true, indictedObjects);
+    return this;
+  }
+
+  private void assertIndictments(
+      @Nullable String message, boolean exactly, boolean original, Object[] indictedObjects) {
+    var actual = getIndictmentMap(original).keySet();
+    var expected =
+        indictedObjects == null
+            ? Collections.emptySet()
+            : new LinkedHashSet<>(Arrays.asList(indictedObjects));
+    var missing = expected.stream().filter(object -> !actual.contains(object)).toList();
+    var unexpected =
+        exactly || expected.isEmpty()
+            ? actual.stream().filter(object -> !expected.contains(object)).toList()
+            : emptyList();
+    if (!missing.isEmpty() || !unexpected.isEmpty()) {
+      throw new AssertionError(
+          buildAssertionErrorMessage(
+              original ? "Original indictment" : "Indictment",
+              constraint.getConstraintRef().id(),
+              unexpected,
+              missing,
+              expected,
+              actual,
+              message));
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  private Map<Object, IndictmentAnalysis<Score_>> getIndictmentMap(boolean original) {
+    ensureInitialized();
+    var cached = original ? originalIndictmentMap : terminalIndictmentMap;
+    if (cached != null) {
+      return cached;
+    }
+    if (!(scoreDirectorFactory instanceof BavetConstraintStreamScoreDirectorFactory<?, ?>)) {
+      throw new UnsupportedOperationException("This assertion does not support indictments.");
+    }
+    var bavetFactory =
+        (BavetConstraintStreamScoreDirectorFactory<Solution_, Score_>) scoreDirectorFactory;
+    var solution = getSolution();
+    var fixtureFacts = facts;
+    if (fixtureFacts == null) {
+      var collectedFacts = new ArrayList<>();
+      scoreDirectorFactory.getSolutionDescriptor().visitAll(solution, collectedFacts::add);
+      fixtureFacts = collectedFacts.toArray();
+    }
+    // Reusing a score director would reinitialize inverse relations and listener queues.
+    // A derived session reads the already initialized fixture without changing its shadows.
+    var tracker =
+        ConsistencyTracker.frozen(scoreDirectorFactory.getSolutionDescriptor(), fixtureFacts);
+    var session =
+        bavetFactory.newSession(
+            solution,
+            tracker,
+            original
+                ? ConstraintMatchPolicy.ENABLED_WITH_ORIGINAL_INDICTMENTS
+                : ConstraintMatchPolicy.ENABLED_WITH_INDICTMENTS,
+            true);
+    for (var fact : fixtureFacts) {
+      session.insert(fact);
+    }
+    session.calculateScore();
+    var maps = session.getScoreInliner().getIndictmentMaps();
+    if (terminalIndictmentMap == null) {
+      terminalIndictmentMap =
+          Collections.unmodifiableMap(new LinkedHashMap<>(requireNonNull(maps.terminal())));
+    }
+    if (original) {
+      originalIndictmentMap =
+          Collections.unmodifiableMap(new LinkedHashMap<>(requireNonNull(maps.original())));
+    }
+    return requireNonNull(original ? originalIndictmentMap : terminalIndictmentMap);
   }
 
   @Override

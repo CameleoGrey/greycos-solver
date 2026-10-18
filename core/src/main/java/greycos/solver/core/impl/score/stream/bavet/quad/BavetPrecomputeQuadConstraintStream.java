@@ -40,9 +40,11 @@ public class BavetPrecomputeQuadConstraintStream<Solution_, A, B, C, D>
   @Override
   public <Score_ extends Score<Score_>> void buildNode(
       ConstraintNodeBuildHelper<Solution_, Score_> buildHelper) {
+    var originalContributorTracking = buildHelper.isOriginalContributorTrackingEnabled();
     Supplier<BavetPrecomputeBuildHelper<QuadTuple<A, B, C, D>>> precomputeBuildHelperSupplier =
         () ->
-            new BavetPrecomputeBuildHelper<>(recordingPrecomputedConstraintStream, entityClassSet);
+            new BavetPrecomputeBuildHelper<>(
+                recordingPrecomputedConstraintStream, entityClassSet, originalContributorTracking);
     var outputStoreSize = buildHelper.extractTupleStoreSize(aftStream);
 
     buildHelper.addNode(

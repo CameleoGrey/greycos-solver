@@ -20,6 +20,7 @@ import greycos.solver.core.api.score.analysis.VariableLoop;
 import greycos.solver.core.api.score.stream.Constraint;
 import greycos.solver.core.api.score.stream.ConstraintJustification;
 import greycos.solver.core.api.score.stream.ConstraintRef;
+import greycos.solver.core.api.solver.IndictmentFetchPolicy;
 import greycos.solver.core.api.solver.ScoreAnalysisFetchPolicy;
 import greycos.solver.core.api.solver.SolutionManager;
 import greycos.solver.core.config.solver.EnvironmentMode;
@@ -35,9 +36,11 @@ import greycos.solver.core.impl.neighborhood.MoveRepository;
 import greycos.solver.core.impl.neighborhood.NeighborhoodsBasedMoveRepository;
 import greycos.solver.core.impl.phase.scope.SolverLifecyclePoint;
 import greycos.solver.core.impl.score.ScoreArithmetic;
+import greycos.solver.core.impl.score.analysis.AnalysisDetails;
 import greycos.solver.core.impl.score.analysis.DefaultConstraintAnalysis;
 import greycos.solver.core.impl.score.analysis.DefaultMatchAnalysis;
 import greycos.solver.core.impl.score.analysis.DefaultScoreAnalysis;
+import greycos.solver.core.impl.score.analysis.IndictmentMaps;
 import greycos.solver.core.impl.score.constraint.ConstraintMatch;
 import greycos.solver.core.impl.score.constraint.ConstraintMatchPolicy;
 import greycos.solver.core.impl.score.constraint.ConstraintMatchTotal;
@@ -59,6 +62,13 @@ public interface InnerScoreDirector<Solution_, Score_ extends Score<Score_>>
 
   static <Score_ extends Score<Score_>> ConstraintAnalysis<Score_> getConstraintAnalysis(
       ConstraintMatchTotal<Score_> constraintMatchTotal, ScoreAnalysisFetchPolicy fetchPolicy) {
+    return getConstraintAnalysis(constraintMatchTotal, fetchPolicy, null);
+  }
+
+  static <Score_ extends Score<Score_>> ConstraintAnalysis<Score_> getConstraintAnalysis(
+      ConstraintMatchTotal<Score_> constraintMatchTotal,
+      ScoreAnalysisFetchPolicy fetchPolicy,
+      @Nullable Long rawMatchCount) {
     return switch (fetchPolicy) {
       case FETCH_ALL -> {
         var matchesByJustification =
@@ -91,7 +101,9 @@ public interface InnerScoreDirector<Solution_, Score_ extends Score<Score_>>
             constraintMatchTotal.getConstraintRef(),
             constraintMatchTotal.getConstraintWeight(),
             constraintMatchTotal.getScore(),
-            matchAnalyses);
+            matchAnalyses,
+            matchAnalyses.size(),
+            rawMatchCount);
       }
       case FETCH_MATCH_COUNT ->
           new DefaultConstraintAnalysis<>(
@@ -487,13 +499,53 @@ public interface InnerScoreDirector<Solution_, Score_ extends Score<Score_>>
 
   List<VariableLoop> computeVariableLoops();
 
+  /** Returns detached indictment views for the current, already settled score calculation. */
+  default IndictmentMaps<Score_> getIndictmentMaps() {
+    var policy = getConstraintMatchPolicy().getIndictmentFetchPolicy();
+    if (policy == IndictmentFetchPolicy.NONE) {
+      return IndictmentMaps.unavailable();
+    }
+    throw new UnsupportedOperationException(
+        "The score director (%s) does not support indictment fetch policy (%s)."
+            .formatted(getClass().getSimpleName(), policy));
+  }
+
+  /** Returns all requested details in one extraction from the same settled match occurrences. */
+  default AnalysisDetails<Score_> getAnalysisDetails() {
+    if (getConstraintMatchPolicy().getIndictmentFetchPolicy() == IndictmentFetchPolicy.NONE) {
+      return AnalysisDetails.unavailable();
+    }
+    if (getConstraintMatchPolicy().isMatchOccurrenceEnabled()) {
+      throw new UnsupportedOperationException(
+          "The score director (%s) does not support raw match occurrences."
+              .formatted(getClass().getSimpleName()));
+    }
+    return new AnalysisDetails<>(getIndictmentMaps(), null);
+  }
+
   default ScoreAnalysis<Score_> buildScoreAnalysis(ScoreAnalysisFetchPolicy fetchPolicy) {
+    if (getConstraintMatchPolicy().isMatchOccurrenceEnabled()
+        && fetchPolicy != ScoreAnalysisFetchPolicy.FETCH_ALL) {
+      throw new IllegalArgumentException("Raw match occurrences require FETCH_ALL.");
+    }
     var state = calculateScore();
+    var details =
+        getConstraintMatchPolicy().isMatchOccurrenceEnabled() ? getAnalysisDetails() : null;
+    var rawAnalysis = details == null ? null : details.rawAnalysis();
     var constraintAnalysisMap = new TreeMap<ConstraintRef, ConstraintAnalysis<Score_>>();
     for (var constraintMatchTotal : getConstraintMatchTotalMap().values()) {
       constraintAnalysisMap.put(
           constraintMatchTotal.getConstraintRef(),
-          getConstraintAnalysis(constraintMatchTotal, fetchPolicy));
+          getConstraintAnalysis(
+              constraintMatchTotal,
+              fetchPolicy,
+              rawAnalysis == null
+                  ? null
+                  : (long)
+                      rawAnalysis
+                          .constraintMap()
+                          .getOrDefault(constraintMatchTotal.getConstraintRef(), List.of())
+                          .size()));
     }
     var variableLoops = computeVariableLoops();
     // Legacy marker models score inconsistencies through constraints while still reporting loops.
@@ -502,8 +554,16 @@ public interface InnerScoreDirector<Solution_, Score_ extends Score<Score_>>
             ? state.raw()
             : getScoreDefinition().getStructurallyFlawedScore(state.raw());
     getSolutionDescriptor().setScore(getWorkingSolution(), score);
+    if (details == null) {
+      details = getAnalysisDetails();
+    }
     return new DefaultScoreAnalysis<>(
-        score, constraintAnalysisMap, state.isFullyAssigned(), variableLoops);
+        score,
+        constraintAnalysisMap,
+        state.isFullyAssigned(),
+        variableLoops,
+        details.indictments(),
+        rawAnalysis);
   }
 
   default void beforeEntityAdded(Object entity) {

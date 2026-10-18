@@ -36,4 +36,9 @@ public interface ImpactHandler<Tuple_ extends Tuple> {
    * @return run to undo the impact
    */
   ScoreImpact<?> impactFull(WeightedScoreImpacter<?, ?> impacter, Tuple_ tuple);
+
+  /** Impacts the score while retaining lazy terminal indictment selection. */
+  default ScoreImpact<?> impactWithIndictments(WeightedScoreImpacter<?, ?> impacter, Tuple_ tuple) {
+    throw new UnsupportedOperationException("This impact handler does not support indictments.");
+  }
 }

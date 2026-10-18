@@ -1,6 +1,7 @@
 package greycos.solver.core.api.score.stream.bi;
 
 import java.util.Collection;
+import java.util.function.BiFunction;
 
 import greycos.solver.core.api.function.TriFunction;
 import greycos.solver.core.api.score.Score;
@@ -31,4 +32,19 @@ public interface BiConstraintBuilder<A, B, Score_ extends Score<Score_>> extends
   <ConstraintJustification_ extends ConstraintJustification>
       BiConstraintBuilder<A, B, Score_> justifyWith(
           TriFunction<A, B, Score_, ConstraintJustification_> justificationMapping);
+
+  /**
+   * Selects the terminal objects indicted by each match, replacing the default non-null tuple
+   * objects. An empty collection is valid; the mapping, its result and its elements must not be
+   * null. Equal objects are counted once per match. The function is called lazily only when
+   * terminal indictments are requested; it does not change justifications or original objects.
+   *
+   * @return this
+   */
+  default BiConstraintBuilder<A, B, Score_> indictWith(
+      BiFunction<A, B, ? extends Collection<?>> indictmentMapping) {
+    java.util.Objects.requireNonNull(indictmentMapping, "The indictment mapping must not be null.");
+    throw new UnsupportedOperationException(
+        "This constraint builder does not support indictWith().");
+  }
 }

@@ -1,15 +1,25 @@
 package greycos.solver.core.impl.bavet.common;
 
+import greycos.solver.core.impl.bavet.common.provenance.ProvenanceNode;
+import greycos.solver.core.impl.bavet.common.provenance.TupleProvenance;
 import greycos.solver.core.impl.bavet.common.tuple.Tuple;
 import greycos.solver.core.impl.bavet.common.tuple.TupleLifecycle;
 import greycos.solver.core.impl.bavet.common.tuple.TupleState;
 
+import org.jspecify.annotations.Nullable;
+
 public abstract class AbstractMapNode<InTuple_ extends Tuple, OutTuple_ extends Tuple>
-    extends AbstractSingleInputNode<InTuple_> {
+    extends AbstractSingleInputNode<InTuple_> implements ProvenanceNode {
 
   private final int inputStoreIndex;
   protected final int outputStoreSize;
   private final StaticPropagationQueue<OutTuple_> propagationQueue;
+  private @Nullable TupleProvenance provenance;
+
+  @Override
+  public final void setProvenance(TupleProvenance provenance) {
+    this.provenance = provenance;
+  }
 
   protected AbstractMapNode(
       int inputStoreIndex, TupleLifecycle<OutTuple_> nextNodesTupleLifecycle, int outputStoreSize) {
@@ -33,6 +43,9 @@ public abstract class AbstractMapNode<InTuple_ extends Tuple, OutTuple_ extends 
               + ") was already added in the tupleStore.");
     }
     var outTuple = map(tuple);
+    if (provenance != null) {
+      provenance.output().set(outTuple, provenance.left().get(tuple));
+    }
     tuple.setStore(inputStoreIndex, outTuple);
     propagationQueue.insert(outTuple);
   }
@@ -49,6 +62,9 @@ public abstract class AbstractMapNode<InTuple_ extends Tuple, OutTuple_ extends 
       return;
     }
     remap(tuple, outTuple);
+    if (provenance != null) {
+      provenance.output().set(outTuple, provenance.left().get(tuple));
+    }
     // Update must be propagated even if outTuple did not change, since if it is a planning
     // entity, the entity's planning variable might have changed.
     var previousState = outTuple.getState();

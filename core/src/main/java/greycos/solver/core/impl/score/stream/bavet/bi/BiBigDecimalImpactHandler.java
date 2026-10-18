@@ -35,4 +35,16 @@ record BiBigDecimalImpactHandler<A, B>(BiFunction<A, B, BigDecimal> matchWeigher
         matchWeigher.apply(a, b),
         ConstraintMatchSupplier.of(constraint.getJustificationMapping(), a, b));
   }
+
+  @Override
+  public ScoreImpact<?> impactWithIndictments(
+      WeightedScoreImpacter<?, ?> impacter, BiTuple<A, B> tuple) {
+    var a = tuple.getA();
+    var b = tuple.getB();
+    var constraint = impacter.getContext().getConstraint();
+    return impacter.impactScore(
+        matchWeigher.apply(a, b),
+        ConstraintMatchSupplier.withIndictments(
+            constraint.getJustificationMapping(), constraint.getIndictmentMapping(), a, b));
+  }
 }

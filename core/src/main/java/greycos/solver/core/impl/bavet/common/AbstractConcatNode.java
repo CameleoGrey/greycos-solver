@@ -1,8 +1,12 @@
 package greycos.solver.core.impl.bavet.common;
 
+import greycos.solver.core.impl.bavet.common.provenance.ProvenanceNode;
+import greycos.solver.core.impl.bavet.common.provenance.TupleProvenance;
 import greycos.solver.core.impl.bavet.common.tuple.Tuple;
 import greycos.solver.core.impl.bavet.common.tuple.TupleLifecycle;
 import greycos.solver.core.impl.bavet.common.tuple.TupleState;
+
+import org.jspecify.annotations.Nullable;
 
 /**
  * Implements the concat operation. Concat cannot be implemented as a pass-through operation because
@@ -24,12 +28,18 @@ import greycos.solver.core.impl.bavet.common.tuple.TupleState;
  */
 public abstract class AbstractConcatNode<
         LeftTuple_ extends Tuple, RightTuple_ extends Tuple, OutTuple_ extends Tuple>
-    extends AbstractTwoInputNode<LeftTuple_, RightTuple_> {
+    extends AbstractTwoInputNode<LeftTuple_, RightTuple_> implements ProvenanceNode {
 
   private final int leftSourceTupleCloneStoreIndex;
   private final int rightSourceTupleCloneStoreIndex;
   protected final int outputStoreSize;
   private final StaticPropagationQueue<OutTuple_> propagationQueue;
+  private @Nullable TupleProvenance provenance;
+
+  @Override
+  public final void setProvenance(TupleProvenance provenance) {
+    this.provenance = provenance;
+  }
 
   protected AbstractConcatNode(
       TupleLifecycle<OutTuple_> nextNodesTupleLifecycle,
@@ -66,6 +76,9 @@ public abstract class AbstractConcatNode<
   @Override
   public final void insertLeft(LeftTuple_ tuple) {
     var outTuple = getOutTupleFromLeft(tuple);
+    if (provenance != null) {
+      provenance.output().set(outTuple, provenance.left().get(tuple));
+    }
     tuple.setStore(leftSourceTupleCloneStoreIndex, outTuple);
     propagationQueue.insert(outTuple);
   }
@@ -81,6 +94,9 @@ public abstract class AbstractConcatNode<
     }
 
     updateOutTupleFromLeft(tuple, outTuple);
+    if (provenance != null) {
+      provenance.output().set(outTuple, provenance.left().get(tuple));
+    }
     // Even if the facts of tuple do not change, an update MUST be done so
     // downstream nodes get notified of updates in planning variables.
     var previousState = outTuple.getState();
@@ -112,6 +128,9 @@ public abstract class AbstractConcatNode<
   @Override
   public final void insertRight(RightTuple_ tuple) {
     var outTuple = getOutTupleFromRight(tuple);
+    if (provenance != null) {
+      provenance.output().set(outTuple, provenance.right().get(tuple));
+    }
     tuple.setStore(rightSourceTupleCloneStoreIndex, outTuple);
     propagationQueue.insert(outTuple);
   }
@@ -127,6 +146,9 @@ public abstract class AbstractConcatNode<
     }
 
     updateOutTupleFromRight(tuple, outTuple);
+    if (provenance != null) {
+      provenance.output().set(outTuple, provenance.right().get(tuple));
+    }
     // Even if the facts of tuple do not change, an update MUST be done so
     // downstream nodes get notified of updates in planning variables.
     var previousState = outTuple.getState();
