@@ -199,7 +199,7 @@ public final class BavetConstraintFactory<Solution_>
       predicateFunction =
           new ForEachFilteringCriteriaPredicateFunction<>(entityDescriptor, sourceCriteria);
     }
-    UniConstraintStream<A> source =
+    BavetAbstractUniConstraintStream<Solution_, A> source =
         share(
             new BavetForEachUniConstraintStream<>(
                 this, sourceClass, predicateFunction, retrievalSemantics));
@@ -212,7 +212,7 @@ public final class BavetConstraintFactory<Solution_>
     if (membershipDescriptors.size() == 1
         && membershipDescriptors.getFirst().acceptsValueType(sourceClass)) {
       var descriptor = membershipDescriptors.getFirst();
-      return source.ifExists(
+      return source.ifExistsForEachAssignment(
           forEachUnfiltered((Class<Object>) descriptor.getEntityDescriptor().getEntityClass()),
           Joiners.filtering(descriptor.<A>getInListPredicate()));
     }
@@ -224,13 +224,13 @@ public final class BavetConstraintFactory<Solution_>
                 membershipDescriptors.stream()
                     .noneMatch(descriptor -> descriptor.acceptsValueType(value.getClass())));
     for (var descriptor : membershipDescriptors) {
+      var branchSource =
+          (BavetAbstractUniConstraintStream<Solution_, A>)
+              source.filter(value -> descriptor.acceptsValueType(value.getClass()));
       var branch =
-          source
-              .filter(value -> descriptor.acceptsValueType(value.getClass()))
-              .ifExists(
-                  forEachUnfiltered(
-                      (Class<Object>) descriptor.getEntityDescriptor().getEntityClass()),
-                  Joiners.filtering(descriptor.<A>getInListPredicate()));
+          branchSource.ifExistsForEachAssignment(
+              forEachUnfiltered((Class<Object>) descriptor.getEntityDescriptor().getEntityClass()),
+              Joiners.filtering(descriptor.<A>getInListPredicate()));
       result = result.concat(branch);
     }
     return result;

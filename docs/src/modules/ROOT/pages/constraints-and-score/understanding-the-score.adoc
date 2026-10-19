@@ -240,6 +240,9 @@ Original contributors describe stream participation, with these rules:
 |Precompute |The original sources of the actual recorded inner tuple, preserved through outer replay.
 |===
 
+Implicit list-assignment filtering does not add list owners as original contributors.
+An explicit `ifExists` operation includes its satisfying witnesses as described above.
+
 The maps, membership, scores, counts, and match lists are detached snapshots.
 Domain objects and custom justification objects remain references; GreyCOS does not deep-clone arbitrary application objects.
 Later solver updates cannot change the recorded attribution, but may change the fields of referenced objects.

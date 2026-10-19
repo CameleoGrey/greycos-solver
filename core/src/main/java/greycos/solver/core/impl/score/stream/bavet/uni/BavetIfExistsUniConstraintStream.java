@@ -24,6 +24,7 @@ final class BavetIfExistsUniConstraintStream<Solution_, A, B>
   private final BavetAbstractUniConstraintStream<Solution_, A> parentA;
   private final BavetForeBridgeUniConstraintStream<Solution_, B> parentBridgeB;
   private final boolean shouldExist;
+  private final boolean forEachAssignmentFilter;
   private final DefaultBiJoiner<A, B> joiner;
   private final BiPredicate<A, B> filtering;
 
@@ -32,12 +33,14 @@ final class BavetIfExistsUniConstraintStream<Solution_, A, B>
       BavetAbstractUniConstraintStream<Solution_, A> parentA,
       BavetForeBridgeUniConstraintStream<Solution_, B> parentBridgeB,
       boolean shouldExist,
+      boolean forEachAssignmentFilter,
       DefaultBiJoiner<A, B> joiner,
       BiPredicate<A, B> filtering) {
     super(constraintFactory, parentA.getRetrievalSemantics());
     this.parentA = parentA;
     this.parentBridgeB = parentBridgeB;
     this.shouldExist = shouldExist;
+    this.forEachAssignmentFilter = forEachAssignmentFilter;
     this.joiner = joiner;
     this.filtering = filtering;
   }
@@ -45,6 +48,11 @@ final class BavetIfExistsUniConstraintStream<Solution_, A, B>
   @Override
   public boolean guaranteesDistinct() {
     return parentA.guaranteesDistinct();
+  }
+
+  @Override
+  public boolean isForEachAssignmentFilter() {
+    return forEachAssignmentFilter;
   }
 
   // ************************************************************************
@@ -103,6 +111,7 @@ final class BavetIfExistsUniConstraintStream<Solution_, A, B>
      * Therefore we need to check bridge parents to see where this ifExists node comes from.
      */
     return shouldExist == that.shouldExist
+        && forEachAssignmentFilter == that.forEachAssignmentFilter
         && Objects.equals(parentA, that.parentA)
         && Objects.equals(parentBridgeB.getParent(), that.parentBridgeB.getParent())
         && Objects.equals(joiner, that.joiner)
@@ -111,7 +120,13 @@ final class BavetIfExistsUniConstraintStream<Solution_, A, B>
 
   @Override
   public int hashCode() {
-    return Objects.hash(parentA, parentBridgeB.getParent(), shouldExist, joiner, filtering);
+    return Objects.hash(
+        parentA,
+        parentBridgeB.getParent(),
+        shouldExist,
+        forEachAssignmentFilter,
+        joiner,
+        filtering);
   }
 
   @Override

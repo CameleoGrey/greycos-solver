@@ -102,7 +102,8 @@ public final class ConstraintNodeBuildHelper<Solution_, Score_ extends Score<Sco
           if (parent != null) {
             nodeOutputProvenanceAccessors.put(parent, accessor);
           }
-        } else if (stream instanceof BavetIfExistsConstraintStream<?>) {
+        } else if (stream instanceof BavetIfExistsConstraintStream<?> ifExistsStream
+            && !ifExistsStream.isForEachAssignmentFilter()) {
           // Existence passes the same physical tuple down another logical branch.
           var accessor = new ProvenanceAccessor(reserveTupleStoreIndex(stream.getTupleSource()));
           provenanceAccessors.put(stream, accessor);
@@ -127,6 +128,11 @@ public final class ConstraintNodeBuildHelper<Solution_, Score_ extends Score<Sco
     if (provenanceAccessors == null) {
       return null;
     }
+    if (stream instanceof BavetIfExistsConstraintStream<?> ifExistsStream
+        && ifExistsStream.isForEachAssignmentFilter()) {
+      // Assignment is a filter: retain the lineage of its logical input branch.
+      return getProvenanceAccessor(ifExistsStream.getLeftParent());
+    }
     var accessor = provenanceAccessors.get(stream);
     if (accessor == null) {
       accessor = nodeOutputProvenanceAccessors.get(stream);
@@ -144,6 +150,11 @@ public final class ConstraintNodeBuildHelper<Solution_, Score_ extends Score<Sco
   private void configureProvenance(
       AbstractNode node, BavetAbstractConstraintStream<Solution_> creator) {
     if (provenanceAccessors == null) {
+      return;
+    }
+    if (creator instanceof BavetIfExistsConstraintStream<?> ifExistsStream
+        && ifExistsStream.isForEachAssignmentFilter()) {
+      // Keep membership propagation active without allocating or modifying any lineage.
       return;
     }
     if (!(node instanceof ProvenanceNode provenanceNode)) {

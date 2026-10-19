@@ -136,18 +136,28 @@ public abstract class BavetAbstractUniConstraintStream<Solution_, A>
   @Override
   public final @NonNull <B> UniConstraintStream<A> ifExists(
       @NonNull UniConstraintStream<B> otherStream, @NonNull BiJoiner<A, B>... joiners) {
-    return ifExistsOrNot(true, otherStream, joiners);
+    return ifExistsOrNot(true, false, otherStream, joiners);
   }
 
   @SafeVarargs
   @Override
   public final @NonNull <B> UniConstraintStream<A> ifNotExists(
       @NonNull UniConstraintStream<B> otherStream, @NonNull BiJoiner<A, B>... joiners) {
-    return ifExistsOrNot(false, otherStream, joiners);
+    return ifExistsOrNot(false, false, otherStream, joiners);
+  }
+
+  /** Filters list assignment without adding the owner as an original contributor. */
+  @SafeVarargs
+  public final @NonNull <B> UniConstraintStream<A> ifExistsForEachAssignment(
+      @NonNull UniConstraintStream<B> otherStream, @NonNull BiJoiner<A, B>... joiners) {
+    return ifExistsOrNot(true, true, otherStream, joiners);
   }
 
   private <B> UniConstraintStream<A> ifExistsOrNot(
-      boolean shouldExist, UniConstraintStream<B> otherStream, BiJoiner<A, B>[] joiners) {
+      boolean shouldExist,
+      boolean forEachAssignmentFilter,
+      UniConstraintStream<B> otherStream,
+      BiJoiner<A, B>[] joiners) {
     var other = (BavetAbstractUniConstraintStream<Solution_, B>) otherStream;
     var joinerComber = BiJoinerComber.comb(joiners);
     var parentBridgeB =
@@ -158,6 +168,7 @@ public abstract class BavetAbstractUniConstraintStream<Solution_, A>
             this,
             parentBridgeB,
             shouldExist,
+            forEachAssignmentFilter,
             joinerComber.getMergedJoiner(),
             joinerComber.getMergedFiltering()),
         childStreamList::add);

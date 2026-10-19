@@ -1850,7 +1850,8 @@ A vehicle route must both plan the sequence of visits and, for each visit, indep
 When a solution model combines xref:using-greycos-solver/modeling-planning-problems.adoc#planningVariable[basic] and xref:using-greycos-solver/modeling-planning-problems.adoc#planningListVariable[list] planning variables,
 it is referred to as a *mixed model*.
 
-NOTE: Only a single xref:using-greycos-solver/modeling-planning-problems.adoc#planningListVariable[@PlanningListVariable] is supported per solution.
+NOTE: Multiple planning list variables may coexist with basic variables under the
+xref:using-greycos-solver/modeling-planning-problems.adoc#multiplePlanningListVariables[distinct element type and population rules].
 
 Mixed models support three distinct patterns.
 

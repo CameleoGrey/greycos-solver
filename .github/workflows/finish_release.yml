@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       releaseTag:
-        description: 'Published release tag (MAJOR.MINOR.PATCH prefixed with v, e.g. v0.11.15)'
+        description: 'Published release tag (MAJOR.MINOR.PATCH prefixed with v, e.g. v0.13.0)'
         required: true
         type: string
 
@@ -124,7 +124,13 @@ jobs:
             git fetch --force origin "refs/heads/$SERIES_BRANCH:refs/remotes/origin/$SERIES_BRANCH"
             git switch -C "$SERIES_BRANCH" "origin/$SERIES_BRANCH"
             git merge --squash "$RELEASE_BRANCH_NAME"
-            git commit -m "build: release version $RELEASE_TAG"
+            if git diff --cached --quiet; then
+              echo "Release series '$SERIES_BRANCH' already contains the restored release changes."
+            else
+              index_diff_status=$?
+              [[ "$index_diff_status" -eq 1 ]] || exit "$index_diff_status"
+              git commit -m "build: release version $RELEASE_TAG"
+            fi
             git push origin "$SERIES_BRANCH"
           else
             git switch "$RELEASE_BRANCH_NAME"
