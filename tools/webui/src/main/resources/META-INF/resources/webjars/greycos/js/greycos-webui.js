@@ -6,7 +6,7 @@ function replaceGreyCOSAutoHeaderFooter() {
       $(`<div class="container-fluid">
         <nav class="navbar sticky-top navbar-expand-lg navbar-dark shadow mb-3">
           <a class="navbar-brand" href="https://github.com/CameleoGrey/greycos-solver">
-            <img src="webjars/greycos/img/greycos-logo-horizontal-negative.svg" alt="GreyCOS logo" width="200">
+            <img src="webjars/greycos/img/GreyCOS_logo_no_background_480.png" alt="GreyCOS logo" width="200">
           </a>
         </nav>
       </div>`));
